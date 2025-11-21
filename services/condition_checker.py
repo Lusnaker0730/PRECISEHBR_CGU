@@ -1,10 +1,12 @@
 """
 Condition Checker Service
 Handles checking for specific medical conditions in patient data
+Supports SNOMED CT, ICD-10-CM, and Taiwan NHI Codes
 """
 import logging
 from services.config_loader import config_loader
 from services.unit_conversion_service import unit_converter
+from services.twcore_adapter import twcore_adapter
 
 
 class ConditionCheckerService:
@@ -37,24 +39,51 @@ class ConditionCheckerService:
         return False
     
     @classmethod
+    def _check_icd10_codes(cls, conditions, icd10_codes):
+        """
+        Helper to check for ICD-10 codes in conditions
+        Returns tuple (found_boolean, found_display_text)
+        """
+        if not icd10_codes:
+            return False, None
+            
+        for condition in conditions:
+            diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
+            if diagnosis_info['has_icd10']:
+                code = diagnosis_info['icd10_code']
+                # Check for exact match or prefix match (e.g., "I21" matches "I21.0")
+                for target_code in icd10_codes:
+                    if code == target_code or code.startswith(target_code + "."):
+                        return True, diagnosis_info['icd10_display'] or f"ICD-10: {code}"
+        return False, None
+
+    @classmethod
     def check_bleeding_diathesis(cls, conditions):
         """
         Check for chronic bleeding diathesis using codes from configuration.
+        Supports SNOMED CT and ICD-10-CM.
         
         Returns:
             Tuple of (has_condition, condition_info)
         """
         snomed_config = config_loader.get_snomed_codes('bleeding_diathesis')
         bleeding_diathesis_codes = snomed_config.get('specific_codes', ['64779008'])
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
         
+        # 1. Check SNOMED codes
         for condition in conditions:
-            # Check SNOMED codes
             for coding in condition.get('code', {}).get('coding', []):
                 if (coding.get('system') == 'http://snomed.info/sct' and 
                     coding.get('code') in bleeding_diathesis_codes):
                     return True, coding.get('display', 'Bleeding diathesis')
+        
+        # 2. Check ICD-10 codes
+        has_icd10, icd10_info = cls._check_icd10_codes(conditions, icd10_codes)
+        if has_icd10:
+            return True, icd10_info
             
-            # Check text for bleeding diathesis terms
+        # 3. Check text for bleeding diathesis terms
+        for condition in conditions:
             condition_text = cls.get_condition_text(condition).lower()
             bleeding_keywords = ['bleeding disorder', 'bleeding diathesis', 'hemorrhagic diathesis', 
                                'hemophilia', 'von willebrand', 'coagulation disorder']
@@ -68,31 +97,43 @@ class ConditionCheckerService:
     def check_prior_bleeding(cls, conditions):
         """
         Check for prior bleeding history using codes from configuration.
+        Supports SNOMED CT and ICD-10-CM.
         
         Returns:
             Tuple of (has_bleeding, list_of_bleeding_evidence)
         """
         snomed_config = config_loader.get_snomed_codes('prior_bleeding')
         prior_bleeding_codes = snomed_config.get('specific_codes', [])
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
         
         found_bleeding = []
         
         for condition in conditions:
-            # Check SNOMED codes
+            # 1. Check SNOMED codes
             for coding in condition.get('code', {}).get('coding', []):
                 if (coding.get('system') == 'http://snomed.info/sct' and 
                     coding.get('code') in prior_bleeding_codes):
                     found_bleeding.append(coding.get('display', 'Prior bleeding'))
             
-            # Check text for bleeding terms
+            # 2. Check ICD-10 codes
+            diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
+            if diagnosis_info['has_icd10']:
+                code = diagnosis_info['icd10_code']
+                for target_code in icd10_codes:
+                    if code == target_code or code.startswith(target_code + "."):
+                        found_bleeding.append(diagnosis_info['icd10_display'] or f"Prior bleeding (ICD-10: {code})")
+                        break
+
+            # 3. Check text for bleeding terms
             condition_text = cls.get_condition_text(condition).lower()
-            bleeding_keywords = ['hemorrhage', 'bleeding', 'hemarthrosis', 'hematuria', 'hemothorax',
-                               'hemopericardium', 'hemoperitoneum', 'retroperitoneal hematoma']
+            bleeding_keywords = config_loader.get_bleeding_history_keywords()
             for keyword in bleeding_keywords:
-                if keyword in condition_text:
+                if keyword.lower() in condition_text:
                     found_bleeding.append(condition_text)
                     break
         
+        # Remove duplicates and empty strings
+        found_bleeding = list(set([f for f in found_bleeding if f]))
         return len(found_bleeding) > 0, found_bleeding
     
     @classmethod
@@ -100,6 +141,7 @@ class ConditionCheckerService:
         """
         Check for liver cirrhosis with portal hypertension.
         Requires BOTH cirrhosis AND portal hypertension signs.
+        Supports SNOMED CT and ICD-10-CM.
         
         Returns:
             Tuple of (has_condition, list_of_found_conditions)
@@ -108,11 +150,13 @@ class ConditionCheckerService:
         
         cirrhosis_code = snomed_config.get('parent_code', '19943007')
         cirrhosis_keywords = snomed_config.get('cirrhosis_keywords', ['cirrhosis'])
+        cirrhosis_icd10 = snomed_config.get('icd10cm_codes', [])
         
         pht_config = snomed_config.get('portal_hypertension_criteria', {})
         pht_criteria = pht_config.get('additional_criteria', ['ascites', 'portal hypertension', 
                                                               'esophageal varices', 'hepatic encephalopathy'])
         pht_codes = pht_config.get('snomed_codes', [])
+        pht_icd10 = pht_config.get('icd10cm_codes', [])
         
         has_cirrhosis = False
         has_pht = False
@@ -121,7 +165,7 @@ class ConditionCheckerService:
         for condition in conditions:
             condition_text = cls.get_condition_text(condition).lower()
             
-            # Check for liver cirrhosis SNOMED code
+            # Check SNOMED and Text
             for coding in condition.get('code', {}).get('coding', []):
                 code = coding.get('code', '')
                 system = coding.get('system', '')
@@ -134,7 +178,6 @@ class ConditionCheckerService:
                     has_pht = True
                     found_conditions.append(coding.get('display', 'Portal hypertension'))
             
-            # Check text
             for keyword in cirrhosis_keywords:
                 if keyword in condition_text:
                     has_cirrhosis = True
@@ -146,14 +189,34 @@ class ConditionCheckerService:
                     has_pht = True
                     found_conditions.append(f"Portal HTN sign: {criteria}")
                     break
+            
+            # Check ICD-10
+            diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
+            if diagnosis_info['has_icd10']:
+                code = diagnosis_info['icd10_code']
+                
+                # Check Cirrhosis ICD-10
+                for target in cirrhosis_icd10:
+                    if code == target or code.startswith(target + "."):
+                        has_cirrhosis = True
+                        found_conditions.append(diagnosis_info['icd10_display'] or f"Liver cirrhosis (ICD-10: {code})")
+                        break
+                
+                # Check Portal Hypertension ICD-10
+                for target in pht_icd10:
+                    if code == target or code.startswith(target + "."):
+                        has_pht = True
+                        found_conditions.append(diagnosis_info['icd10_display'] or f"Portal hypertension sign (ICD-10: {code})")
+                        break
         
-        return (has_cirrhosis and has_pht), found_conditions
+        return (has_cirrhosis and has_pht), list(set(found_conditions))
     
     @classmethod
     def check_active_cancer(cls, conditions):
         """
         Check for active malignant neoplastic disease.
         Excludes non-melanoma skin cancers.
+        Supports SNOMED CT and ICD-10-CM.
         
         Returns:
             Tuple of (has_cancer, cancer_info)
@@ -161,24 +224,26 @@ class ConditionCheckerService:
         snomed_config = config_loader.get_snomed_codes('active_cancer')
         malignancy_code = snomed_config.get('parent_code', '363346000')
         excluded_codes = snomed_config.get('exclude_codes', ['254637007', '254632001'])
+        icd10_codes = snomed_config.get('icd10cm_codes', []) # e.g., C00-C97
         
         for condition in conditions:
             # Check clinical status
             clinical_status = condition.get('clinicalStatus', {})
+            status_code = 'active' # Default to active if not specified (conservative)
+            
             if isinstance(clinical_status, dict):
-                status_code = None
                 for coding in clinical_status.get('coding', []):
                     if coding.get('system') == 'http://terminology.hl7.org/CodeSystem/condition-clinical':
                         status_code = coding.get('code')
                         break
-            else:
-                status_code = str(clinical_status).lower()
+            elif isinstance(clinical_status, str):
+                status_code = clinical_status.lower()
             
             # Only consider active conditions
-            if status_code != 'active':
+            if status_code not in ['active', 'recurrence', 'relapse']:
                 continue
             
-            # Check SNOMED codes
+            # 1. Check SNOMED codes
             for coding in condition.get('code', {}).get('coding', []):
                 if coding.get('system') == 'http://snomed.info/sct':
                     code = coding.get('code')
@@ -191,7 +256,17 @@ class ConditionCheckerService:
                     if code == malignancy_code:
                         return True, coding.get('display', 'Active malignancy')
             
-            # Check text for cancer terms (but still require active status)
+            # 2. Check ICD-10 codes
+            diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
+            if diagnosis_info['has_icd10']:
+                code = diagnosis_info['icd10_code']
+                # Check if code starts with any C code (Malignant neoplasms)
+                # Assuming config has prefix list like ["C"] or ["C00", "C01"...]
+                for target in icd10_codes:
+                    if code.startswith(target):
+                        return True, diagnosis_info['icd10_display'] or f"Active cancer (ICD-10: {code})"
+
+            # 3. Check text for cancer terms
             condition_text = cls.get_condition_text(condition).lower()
             cancer_keywords = ['cancer', 'malignancy', 'neoplasm', 'carcinoma', 'sarcoma', 'lymphoma', 'leukemia']
             exclusion_keywords = ['basal cell', 'squamous cell', 'skin cancer']
@@ -211,6 +286,7 @@ class ConditionCheckerService:
     def check_oral_anticoagulation(cls, medications):
         """
         Check for long-term oral anticoagulation therapy.
+        Supports RxNorm and Taiwan NHI Codes.
         
         Returns:
             Boolean indicating if patient is on oral anticoagulants
@@ -218,16 +294,28 @@ class ConditionCheckerService:
         med_config = config_loader.get_medication_keywords()
         oac_config = med_config.get('oral_anticoagulants', {})
         
-        anticoagulant_codes = (
+        anticoagulant_keywords = (
             oac_config.get('generic_names', []) + 
             oac_config.get('brand_names', [])
         )
+        target_nhi_codes = oac_config.get('nhi_codes', [])
         
         for med in medications:
+            # Check NHI Codes
+            nhi_info = twcore_adapter.extract_nhi_medication_code(med)
+            if nhi_info['has_nhi_code']:
+                code = nhi_info['nhi_code']
+                # Check exact match or prefix match for NHI codes
+                for target in target_nhi_codes:
+                    if code == target or code.startswith(target):
+                        logging.info(f"Found OAC via NHI code: {code}")
+                        return True
+            
+            # Check text/keywords
             med_code = med.get('medicationCodeableConcept', {})
             med_text = str(med_code).lower()
             
-            for anticoag in anticoagulant_codes:
+            for anticoag in anticoagulant_keywords:
                 if anticoag in med_text:
                     return True
         
@@ -237,6 +325,7 @@ class ConditionCheckerService:
     def check_nsaids_or_corticosteroids(cls, medications):
         """
         Check for chronic use of NSAIDs or corticosteroids.
+        Supports Keywords and Taiwan NHI Codes.
         
         Returns:
             Boolean indicating if patient is on these medications
@@ -244,14 +333,26 @@ class ConditionCheckerService:
         med_config = config_loader.get_medication_keywords()
         nsaid_config = med_config.get('nsaids_corticosteroids', {})
         
-        drug_codes = (
+        drug_keywords = (
             nsaid_config.get('nsaid_keywords', []) + 
             nsaid_config.get('corticosteroid_keywords', [])
         )
+        target_nhi_codes = nsaid_config.get('nhi_codes', [])
         
         for med in medications:
+            # Check NHI Codes
+            nhi_info = twcore_adapter.extract_nhi_medication_code(med)
+            if nhi_info['has_nhi_code']:
+                code = nhi_info['nhi_code']
+                # Check exact match or prefix match
+                for target in target_nhi_codes:
+                    if code == target or code.startswith(target):
+                        logging.info(f"Found NSAID/Steroid via NHI code: {code}")
+                        return True
+
+            # Check text/keywords
             med_text = str(med.get('medicationCodeableConcept', {})).lower()
-            for code in drug_codes:
+            for code in drug_keywords:
                 if code in med_text:
                     return True
         
@@ -261,13 +362,16 @@ class ConditionCheckerService:
     def check_thrombocytopenia(cls, raw_data):
         """
         Check for thrombocytopenia based on platelet count.
+        Also checks ICD-10 codes for Thrombocytopenia.
         
         Returns:
-            Boolean indicating if platelet count is below threshold
+            Boolean indicating if condition is met
         """
         snomed_config = config_loader.get_snomed_codes('thrombocytopenia')
         threshold = snomed_config.get('threshold', {}).get('value', 100)
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
         
+        # 1. Check Lab Value
         platelets = raw_data.get('PLATELETS', [])
         if platelets:
             plt_obs = platelets[0]
@@ -278,6 +382,12 @@ class ConditionCheckerService:
             if plt_val and plt_val < threshold:
                 return True
         
+        # 2. Check ICD-10 Diagnosis (D69.3, etc.)
+        conditions = raw_data.get('conditions', [])
+        has_icd10, _ = cls._check_icd10_codes(conditions, icd10_codes)
+        if has_icd10:
+            return True
+            
         return False
     
     @classmethod
@@ -318,4 +428,3 @@ class ConditionCheckerService:
 
 # Global instance
 condition_checker = ConditionCheckerService()
-
