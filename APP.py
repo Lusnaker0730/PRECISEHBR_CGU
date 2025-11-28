@@ -17,6 +17,8 @@ from flask_session import Session  # For server-side session storage
 from audit_logger import get_audit_logger, audit_ephi_access, log_user_authentication
 # ONC Compliance: CCD Export
 from ccd_generator import generate_ccd_from_session_data
+# Security: Input validation
+import input_validator
 
 # --- Google Secret Manager Helper ---
 # Import the Secret Manager client library.
@@ -175,7 +177,14 @@ def calculate_risk_api():
         data = request.get_json()
         if not data or 'patientId' not in data:
             return jsonify({'error': 'Patient ID is required.'}), 400
+        
         patient_id = data['patientId']
+        
+        # Validate patient ID
+        is_valid, error_msg = input_validator.validate_patient_id(patient_id)
+        if not is_valid:
+            app.logger.warning(f"Invalid patient ID rejected: {patient_id[:50]}")
+            return jsonify({'error': f'Invalid patient ID: {error_msg}'}), 400
         fhir_session_data = session['fhir_data']
         raw_data, error = fhir_data_service.get_fhir_data(
             fhir_server_url=fhir_session_data.get('server'),
@@ -450,6 +459,14 @@ def launch():
         iss = request.args.get('iss')
         if not iss:
             return render_error_page("Launch Error", "Required 'iss' parameter is missing.")
+        
+        # Validate ISS URL
+        is_valid, error_msg = input_validator.validate_url(iss, allow_localhost=app.config.get('TESTING', False))
+        if not is_valid:
+            app.logger.warning(f"Invalid ISS URL rejected: {iss[:100]}")
+            return render_template('error.html', 
+                                 error_title="Launch Error", 
+                                 error_message=f"Invalid FHIR server URL: {error_msg}"), 400
 
         auth_url = None
         token_url = None
@@ -469,10 +486,12 @@ def launch():
                 auth_url = fhir_client.server.auth_settings.get('authorize_uri')
                 token_url = fhir_client.server.auth_settings.get('token_uri')
             except Exception as conf_e:
-                return render_error_page("FHIR Config Error", f"Could not retrieve auth endpoints from {iss}. Details: {conf_e}")
+                app.logger.error(f"FHIR config error for ISS {iss}: {conf_e}")
+                return render_error_page("FHIR Config Error", "Could not retrieve authorization endpoints from the FHIR server. Please verify the server URL and try again.")
 
         if not auth_url or not token_url:
-            return render_error_page("FHIR Config Error", f"Could not determine authorization and token endpoints for ISS: {iss}")
+            app.logger.error(f"Missing auth/token URLs for ISS {iss}")
+            return render_error_page("FHIR Config Error", "Could not determine authorization and token endpoints. Please contact your system administrator.")
 
         code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=').decode('utf-8')
         code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode('utf-8')).digest()).rstrip(b'=').decode('utf-8')
