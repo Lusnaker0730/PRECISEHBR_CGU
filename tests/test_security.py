@@ -47,13 +47,11 @@ def test_no_debug_in_production(app):
     assert app.config.get('TESTING') is True
 
 
-def test_environment_variables_required():
+def test_environment_variables_required(app):
     """Test that required environment variables are checked."""
-    import os
-    
-    # In testing, these should be set by conftest
-    assert os.environ.get('TESTING') == 'True'
-    assert os.environ.get('SECRET_KEY') is not None
+    # In testing, app config should have these set
+    assert app.config.get('TESTING') is True
+    assert app.config.get('SECRET_KEY') is not None
 
 
 def test_sql_injection_prevention(client):

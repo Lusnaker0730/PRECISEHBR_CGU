@@ -18,7 +18,7 @@ def test_audit_logger_initialization():
     assert logger is not None
 
 
-def test_audit_ephi_access():
+def test_audit_ephi_access(app):
     """Test ePHI access logging decorator."""
     # audit_ephi_access is a decorator, test it as such
     @audit_logger.audit_ephi_access(action='view_patient', resource_type='Patient')
@@ -29,10 +29,24 @@ def test_audit_ephi_access():
     assert callable(mock_view_function)
     
     # Test that the decorator doesn't break the function
-    with patch('audit_logger.get_audit_logger'):
-        with patch('flask.session', {'user_id': 'test-user', 'patient_id': 'test-patient'}):
+    with app.test_request_context('/test', method='GET'):
+        with patch('audit_logger.get_audit_logger') as mock_logger:
+            mock_log = Mock()
+            mock_logger.return_value = mock_log
+            
+            # Set session data
+            from flask import session
+            session['user_id'] = 'test-user'
+            session['patient_id'] = 'test-patient'
+            
             result = mock_view_function()
             assert result == "success"
+            
+            # Verify log_event was called (not info/warning directly)
+            assert mock_log.log_event.called
+            call_args = mock_log.log_event.call_args
+            assert call_args[1]['event_type'] == 'ePHI_ACCESS'
+            assert call_args[1]['action'] == 'view_patient'
 
 
 def test_user_authentication_logging():
@@ -48,8 +62,10 @@ def test_user_authentication_logging():
             details={'ip_address': '127.0.0.1'}
         )
         
-        # Should call logger
-        mock_log.info.assert_called_once()
+        # Should call log_event (not info directly)
+        assert mock_log.log_event.called
+        call_args = mock_log.log_event.call_args
+        assert call_args[1]['event_type'] == 'AUTHENTICATION'
 
 
 def test_audit_log_format():
