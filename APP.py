@@ -143,6 +143,29 @@ def render_error_page(title="Error", message="An unexpected error has occurred."
 
 # --- API Endpoints ---
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+    Returns the application health status.
+    """
+    try:
+        # Basic health check - can be expanded to check database, FHIR server, etc.
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'service': 'PRECISE-HBR SMART on FHIR',
+            'version': '1.0.0'
+        }
+        return jsonify(health_status), 200
+    except Exception as e:
+        app.logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.datetime.utcnow().isoformat()
+        }), 503
+
 @app.route('/api/calculate_risk', methods=['POST'])
 @login_required
 @audit_ephi_access(action='calculate_risk_score', resource_type='Patient,Observation,Condition')

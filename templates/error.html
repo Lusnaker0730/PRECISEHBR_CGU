@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}{{ error_info.title or 'Error' }}{% endblock %}
+{% block title %}{{ error_title or 'Error' }}{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -8,8 +8,8 @@
         <div class="col-lg-8">
             <div class="text-center mb-4">
                 <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
-                <h1 class="mt-3 text-danger">{{ error_info.title or 'An Error Occurred' }}</h1>
-                <p class="lead text-muted">{{ error_info.message or "We encountered a problem and couldn't complete your request." }}</p>
+                <h1 class="mt-3 text-danger">{{ error_title or 'An Error Occurred' }}</h1>
+                <p class="lead text-muted">{{ error_message or "We encountered a problem and couldn't complete your request." }}</p>
             </div>
 
             <div class="card">
@@ -17,18 +17,18 @@
                     <h5 class="mb-0"><i class="fas fa-question-circle"></i> What Happened?</h5>
                 </div>
                 <div class="card-body">
-                    <p>{{ error_info.details or 'No further details are available.' }}</p>
+                    <p>{{ error_details or error_message or 'No further details are available.' }}</p>
                 </div>
             </div>
 
-            {% if error_info.suggestions %}
+            {% if error_suggestions %}
             <div class="card mt-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Suggested Steps</h5>
                 </div>
                 <div class="card-body">
                     <ul>
-                        {% for suggestion in error_info.suggestions %}
+                        {% for suggestion in error_suggestions %}
                         <li>{{ suggestion }}</li>
                         {% endfor %}
                     </ul>
@@ -37,7 +37,7 @@
             {% endif %}
 
             <div class="mt-4 text-center">
-                <a href="{{ url_for('views.logout') }}" class="btn btn-primary">
+                <a href="{{ url_for('logout') }}" class="btn btn-primary">
                     <i class="fas fa-redo"></i> Relaunch Application
                 </a>
                 <a href="https://www.precisehbr.com" class="btn btn-secondary" target="_blank">

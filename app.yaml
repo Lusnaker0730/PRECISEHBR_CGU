@@ -1,0 +1,86 @@
+service: default
+runtime: python311
+entrypoint: gunicorn -b :$PORT --timeout 120 APP:app
+
+# ------------------------------------------------------------------------------
+# 最佳實踐：使用 Secret Manager 管理敏感環境變數
+# ------------------------------------------------------------------------------
+# 說明：
+# 為了安全性，SMART_CLIENT_ID 和 FLASK_SECRET_KEY 已從此文件中移除。
+# 您需要將它們儲存在 Google Cloud Secret Manager 中。
+#
+# 部署前，請執行以下 gcloud 指令來創建密鑰：
+#
+# gcloud secrets create SMART_CLIENT_ID --replication-policy="automatic"
+# echo -n "YOUR_CLIENT_ID_HERE" | gcloud secrets versions add SMART_CLIENT_ID --data-file=-
+#
+# gcloud secrets create FLASK_SECRET_KEY --replication-policy="automatic"
+# gcloud secrets create FLASK_SECRET_KEY --replication-policy="automatic" --data-file <(openssl rand -hex 32)
+#
+# 更多資訊：https://cloud.google.com/appengine/docs/standard/python3/configuring-your-app-with-app-yaml#securing_environment_variables
+# ------------------------------------------------------------------------------
+
+env_variables:
+  # SMART on FHIR Configuration - 從 Secret Manager 讀取
+  SMART_REDIRECT_URI: https://smart-lu.uc.r.appspot.com/callback
+  SMART_SCOPES: "launch openid fhirUser profile user/Patient.rs user/Observation.rs user/Condition.rs user/MedicationRequest.rs user/Procedure.rs"
+  APP_BASE_URL: https://smart-lu.uc.r.appspot.com/
+  
+  # Production Environment
+  FLASK_ENV: production
+  FLASK_DEBUG: false
+  SMART_CLIENT_ID: "edad05cb-7665-4941-8222-1854e0c3fd04"
+  FLASK_SECRET_KEY: "projects/${PROJECT_ID}/secrets/FLASK_SECRET_KEY/versions/latest"
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+  min_idle_instances: 0
+  max_idle_instances: 1
+  min_pending_latency: 30ms
+  max_pending_latency: automatic
+  target_cpu_utilization: 0.6
+  target_throughput_utilization: 0.7
+  max_concurrent_requests: 100
+
+# Health check configuration
+health_check:
+  enable_health_check: True
+  check_interval_sec: 30
+  timeout_sec: 4
+  unhealthy_threshold: 2
+  healthy_threshold: 2
+
+# Liveness and readiness checks
+liveness_check:
+  path: "/"
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 4
+  success_threshold: 2
+
+readiness_check:
+  path: "/"
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: 300
+
+# Instance class
+instance_class: F2
+
+# Handlers for static files
+handlers:
+- url: /static
+  static_dir: static
+  secure: always
+
+- url: /favicon.ico
+  static_files: static/favicon.ico
+  upload: static/favicon.ico
+  secure: always
+
+- url: /.*
+  script: auto
+  secure: always

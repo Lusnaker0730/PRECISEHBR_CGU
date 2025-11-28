@@ -19,20 +19,20 @@ def test_audit_logger_initialization():
 
 
 def test_audit_ephi_access():
-    """Test ePHI access logging."""
-    with patch('audit_logger.get_audit_logger') as mock_logger:
-        mock_log = Mock()
-        mock_logger.return_value = mock_log
-        
-        audit_logger.audit_ephi_access(
-            user_id='test-user',
-            patient_id='test-patient',
-            action='view',
-            resource_type='Patient'
-        )
-        
-        # Should call logger
-        assert mock_log.info.called or mock_log.warning.called or True
+    """Test ePHI access logging decorator."""
+    # audit_ephi_access is a decorator, test it as such
+    @audit_logger.audit_ephi_access(action='view_patient', resource_type='Patient')
+    def mock_view_function():
+        return "success"
+    
+    # The decorator should be callable
+    assert callable(mock_view_function)
+    
+    # Test that the decorator doesn't break the function
+    with patch('audit_logger.get_audit_logger'):
+        with patch('flask.session', {'user_id': 'test-user', 'patient_id': 'test-patient'}):
+            result = mock_view_function()
+            assert result == "success"
 
 
 def test_user_authentication_logging():
@@ -41,14 +41,15 @@ def test_user_authentication_logging():
         mock_log = Mock()
         mock_logger.return_value = mock_log
         
+        # Use correct parameters based on actual function signature
         audit_logger.log_user_authentication(
             user_id='test-user',
-            success=True,
-            ip_address='127.0.0.1'
+            outcome='success',
+            details={'ip_address': '127.0.0.1'}
         )
         
         # Should call logger
-        assert True  # Basic test to ensure no exceptions
+        mock_log.info.assert_called_once()
 
 
 def test_audit_log_format():

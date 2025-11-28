@@ -190,6 +190,7 @@
                 "1537033"
             ],
             "nhi_codes": [
+                "B023",
                 "BC27783100",
                 "BC27789100",
                 "BC28888100",
@@ -219,6 +220,9 @@
                 "dexamethasone",
                 "methylprednisolone",
                 "hydrocortisone"
+            ],
+            "nhi_codes": [
+                "AC36"
             ],
             "description": "Chronic use of NSAIDs or corticosteroids (慢性使用 NSAIDs 或類固醇)"
         }
