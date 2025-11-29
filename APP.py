@@ -180,10 +180,15 @@ def calculate_risk_api():
         
         patient_id = data['patientId']
         
+        # Check for null/empty patient ID
+        if not patient_id:
+            return jsonify({'error': 'Patient ID is required.'}), 400
+        
         # Validate patient ID
         is_valid, error_msg = input_validator.validate_patient_id(patient_id)
         if not is_valid:
-            app.logger.warning(f"Invalid patient ID rejected: {patient_id[:50]}")
+            patient_id_preview = str(patient_id)[:50] if patient_id else 'None'
+            app.logger.warning(f"Invalid patient ID rejected: {patient_id_preview}")
             return jsonify({'error': f'Invalid patient ID: {error_msg}'}), 400
         fhir_session_data = session['fhir_data']
         raw_data, error = fhir_data_service.get_fhir_data(
