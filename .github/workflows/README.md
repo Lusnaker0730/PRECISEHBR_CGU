@@ -1,311 +1,216 @@
 # GitHub Actions CI/CD Workflows
 
-This directory contains GitHub Actions workflows for the PRECISE-HBR SMART on FHIR application.
+本目錄包含 PRECISE-HBR SMART on FHIR 應用程式的 CI/CD 工作流程配置。
 
-## 📋 Available Workflows
+## 🔄 工作流程概覽
 
-### 1. **CI - Continuous Integration** (`ci.yml`)
+| 工作流程 | 觸發條件 | 說明 |
+|---------|---------|------|
+| **CI** (`ci.yml`) | Push/PR to main, PRECISE-HBR, develop | 完整的持續集成管線 |
+| **Test** (`test.yml`) | Push/PR (*.py, tests/*, requirements.txt) | 快速測試套件 |
+| **Security Scan** (`security-scan.yml`) | 每日 2:00 UTC + Push | 安全漏洞掃描 |
+| **Performance** (`performance.yml`) | 每週日 3:00 UTC + 手動 | 性能和負載測試 |
+| **Docker Build** (`docker-build.yml`) | Push to main + 手動 | Docker 映像建置 |
+| **CD** (`cd.yml`) | Push to main (tag) | 持續部署到生產環境 |
 
-**Triggers:**
-- Push to `main`, `PRECISE-HBR`, `PreciseDAPT`, `develop` branches
-- Pull requests to `main`, `PRECISE-HBR`, `PreciseDAPT` branches
+## 📋 CI 工作流程詳情
 
-**Jobs:**
-- **Code Quality Checks**: Black formatting, flake8, pylint
-- **Security Scan**: Bandit security analysis, pip-audit
-- **Tests**: Unit tests with pytest and coverage reporting
-- **Build**: Application build verification and artifact creation
-
-**Artifacts:**
-- Bandit security reports
-- pip-audit vulnerability reports
-- Test coverage reports
-- Build artifacts
-
----
-
-### 2. **CD - Continuous Deployment** (`cd.yml`)
-
-**Triggers:**
-- Push to `main` (production) or `PRECISE-HBR` (staging) branches
-- Manual trigger via workflow_dispatch
-
-**Jobs:**
-- **Deploy to Staging**: Auto-deploy PRECISE-HBR branch to staging environment
-- **Deploy to Production**: Auto-deploy main branch to production environment
-- **Rollback**: Automatic rollback on deployment failure
-
-**Environments:**
-- **Staging**: `https://staging-smart-fhir-app.appspot.com`
-- **Production**: `https://smart-fhir-app.appspot.com`
-
-**Required Secrets:**
-- `GCP_PROJECT_ID`: Google Cloud Project ID
-- `GCP_SA_KEY`: Google Cloud Service Account Key (JSON)
-
----
-
-### 3. **Docker Build and Push** (`docker-build.yml`)
-
-**Triggers:**
-- Push to `main`, `PRECISE-HBR` branches
-- Tags matching `v*`
-- Pull requests
-- Manual trigger
-
-**Features:**
-- Multi-platform builds (linux/amd64, linux/arm64)
-- Automatic tagging (branch, PR, semver, SHA)
-- Push to GitHub Container Registry (ghcr.io)
-- Trivy security scanning
-- SBOM generation
-
-**Image Registry:**
-- `ghcr.io/[owner]/smart_fhir_app`
-
----
-
-### 4. **Security Scan** (`security-scan.yml`)
-
-**Triggers:**
-- Scheduled daily at 2 AM UTC
-- Push to `main`, `PRECISE-HBR` branches (when Python files change)
-- Manual trigger
-
-**Scans:**
-- **Dependency Scan**: pip-audit, Safety
-- **Code Security**: Bandit analysis
-- **CodeQL Analysis**: GitHub Advanced Security
-- **Secrets Detection**: Gitleaks
-- **License Compliance**: pip-licenses
-
-**Artifacts:**
-- Security reports (HTML, JSON, CSV)
-- License compliance reports
-
----
-
-## 🚀 Quick Start
-
-### Setting Up CI/CD
-
-1. **Configure GitHub Secrets**
-
-Go to your repository → Settings → Secrets and variables → Actions, and add:
+### 主要 CI 管線 (`ci.yml`)
 
 ```
-GCP_PROJECT_ID: your-gcp-project-id
-GCP_SA_KEY: {
-  "type": "service_account",
-  "project_id": "your-project-id",
-  ...
-}
+┌─────────────────┐
+│   code-quality  │ ← 代碼品質檢查 (Black, Flake8, Pylint)
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  security-scan  │ ← 安全掃描 (Bandit, pip-audit)
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌───────┐ ┌───────────┐
+│ unit  │ │integration│ ← 並行測試
+│ tests │ │   tests   │
+└───┬───┘ └─────┬─────┘
+    │           │
+    └─────┬─────┘
+          ▼
+    ┌───────────┐
+    │ e2e-tests │ ← 端到端測試
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │security   │ ← 安全測試
+    │  tests    │
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │ all-tests │ ← 完整測試套件 + 覆蓋率報告
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │   build   │ ← 應用程式建置
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │  docker   │ ← Docker 映像建置測試
+    │   build   │
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │  summary  │ ← 建置摘要報告
+    └───────────┘
 ```
 
-2. **Enable GitHub Actions**
+### 測試類別
 
-GitHub Actions should be enabled automatically. Verify by going to the "Actions" tab.
+| 類別 | 測試文件模式 | 說明 |
+|------|-------------|------|
+| Unit | `test_config*.py`, `test_unit*.py`, `test_risk*.py` | 單元測試 |
+| Integration | `test_integration*.py`, `test_twcore*.py`, `test_fhir*.py` | 整合測試 |
+| Security | `test_security*.py`, `test_auth*.py`, `test_audit*.py` | 安全測試 |
+| E2E | `test_app_e2e.py`, `test_hooks.py` | 端到端測試 |
 
-3. **Configure Environments**
+## 🧪 測試工作流程 (`test.yml`)
 
-Go to Settings → Environments and create:
-- `staging`
-- `production`
+### 快速測試
+- 在每個 PR 上運行
+- 超時限制：10 分鐘
+- 失敗時立即停止 (`-x` 標誌)
 
-Optional: Add protection rules (required reviewers, wait timer)
+### 矩陣測試
+支援多個 Python 版本和作業系統：
 
----
+| OS | Python 版本 |
+|----|-------------|
+| Ubuntu | 3.10, 3.11, 3.12 |
+| Windows | 3.11 |
+| macOS | 3.11 |
 
-## 🔐 Required Secrets
+## 🔒 安全掃描 (`security-scan.yml`)
 
-### GitHub Secrets
+### 掃描工具
+- **Bandit**: Python 代碼安全分析
+- **pip-audit**: 依賴漏洞檢查
+- **Safety**: 依賴安全檢查
+- **CodeQL**: GitHub 代碼分析
+- **Gitleaks**: 秘密檢測
+- **License Check**: 授權合規檢查
 
-| Secret Name | Description | Required For |
-|-------------|-------------|--------------|
-| `GCP_PROJECT_ID` | Google Cloud Project ID | CD workflows |
-| `GCP_SA_KEY` | Service Account JSON key | CD workflows |
-| `GITHUB_TOKEN` | Auto-provided by GitHub | All workflows |
+### 執行頻率
+- 每日 2:00 UTC 自動執行
+- 當 `requirements.txt` 或 `*.py` 文件變更時
 
-### Service Account Permissions
+## ⚡ 性能測試 (`performance.yml`)
 
-The GCP Service Account needs these roles:
-- `App Engine Admin`
-- `Cloud Build Editor`
-- `Storage Object Admin`
-- `Service Account User`
+### 測試類型
+1. **Benchmark 測試**: 使用 pytest-benchmark
+2. **負載測試**: 使用 Locust
 
----
+### 配置參數
+- 並發用戶數：10（可配置）
+- 測試持續時間：60 秒（可配置）
+- 用戶生成速率：2/秒
 
-## 🔧 Local Testing
-
-### Test CI Workflow Locally
-
+### 手動觸發
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-pip install pytest pytest-cov flake8 black pylint bandit
-
-# Run code quality checks
-black --check .
-flake8 .
-pylint *.py
-
-# Run security scan
-bandit -r . -f json -o bandit-report.json --exclude .venv,venv -ll
-
-# Run tests
-pytest tests/ --cov=. --cov-report=html
+gh workflow run performance.yml -f users=50 -f duration=120
 ```
 
-### Test Docker Build Locally
+## 🐳 Docker 建置 (`docker-build.yml`)
 
+### 建置功能
+- 使用 Docker Buildx
+- 啟用 GitHub Actions 快取
+- 建置後健康檢查
+
+## 📦 必要的 Secrets
+
+在 GitHub 倉庫設定中配置以下 Secrets：
+
+| Secret 名稱 | 說明 | 必要性 |
+|-------------|------|--------|
+| `CODECOV_TOKEN` | Codecov 上傳令牌 | 可選 |
+| `DOCKER_USERNAME` | Docker Hub 用戶名 | 部署時需要 |
+| `DOCKER_PASSWORD` | Docker Hub 密碼 | 部署時需要 |
+| `GCP_PROJECT_ID` | Google Cloud 專案 ID | GCP 部署時需要 |
+| `GCP_SA_KEY` | GCP 服務帳戶金鑰 | GCP 部署時需要 |
+
+## 📊 Artifacts
+
+每次運行產生的工件：
+
+| 工件名稱 | 內容 |
+|---------|------|
+| `unit-test-coverage` | 單元測試覆蓋率報告 |
+| `integration-test-coverage` | 整合測試覆蓋率報告 |
+| `e2e-test-coverage` | E2E 測試覆蓋率報告 |
+| `security-test-coverage` | 安全測試覆蓋率報告 |
+| `full-test-report` | 完整測試報告 + HTML 覆蓋率 |
+| `bandit-security-report` | Bandit 安全掃描報告 |
+| `pip-audit-report` | 依賴漏洞報告 |
+| `benchmark-results` | 性能基準測試結果 |
+| `load-test-results` | 負載測試結果 |
+| `smart-fhir-app-build` | 應用程式建置包 |
+
+## 🚀 本地運行
+
+### 運行所有測試
 ```bash
-# Build Docker image
-docker build -t smart-fhir-app:local .
+# Windows
+.\run_tests.ps1 -All
 
-# Run container
-docker run -p 8080:8080 \
-  -e FLASK_SECRET_KEY=test-secret \
-  smart-fhir-app:local
-
-# Test health endpoint
-curl http://localhost:8080/health
+# Linux/macOS
+./run_tests.sh --all
 ```
 
----
-
-## 📊 Workflow Status Badges
-
-Add these to your README.md:
-
-```markdown
-![CI Status](https://github.com/[owner]/smart_fhir_app/workflows/CI/badge.svg)
-![Security Scan](https://github.com/[owner]/smart_fhir_app/workflows/Security%20Scan/badge.svg)
-![Docker Build](https://github.com/[owner]/smart_fhir_app/workflows/Docker%20Build/badge.svg)
-```
-
----
-
-## 🐛 Troubleshooting
-
-### CI Workflow Fails
-
-**Code Quality Issues:**
+### 運行特定類別
 ```bash
-# Auto-fix formatting
-black .
+# 單元測試
+pytest tests/test_config*.py tests/test_unit*.py -v
 
-# Check specific errors
-flake8 . --show-source
+# 安全測試
+pytest tests/test_security*.py tests/test_auth*.py -v
+
+# E2E 測試
+pytest tests/test_app_e2e.py -v
 ```
 
-**Test Failures:**
+### 運行負載測試
 ```bash
-# Run tests with verbose output
-pytest tests/ -v --tb=long
+# 啟動應用程式
+python -c "from APP import app; app.run(port=8080)"
 
-# Run specific test
-pytest tests/test_app_basic.py::test_health_endpoint -v
+# 在另一個終端運行 Locust
+locust -f tests/locustfile.py --host http://localhost:8080
 ```
 
-### CD Workflow Fails
+## 📝 新增測試的最佳實踐
 
-**Authentication Issues:**
-- Verify `GCP_SA_KEY` is valid JSON
-- Check service account has required permissions
-- Ensure project ID is correct
+1. **命名規範**：使用 `test_<category>_<feature>.py` 格式
+2. **標記測試**：使用 pytest markers 標記測試類別
+3. **環境變數**：確保測試不依賴生產環境變數
+4. **超時設定**：為長時間運行的測試設定超時
+5. **清理**：使用 fixtures 確保測試後清理資源
 
-**Deployment Issues:**
-```bash
-# Check App Engine status
-gcloud app versions list --project=your-project-id
+## 🔧 故障排除
 
-# View deployment logs
-gcloud app logs tail --project=your-project-id
-```
+### 常見問題
 
-### Docker Build Fails
+1. **測試超時**
+   - 增加 `--timeout` 值
+   - 檢查是否有無限循環
 
-**Build Errors:**
-```bash
-# Check Dockerfile syntax
-docker build --no-cache -t smart-fhir-app:test .
+2. **環境變數缺失**
+   - 確保在 `env:` 區塊中設定所有必要變數
 
-# View build logs
-docker build -t smart-fhir-app:test . 2>&1 | tee build.log
-```
+3. **依賴安裝失敗**
+   - 檢查 `requirements.txt` 版本相容性
+   - 嘗試清除 pip 快取
 
----
+4. **Docker 建置失敗**
+   - 檢查 Dockerfile 語法
+   - 確認基礎映像可用
 
-## 📈 Monitoring and Alerts
-
-### View Workflow Runs
-
-Go to: `https://github.com/[owner]/smart_fhir_app/actions`
-
-### Set Up Notifications
-
-1. Go to Settings → Notifications
-2. Enable "Actions" notifications
-3. Choose notification preferences
-
----
-
-## 🔄 Workflow Updates
-
-### Modifying Workflows
-
-1. Edit workflow files in `.github/workflows/`
-2. Test changes in a feature branch first
-3. Create PR for review
-4. Merge to main/PRECISE-HBR to activate
-
-### Adding New Workflows
-
-```yaml
-name: New Workflow
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  new-job:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run task
-        run: echo "Task completed"
-```
-
----
-
-## 📚 Additional Resources
-
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Google Cloud Deploy with GitHub Actions](https://github.com/google-github-actions)
-- [Docker Build Push Action](https://github.com/docker/build-push-action)
-- [CodeQL Analysis](https://codeql.github.com/)
-
----
-
-## 🤝 Contributing
-
-When contributing to CI/CD workflows:
-
-1. Test changes locally first
-2. Document any new secrets or configuration
-3. Update this README with changes
-4. Get review from DevOps team
-
----
-
-## 📝 Change Log
-
-### v1.0.0 - Initial Setup
-- CI workflow with code quality and security checks
-- CD workflow with staging and production deployments
-- Docker build and push workflow
-- Scheduled security scanning
-- Comprehensive test suite
-
+### 查看日誌
+在 GitHub Actions 頁面中，點擊失敗的工作流程查看詳細日誌。
