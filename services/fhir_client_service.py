@@ -8,6 +8,7 @@ from requests.adapters import HTTPAdapter
 from fhirclient import client
 from fhirclient.models import patient, observation, condition, medicationrequest, procedure
 from services.config_loader import config_loader
+from services.fhir_utils import get_observation_effective_date
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
@@ -80,7 +81,7 @@ class FHIRClientService:
                 
                 self.smart.server._auth = None
                 
-                logging.info(f"Set authorization header with token length: {len(self.access_token)}")
+                logging.debug(f"Set authorization header with token length: {len(self.access_token)}")
                 logging.info(f"FHIR Server prepared for: {self.fhir_server_url}")
         
         except Exception as e:
@@ -141,13 +142,12 @@ class FHIRClientService:
             observations = observation.Observation.where(search_params).perform(self.smart.server)
             
             if observations.entry:
-                # Sort by effective date in memory
+                # Sort by effective date in memory using shared utility
                 sorted_entries = []
                 for entry in observations.entry:
                     if entry.resource:
                         resource_json = entry.resource.as_json()
-                        date_str = resource_json.get('effectiveDateTime') or \
-                                   resource_json.get('effectivePeriod', {}).get('start') or '1900-01-01'
+                        date_str = get_observation_effective_date(resource_json)
                         sorted_entries.append((date_str, resource_json))
                 
                 sorted_entries.sort(key=lambda x: x[0], reverse=True)
@@ -186,8 +186,7 @@ class FHIRClientService:
                     for entry in text_observations.entry:
                         if entry.resource:
                             resource_json = entry.resource.as_json()
-                            date_str = resource_json.get('effectiveDateTime') or \
-                                       resource_json.get('effectivePeriod', {}).get('start') or '1900-01-01'
+                            date_str = get_observation_effective_date(resource_json)
                             sorted_entries.append((date_str, resource_json))
                     
                     sorted_entries.sort(key=lambda x: x[0], reverse=True)

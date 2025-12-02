@@ -43,6 +43,15 @@ from services.tradeoff_model_calculator import (
 # TW Core IG Adapter (Taiwan-specific FHIR profiles)
 from services.twcore_adapter import twcore_adapter, TWCoreAdapter
 
+# FHIR Utilities
+from services.fhir_utils import (
+    get_observation_effective_date,
+    get_observation_effective_date_from_model,
+    sort_observations_by_date,
+    sort_bundle_entries_by_date,
+    extract_most_recent_observation
+)
+
 __all__ = [
     # Service instances
     'config_loader',
@@ -72,5 +81,12 @@ __all__ = [
     'detect_tradeoff_factors',
     'calculate_tradeoff_scores',
     'calculate_tradeoff_scores_interactive',
+    
+    # FHIR Utilities
+    'get_observation_effective_date',
+    'get_observation_effective_date_from_model',
+    'sort_observations_by_date',
+    'sort_bundle_entries_by_date',
+    'extract_most_recent_observation',
 ]
 

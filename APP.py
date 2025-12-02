@@ -46,15 +46,15 @@ def get_secret(env_var, default=None):
             if '${PROJECT_ID}' in resolved_value:
                 gcp_project = os.environ.get('GOOGLE_CLOUD_PROJECT')
                 if not gcp_project:
-                    app.logger.error("GOOGLE_CLOUD_PROJECT env var not set, cannot resolve secret path.")
+                    logging.error("GOOGLE_CLOUD_PROJECT env var not set, cannot resolve secret path.")
                     return default
                 resolved_value = resolved_value.replace('${PROJECT_ID}', gcp_project)
 
-            client = secretmanager.SecretManagerServiceClient()
-            response = client.access_secret_version(name=resolved_value)
+            secret_client = secretmanager.SecretManagerServiceClient()
+            response = secret_client.access_secret_version(name=resolved_value)
             return response.payload.data.decode('UTF-8')
         except Exception as e:
-            app.logger.error(f"Failed to access secret for {env_var} at path '{resolved_value}'. Error: {e}")
+            logging.error(f"Failed to access secret for {env_var} at path '{resolved_value}'. Error: {e}")
             return default
     
     return value
@@ -325,12 +325,16 @@ def export_ccd_api():
         # Log successful export
         app.logger.info(f"CCD document generated for patient: {patient_id}")
         
+        # Sanitize patient_id for safe use in filename (prevent header injection)
+        safe_patient_id = re.sub(r'[^\w\-]', '_', str(patient_id))
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
         # Return the CCD as downloadable XML
         return Response(
             ccd_xml,
             mimetype='application/xml',
             headers={
-                'Content-Disposition': f'attachment; filename=PRECISE_HBR_CCD_{patient_id}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xml',
+                'Content-Disposition': f'attachment; filename=PRECISE_HBR_CCD_{safe_patient_id}_{timestamp}.xml',
                 'Content-Type': 'application/xml; charset=utf-8'
             }
         )
@@ -344,7 +348,8 @@ def exchange_code():
     """API to exchange authorization code for an access token."""
     try:
         data = request.get_json()
-        app.logger.info(f"Exchange code request data: {data}")
+        # Log request without sensitive authorization code
+        app.logger.info(f"Exchange code request received (code length: {len(data.get('code', '')) if data else 0})")
         code = data.get('code')
         if not code:
             app.logger.error("Authorization code is missing from request")
@@ -372,10 +377,18 @@ def exchange_code():
         response = requests.post(token_url, data=token_params, headers=headers, timeout=15)
         response.raise_for_status()
         token_response = response.json()
-        app.logger.info(f"Received token response: {token_response}")
-        # --- DEBUG: Log the exact scopes granted by the EHR ---
+        # Log token response without sensitive data
+        safe_token_info = {
+            'patient': token_response.get('patient'),
+            'scope': token_response.get('scope'),
+            'token_type': token_response.get('token_type'),
+            'expires_in': token_response.get('expires_in'),
+            'has_access_token': bool(token_response.get('access_token')),
+            'has_refresh_token': bool(token_response.get('refresh_token'))
+        }
+        app.logger.info(f"Token exchange successful: {safe_token_info}")
         granted_scopes = token_response.get('scope', 'No scopes returned from EHR')
-        app.logger.critical(f"Granted scopes from EHR: {granted_scopes}")
+        app.logger.debug(f"Granted scopes from EHR: {granted_scopes}")
         # --- END DEBUG ---
         session['fhir_data'] = {
             'token': token_response.get('access_token'),
@@ -634,11 +647,10 @@ def logout():
 
 @app.after_request
 def add_security_headers(response: Response):
+    """Add security and cache control headers to all responses."""
+    # HSTS header for transport security
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    return response
-
-@app.after_request
-def add_cache_control_headers(response):
+    # Cache control to prevent sensitive data caching
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     return response

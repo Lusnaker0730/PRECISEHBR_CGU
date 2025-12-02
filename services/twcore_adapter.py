@@ -68,10 +68,10 @@ class TWCoreAdapter:
                 # TW Core IG: Chinese name in 'text' field
                 if name_data.get("text"):
                     # Check if it's Chinese (contains Chinese characters)
-                    if cls._contains_chinese(name_data["text"]):
-                        demographics["name_chinese"] = name_data["text"]
-                        demographics["name"] = name_data["text"]  # Set as primary name
-                        logging.info(f"Extracted Chinese name: {name_data['text']}")
+                        if cls._contains_chinese(name_data["text"]):
+                            demographics["name_chinese"] = name_data["text"]
+                            demographics["name"] = name_data["text"]  # Set as primary name
+                            logging.debug(f"Extracted Chinese name from TW Core IG profile")
                     else:
                         demographics["name_english"] = name_data["text"]
                         if not demographics["name_chinese"]:
@@ -100,14 +100,14 @@ class TWCoreAdapter:
                 # Taiwan National ID (身分證字號)
                 if "moi.gov.tw" in system:
                     demographics["taiwan_id"] = value
-                    logging.info(f"Extracted Taiwan ID: {value[:1]}********")  # Mask for privacy
+                    logging.debug(f"Extracted Taiwan ID: {value[:1]}********")  # Mask for privacy
                 
                 # Resident Certificate Number (居留證號碼)
                 elif isinstance(id_type, dict) and id_type.get("coding"):
                     for coding in id_type["coding"]:
                         if coding.get("code") == "PPN":  # Passport number / Resident ID
                             demographics["taiwan_id"] = value
-                            logging.info(f"Extracted Resident ID: {value[:2]}********")
+                            logging.debug(f"Extracted Resident ID: {value[:2]}********")
                 
                 # Medical Record Number (病歷號)
                 # Check for MR type code or hospital system
@@ -120,7 +120,7 @@ class TWCoreAdapter:
                 
                 if is_medical_record or "tph.mohw.gov.tw" in system or "hospital" in system.lower():
                     demographics["medical_record_number"] = value
-                    logging.info(f"Extracted Medical Record Number: {value}")
+                    logging.debug(f"Extracted Medical Record Number: {value}")
         
         # === 3. Extract Gender ===
         demographics["gender"] = patient_resource.get("gender")

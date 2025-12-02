@@ -9,6 +9,7 @@ import math
 from services.config_loader import config_loader
 from services.unit_conversion_service import unit_converter
 from services.fhir_client_service import FHIRClientService
+from services.fhir_utils import get_observation_effective_date_from_model
 from fhirclient.models import observation, condition, procedure, medicationrequest
 
 
@@ -96,12 +97,7 @@ class TradeoffModelCalculator:
                 sorted_obs = []
                 for entry in obs_search.entry:
                     if entry.resource:
-                        date_str = '1900-01-01'
-                        if hasattr(entry.resource, 'effectiveDateTime') and entry.resource.effectiveDateTime:
-                            date_str = entry.resource.effectiveDateTime.isostring
-                        elif hasattr(entry.resource, 'effectivePeriod') and entry.resource.effectivePeriod:
-                            if entry.resource.effectivePeriod.start:
-                                date_str = entry.resource.effectivePeriod.start.isostring
+                        date_str = get_observation_effective_date_from_model(entry.resource)
                         sorted_obs.append((date_str, entry.resource))
                 
                 if sorted_obs:
@@ -337,6 +333,8 @@ class TradeoffModelCalculator:
         """
         Calculates bleeding and thrombotic risk scores using the ARC-HBR tradeoff model.
         
+        Uses the same JSON model as calculate_tradeoff_scores_interactive for consistency.
+        
         Args:
             raw_data: Dictionary with FHIR observation data
             demographics: Dictionary with patient demographics
@@ -356,92 +354,16 @@ class TradeoffModelCalculator:
                 "thrombotic_factors": []
             }
         
-        # Get baseline rates from configuration
-        tradeoff_config = config_loader.get_tradeoff_config()
-        baseline_rates = tradeoff_config.get('baseline_event_rates', {})
-        baseline_bleeding_rate = baseline_rates.get('bleeding_rate_percent', 2.5)
-        baseline_thrombotic_rate = baseline_rates.get('thrombotic_rate_percent', 2.5)
+        # Build HR lookup tables from the JSON model
+        bleeding_hr_map = {p['factor']: p for p in model['bleedingEvents']['predictors']}
+        thrombotic_hr_map = {p['factor']: p for p in model['thromboticEvents']['predictors']}
         
-        # Use multiplicative model: start with HR = 1
-        bleeding_score_hr = 1.0
-        thrombotic_score_hr = 1.0
+        # Detect which factors are active based on patient data
+        active_factors = cls.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
         
-        bleeding_factors = []
-        thrombotic_factors = []
-        
-        # Helper function to add score
-        def add_score(event_type, factor, ratio):
-            nonlocal bleeding_score_hr, thrombotic_score_hr
-            if event_type == 'bleeding':
-                bleeding_score_hr *= ratio
-                bleeding_factors.append(f"{factor} (HR: {ratio})")
-            else:
-                thrombotic_score_hr *= ratio
-                thrombotic_factors.append(f"{factor} (HR: {ratio})")
-        
-        # Demographics
-        if demographics.get('age', 0) >= 65:
-            add_score('bleeding', 'Age >= 65', 1.50)
-        
-        # Hemoglobin
-        hb_obs = raw_data.get('HEMOGLOBIN', [])
-        if hb_obs:
-            hb_val = unit_converter.get_value_from_observation(
-                hb_obs[0], 
-                unit_converter.TARGET_UNITS['HEMOGLOBIN']
-            )
-            if hb_val:
-                if 11 <= hb_val < 13:
-                    add_score('bleeding', 'Hb 11-12.9', 1.69)
-                    add_score('thrombotic', 'Hb 11-12.9', 1.27)
-                elif hb_val < 11:
-                    add_score('bleeding', 'Hb < 11', 3.99)
-                    add_score('thrombotic', 'Hb < 11', 1.50)
-        
-        # eGFR
-        egfr_obs = raw_data.get('EGFR', [])
-        if egfr_obs:
-            egfr_val = unit_converter.get_value_from_observation(
-                egfr_obs[0], 
-                unit_converter.TARGET_UNITS['EGFR']
-            )
-            if egfr_val:
-                if 30 <= egfr_val < 60:
-                    add_score('thrombotic', 'eGFR 30-59', 1.30)
-                elif egfr_val < 30:
-                    add_score('bleeding', 'eGFR < 30', 1.43)
-                    add_score('thrombotic', 'eGFR < 30', 1.69)
-        
-        # Tradeoff data factors
-        if tradeoff_data.get('diabetes'):
-            add_score('thrombotic', 'Diabetes', 1.56)
-        if tradeoff_data.get('prior_mi'):
-            add_score('thrombotic', 'Prior MI', 1.89)
-        if tradeoff_data.get('smoker'):
-            add_score('bleeding', 'Smoker', 1.47)
-            add_score('thrombotic', 'Smoker', 1.48)
-        if tradeoff_data.get('nstemi_stemi'):
-            add_score('thrombotic', 'NSTEMI/STEMI', 1.82)
-        if tradeoff_data.get('complex_pci'):
-            add_score('bleeding', 'Complex PCI', 1.32)
-            add_score('thrombotic', 'Complex PCI', 1.50)
-        if tradeoff_data.get('bms_used'):
-            add_score('thrombotic', 'BMS Used', 1.53)
-        if tradeoff_data.get('copd'):
-            add_score('bleeding', 'COPD', 1.39)
-        if tradeoff_data.get('oac_discharge'):
-            add_score('bleeding', 'OAC at Discharge', 2.00)
-        
-        # Convert HR scores to probabilities
-        bleeding_prob = cls.convert_hr_to_probability(bleeding_score_hr, baseline_bleeding_rate)
-        thrombotic_prob = cls.convert_hr_to_probability(thrombotic_score_hr, baseline_thrombotic_rate)
-        
-        return {
-            "bleeding_score": bleeding_prob,
-            "thrombotic_score": thrombotic_prob,
-            "bleeding_factors": bleeding_factors,
-            "thrombotic_factors": thrombotic_factors
-        }
+        # Use the interactive calculation method with the detected factors
+        # This ensures consistency between both calculation paths
+        return cls.calculate_tradeoff_scores_interactive(model, active_factors)
     
     @classmethod
     def calculate_tradeoff_scores_interactive(cls, model_predictors, active_factors):

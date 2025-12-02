@@ -12,6 +12,20 @@ from services.twcore_adapter import twcore_adapter
 class ConditionCheckerService:
     """Service for checking medical conditions and risk factors"""
     
+    # Default keywords for text-based matching (all lowercase for consistent comparison)
+    BLEEDING_DIATHESIS_KEYWORDS = [
+        'bleeding disorder', 'bleeding diathesis', 'hemorrhagic diathesis',
+        'hemophilia', 'von willebrand', 'coagulation disorder'
+    ]
+    
+    CANCER_KEYWORDS = [
+        'cancer', 'malignancy', 'neoplasm', 'carcinoma', 'sarcoma', 'lymphoma', 'leukemia'
+    ]
+    
+    CANCER_EXCLUSION_KEYWORDS = [
+        'basal cell', 'squamous cell', 'skin cancer'
+    ]
+    
     @staticmethod
     def get_condition_text(condition):
         """
@@ -85,9 +99,7 @@ class ConditionCheckerService:
         # 3. Check text for bleeding diathesis terms
         for condition in conditions:
             condition_text = cls.get_condition_text(condition).lower()
-            bleeding_keywords = ['bleeding disorder', 'bleeding diathesis', 'hemorrhagic diathesis', 
-                               'hemophilia', 'von willebrand', 'coagulation disorder']
-            for keyword in bleeding_keywords:
+            for keyword in cls.BLEEDING_DIATHESIS_KEYWORDS:
                 if keyword in condition_text:
                     return True, condition_text
         
@@ -128,6 +140,7 @@ class ConditionCheckerService:
             condition_text = cls.get_condition_text(condition).lower()
             bleeding_keywords = config_loader.get_bleeding_history_keywords()
             for keyword in bleeding_keywords:
+                # Keywords from config may have mixed case, normalize for comparison
                 if keyword.lower() in condition_text:
                     found_bleeding.append(condition_text)
                     break
@@ -268,15 +281,13 @@ class ConditionCheckerService:
 
             # 3. Check text for cancer terms
             condition_text = cls.get_condition_text(condition).lower()
-            cancer_keywords = ['cancer', 'malignancy', 'neoplasm', 'carcinoma', 'sarcoma', 'lymphoma', 'leukemia']
-            exclusion_keywords = ['basal cell', 'squamous cell', 'skin cancer']
             
             # Check if it's an excluded skin cancer
-            if any(exclusion in condition_text for exclusion in exclusion_keywords):
+            if any(exclusion in condition_text for exclusion in cls.CANCER_EXCLUSION_KEYWORDS):
                 continue
             
             # Check for cancer keywords
-            for keyword in cancer_keywords:
+            for keyword in cls.CANCER_KEYWORDS:
                 if keyword in condition_text:
                     return True, condition_text
         

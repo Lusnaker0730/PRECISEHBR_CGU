@@ -13,18 +13,29 @@ class ConfigLoader:
     _instance = None
     _config = None
     
+    # Configuration file path relative to project root
+    CONFIG_FILENAME = 'cdss_config.json'
+    
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ConfigLoader, cls).__new__(cls)
             cls._instance._load_config()
         return cls._instance
     
+    def _get_config_path(self):
+        """Get absolute path to configuration file"""
+        # Go up one level from services/ to project root
+        services_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(services_dir)
+        return os.path.join(project_root, self.CONFIG_FILENAME)
+    
     def _load_config(self):
         """Load CDSS configuration from JSON file"""
+        config_path = self._get_config_path()
         try:
-            with open('cdss_config.json', 'r', encoding='utf-8') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 self._config = json.load(f)
-            logging.info("Successfully loaded cdss_config.json")
+            logging.info(f"Successfully loaded {self.CONFIG_FILENAME} from {config_path}")
         except FileNotFoundError:
             logging.error("CRITICAL: cdss_config.json not found. Calculations will fail.")
             self._config = {}

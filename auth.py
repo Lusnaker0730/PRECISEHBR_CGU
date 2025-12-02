@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import logging
+import os
 import secrets
 import uuid
 from urllib.parse import urlencode
@@ -11,8 +12,13 @@ from flask import (Blueprint, redirect, render_template, request,
                    session, jsonify, url_for)
 
 from config import Config
+# ONC Compliance: Audit logging
+from audit_logger import log_user_authentication
 
 auth_bp = Blueprint('auth', __name__)
+
+# Get client secret from environment (for confidential clients)
+CLIENT_SECRET = os.environ.get('SMART_CLIENT_SECRET')
 
 
 # --- SMART 2.0 PKCE Support ---
@@ -167,6 +173,14 @@ def launch():
 @auth_bp.route('/launch/cerner-sandbox')
 def launch_cerner_sandbox():
     """Direct launch for Cerner sandbox testing."""
+    # Security: Only allow sandbox endpoint in development/testing environments
+    if os.environ.get('GAE_ENV', '').startswith('standard') or os.environ.get('FLASK_ENV') == 'production':
+        logging.warning("Sandbox endpoint access attempted in production environment")
+        return render_error_page(
+            title="Endpoint Disabled",
+            message="This testing endpoint is not available in production.",
+            status_code=403)
+    
     iss = Config.CERNER_SANDBOX_CONFIG['fhir_base']
     session['launch_params'] = {'iss': iss, 'launch': None}
     smart_config = {
@@ -248,12 +262,26 @@ def exchange_code():
         'client_id': Config.CLIENT_ID,
         'code_verifier': code_verifier
     }
+    
+    # Build headers with required Content-Type
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    
+    # Support confidential clients with client_secret
+    if CLIENT_SECRET:
+        auth_str = f"{Config.CLIENT_ID}:{CLIENT_SECRET}"
+        auth_b64 = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
+        headers['Authorization'] = f"Basic {auth_b64}"
+        # Remove client_id from params when using Basic auth
+        token_params.pop('client_id', None)
 
     try:
         response = requests.post(
             token_url,
             data=token_params,
-            headers={'Accept': 'application/json'},
+            headers=headers,
             timeout=15)
         response.raise_for_status()
         token_response = response.json()
@@ -272,6 +300,17 @@ def exchange_code():
         if 'patient' in token_response:
             session['patient_id'] = token_response['patient']
 
+        # ONC Compliance: Audit successful authentication
+        log_user_authentication(
+            user_id=session.get('session_id', 'unknown'),
+            outcome='success',
+            details={
+                'patient_id': token_response.get('patient'),
+                'scope': token_response.get('scope'),
+                'authentication_method': 'SMART_on_FHIR_OAuth2'
+            }
+        )
+
         return jsonify({
             "status": "ok",
             "redirect_url": url_for('views.main_page')
@@ -281,5 +320,17 @@ def exchange_code():
         logging.error(
             (f"Token exchange failed. Status: {e.response.status_code}, "
              f"Body: {e.response.text}"))
+        
+        # ONC Compliance: Audit failed authentication
+        log_user_authentication(
+            user_id=session.get('session_id', 'unknown'),
+            outcome='failure',
+            details={
+                'error': 'token_exchange_failed',
+                'status_code': e.response.status_code,
+                'authentication_method': 'SMART_on_FHIR_OAuth2'
+            }
+        )
+        
         return jsonify(
             {"error": "Failed to exchange authorization code for token.", "details": e.response.text}), 500
