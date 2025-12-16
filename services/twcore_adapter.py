@@ -68,10 +68,11 @@ class TWCoreAdapter:
                 # TW Core IG: Chinese name in 'text' field
                 if name_data.get("text"):
                     # Check if it's Chinese (contains Chinese characters)
-                        if cls._contains_chinese(name_data["text"]):
-                            demographics["name_chinese"] = name_data["text"]
-                            demographics["name"] = name_data["text"]  # Set as primary name
-                            logging.debug(f"Extracted Chinese name from TW Core IG profile")
+                    # Check if it's Chinese (contains Chinese characters)
+                    if cls._contains_chinese(name_data["text"]):
+                        demographics["name_chinese"] = name_data["text"]
+                        demographics["name"] = name_data["text"]  # Set as primary name
+                        logging.debug(f"Extracted Chinese name from TW Core IG profile")
                     else:
                         demographics["name_english"] = name_data["text"]
                         if not demographics["name_chinese"]:
