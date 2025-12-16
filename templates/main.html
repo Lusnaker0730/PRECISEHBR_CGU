@@ -50,8 +50,7 @@
             wait...</p>
     </div>
 
-    <div id="error-container" class="alert alert-danger" style="display: none;" role="alert" aria-live="assertive"
-        aria-atomic="true">
+    <div id="error-container" class="alert alert-danger d-none" role="alert" aria-live="assertive" aria-atomic="true">
         <h4><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Error Calculating Risk</h4>
         <p id="error-message"></p>
         <button class="btn btn-primary reload-btn" aria-label="Retry calculation">
@@ -59,7 +58,7 @@
         </button>
     </div>
 
-    <div id="results-container" style="display: none;">
+    <div id="results-container" class="d-none">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h3">Bleeding Risk Assessment Results</h2>
             <button class="btn btn-sm btn-outline-secondary reload-btn">
@@ -93,7 +92,7 @@
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-calculator"></i> Total Risk Score</h5>
                         <!-- ONC Compliance: CCD Export Button -->
-                        <button id="exportCcdBtn" class="btn btn-sm btn-outline-primary" style="display: none;"
+                        <button id="exportCcdBtn" class="btn btn-sm btn-outline-primary d-none"
                             title="Export results as C-CDA Continuity of Care Document">
                             <i class="fas fa-download"></i> Export CCD
                         </button>
@@ -108,9 +107,9 @@
         </div>
 
         <!-- HBR Clinical Recommendations Section (Dynamically shown when HBR detected) -->
-        <div class="row" id="hbr-recommendations-section" style="display: none;">
+        <div class="row d-none" id="hbr-recommendations-section">
             <div class="col-12">
-                <div class="alert alert-warning border-warning" style="border-left: 5px solid #ffc107;">
+                <div class="alert alert-warning border-warning alert-hbr">
                     <h4 class="mb-3">
                         <i class="fas fa-exclamation-triangle text-warning"></i>
                         <strong>High Bleeding Risk (HBR) Detected</strong>
@@ -176,8 +175,7 @@
                             <div class="text-center mt-3">
                                 <img src="{{ url_for('static', filename='images/HBR_guideline.jpg') }}"
                                     alt="HBR Antiplatelet Strategy Guideline"
-                                    class="img-fluid rounded shadow guideline-img"
-                                    style="max-width: 100%; height: auto; cursor: pointer; border: 2px solid #dee2e6;">
+                                    class="img-fluid rounded shadow guideline-img hbr-guideline-img">
                                 <p class="text-muted mt-2">
                                     <small>Click image to view full size | Source: ESC Guidelines</small>
                                 </p>
@@ -200,10 +198,9 @@
         </div>
 
         <!-- Missing Data Warning -->
-        <div id="missing-data-warning" class="alert alert-warning mb-4" role="alert" aria-live="polite"
-            style="display: none;">
+        <div id="missing-data-warning" class="alert alert-warning mb-4 d-none" role="alert" aria-live="polite">
             <div class="d-flex align-items-start">
-                <i class="fas fa-exclamation-triangle me-3 mt-1" aria-hidden="true" style="font-size: 1.5rem;"></i>
+                <i class="fas fa-exclamation-triangle me-3 mt-1 font-size-1-5rem" aria-hidden="true"></i>
                 <div class="flex-grow-1">
                     <h5 class="alert-heading mb-2">
                         <strong>⚠️ Missing Data Detected - Risk May Be Underestimated</strong>
@@ -212,7 +209,7 @@
                         The following important risk factors have missing data. The calculated bleeding risk score may
                         be <strong>lower than the actual risk</strong>.
                     </p>
-                    <ul id="missing-data-list" class="mb-2" style="padding-left: 1.5rem;">
+                    <ul id="missing-data-list" class="mb-2 missing-list">
                         <!-- Missing data items will be inserted here by JavaScript -->
                     </ul>
                     <p class="mb-0 text-muted">
@@ -230,14 +227,13 @@
                 <h5 class="mb-0"><i class="fas fa-list-ul" aria-hidden="true"></i> Score Components</h5>
             </div>
             <div class="card-body">
-                <table class="table table-hover align-middle" role="table" aria-label="Risk score components"
-                    style="font-size: 1.4rem;">
+                <table class="table table-hover align-middle font-xxl" role="table" aria-label="Risk score components">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col" style="width: 35%; font-size: 1.3rem;">Risk Factor</th>
-                            <th scope="col" style="width: 40%; font-size: 1.3rem;">Value (Editable)</th>
-                            <th scope="col" style="width: 10%; font-size: 1.3rem;">Score</th>
-                            <th scope="col" style="width: 15%; font-size: 1.3rem;">Date</th>
+                            <th scope="col" class="table-th-35">Risk Factor</th>
+                            <th scope="col" class="table-th-40">Value (Editable)</th>
+                            <th scope="col" class="table-th-10">Score</th>
+                            <th scope="col" class="table-th-15">Date</th>
                         </tr>
                     </thead>
                     <tbody id="score-components">
@@ -278,7 +274,7 @@
                     </div>
 
                     <!-- Optional Comment Section (Initially Hidden) -->
-                    <div id="commentSection" class="mt-3" style="display: none;">
+                    <div id="commentSection" class="mt-3 d-none">
                         <div class="form-group">
                             <label for="feedbackComment">
                                 <i class="fas fa-comment mr-1"></i>
@@ -299,13 +295,13 @@
                     </div>
 
                     <!-- Feedback Success Message -->
-                    <div id="feedbackSuccess" class="alert alert-success mt-3" style="display: none;">
+                    <div id="feedbackSuccess" class="alert alert-success mt-3 d-none">
                         <i class="fas fa-check-circle mr-2"></i>
                         <span id="feedbackMessage">Thank you for your feedback!</span>
                     </div>
 
                     <!-- Feedback Error Message -->
-                    <div id="feedbackError" class="alert alert-danger mt-3" style="display: none;">
+                    <div id="feedbackError" class="alert alert-danger mt-3 d-none">
                         <i class="fas fa-exclamation-triangle mr-2"></i>
                         An error occurred while submitting feedback, please try again later.
                     </div>
@@ -323,8 +319,7 @@
             </div>
             <div class="card-body text-center">
                 <img src="{{ url_for('static', filename='images/ARCHBR.png') }}" alt="ARC-HBR Guideline"
-                    class="img-fluid"
-                    style="max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 4px;">
+                    class="img-fluid arc-guideline-img">
             </div>
         </div>
 
@@ -337,8 +332,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div
-                    style="font-family: 'Courier New', monospace; font-size: 0.9rem; background-color: #f8f9fa; padding: 1rem; border-radius: 4px; border: 1px solid #dee2e6;">
+                <div class="citation-box">
                     <p class="mb-1"><strong>Article Type:</strong> Journal Article</p>
                     <p class="mb-1"><strong>Title:</strong> Derivation and Validation of the PRECISE-HBR Score to
                         Predict Bleeding After Percutaneous Coronary Intervention</p>
@@ -513,8 +507,7 @@
 
     function showSessionWarning() {
         const warningDiv = document.createElement('div');
-        warningDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
-        warningDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+        warningDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed session-warning-popup';
         warningDiv.innerHTML = `
             <i class="fas fa-exclamation-triangle"></i>
             <strong>Session Warning:</strong> Your session will expire in 1 minute due to inactivity. 
@@ -624,9 +617,9 @@
     }
 
     async function fetchRiskData(patientId) {
-        document.getElementById('loading-container').style.display = 'block';
-        document.getElementById('results-container').style.display = 'none';
-        document.getElementById('error-container').style.display = 'none';
+        document.getElementById('loading-container').classList.remove('d-none');
+        document.getElementById('results-container').classList.add('d-none');
+        document.getElementById('error-container').classList.add('d-none');
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -675,8 +668,8 @@
         });
 
         // Hide loading, show results (even if data is missing)
-        document.getElementById('loading-container').style.display = 'none';
-        document.getElementById('results-container').style.display = 'block';
+        document.getElementById('loading-container').classList.add('d-none');
+        document.getElementById('results-container').classList.remove('d-none');
 
         // Store missing data info for later use
         window.initialMissingCriticalData = missingCriticalData;
@@ -705,7 +698,7 @@
         renderInteractiveTable();
 
         // Show CCD export button after results are loaded
-        document.getElementById('exportCcdBtn').style.display = 'inline-block';
+        document.getElementById('exportCcdBtn').classList.remove('d-none');
 
         // Perform the initial calculation and UI update
         recalculateAndRefreshUI();
@@ -853,10 +846,9 @@
         if (validation.message) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'validation-message';
-            messageDiv.style.fontSize = '0.85rem';
-            messageDiv.style.marginTop = '3px';
             messageDiv.textContent = validation.message;
-            messageDiv.style.color = validation.level === 'error' ? '#dc3545' : '#ffc107';
+            if (validation.level === 'error') messageDiv.classList.add('text-danger');
+            if (validation.level === 'warning') messageDiv.classList.add('text-warning');
             container.appendChild(messageDiv);
         }
     }
@@ -935,14 +927,13 @@
                         `<button type="button" class="unit-toggle-btn" title="切換單位">⇄</button>` : '';
 
                     valueControl = `
-                        <div class="input-group" style="font-size: 1.2rem;">
+                        <div class="input-group input-group-lg-text">
                             <input type="number" 
-                                   class="form-control" 
+                                   class="form-control input-number-lg" 
                                    id="input-${item.parameter}" 
                                    value="${formattedValue}" 
-                                   step="${step}"
-                                   style="font-size: 1.2rem; font-weight: 600;">
-                            ${unit ? `<span class="input-group-text" style="font-size: 1.1rem; font-weight: 500; background-color: #e9ecef;">${unit}</span>` : ''}
+                                   step="${step}">
+                            ${unit ? `<span class="input-group-text input-unit-lg">${unit}</span>` : ''}
                             ${unitToggleBtn}
                         </div>
                     `;
@@ -952,15 +943,13 @@
                     const isArcElement = item.is_arc_hbr_element === true;
                     valueControl = `
                         <div class="form-check form-switch">
-                            <input class="form-check-input" 
+                            <input class="form-check-input form-switch-lg" 
                                    type="checkbox" 
                                    id="input-${item.parameter}" 
                                    ${checked} 
-                                   style="width: 3em; height: 1.5em;"
                                    data-is-arc-element="${isArcElement}">
-                            <label class="form-check-label" 
-                                   for="input-${item.parameter}" 
-                                   style="font-size: 1.2rem; font-weight: 500; margin-left: 0.5rem;">
+                            <label class="form-check-label form-check-label-lg" 
+                                   for="input-${item.parameter}">
                                 ${item.value}
                             </label>
                         </div>
@@ -976,32 +965,31 @@
                         `<button type="button" class="unit-toggle-btn" title="切換單位">⇄</button>` : '';
 
                     valueControl = `
-                        <div class="input-group" style="font-size: 1.2rem;">
+                        <div class="input-group input-group-lg-text">
                             <input type="number" 
-                                   class="form-control" 
+                                   class="form-control input-missing" 
                                    id="input-${item.parameter}" 
                                    placeholder="${placeholder}" 
                                    step="${step}"
-                                   data-missing="true"
-                                   style="font-size: 1.2rem; font-weight: 600; border: 2px solid #ffc107; background-color: #fff3cd;">
-                            ${unit ? `<span class="input-group-text" style="font-size: 1.1rem; font-weight: 500; background-color: #fff3cd; border: 2px solid #ffc107; border-left: none;">${unit}</span>` : ''}
-                            <span class="input-group-text" style="background-color: #fff3cd; border: 2px solid #ffc107; border-left: none;">
+                                   data-missing="true">
+                            ${unit ? `<span class="input-group-text unit-missing">${unit}</span>` : ''}
+                            <span class="input-group-text icon-missing">
                                 <i class="fas fa-exclamation-triangle text-warning" title="Missing data - please enter manually if available"></i>
                             </span>
                             ${unitToggleBtn}
                         </div>
                     `;
                 } else {
-                    valueControl = `<span style="font-size: 1.2rem; font-weight: 500;">${item.value}</span>`; // Fallback for base score or others
+                    valueControl = `<span class="font-weight-500 font-lg">${item.value}</span>`; // Fallback for base score or others
                 }
 
                 // Generate score badge cell - hide for ARC-HBR elements
                 let scoreBadgeHtml = '';
                 if (item.is_arc_hbr_element === true) {
                     // Don't show score for ARC-HBR elements
-                    scoreBadgeHtml = '<span class="text-muted" style="font-size: 0.9rem;">—</span>';
+                    scoreBadgeHtml = '<span class="text-muted arc-badge-placeholder">—</span>';
                 } else {
-                    scoreBadgeHtml = `<span class="badge bg-primary" id="score-${item.parameter}" style="font-size: 1.1rem; padding: 0.5rem 0.8rem;">${item.score}</span>`;
+                    scoreBadgeHtml = `<span class="badge bg-primary score-badge" id="score-${item.parameter}">${item.score}</span>`;
                 }
 
                 // Generate tooltip for clinical information
@@ -1010,13 +998,13 @@
 
                 const row = `
                     <tr>
-                        <td style="font-size: 1.2rem;">
+                        <td class="table-cell-lg">
                             ${cleanParameterName}
                             ${tooltipHtml}
                         </td>
                         <td>${valueControl}</td>
                         <td>${scoreBadgeHtml}</td>
-                        <td style="font-size: 1.1rem;">${item.date || 'N/A'}</td>
+                        <td class="table-cell-lg">${item.date || 'N/A'}</td>
                     </tr>
                 `;
                 componentsBody.innerHTML += row;
@@ -1040,15 +1028,15 @@
             missingItems.forEach(item => {
                 const li = document.createElement('li');
                 li.textContent = item;
-                li.style.marginBottom = '0.25rem';
+                li.className = 'missing-list-item';
                 missingList.appendChild(li);
             });
 
             // Show the warning
-            warningDiv.style.display = 'block';
+            warningDiv.classList.remove('d-none');
         } else {
             // Hide the warning if no missing data
-            warningDiv.style.display = 'none';
+            warningDiv.classList.add('d-none');
         }
     }
 
@@ -1100,14 +1088,14 @@
             `;
 
             // Hide CCD export button when data is incomplete
-            document.getElementById('exportCcdBtn').style.display = 'none';
+            document.getElementById('exportCcdBtn').classList.add('d-none');
 
             return; // Stop calculation but keep UI visible
         }
 
         // If we get here, all critical data is present
         // Show CCD export button
-        document.getElementById('exportCcdBtn').style.display = 'inline-block';
+        document.getElementById('exportCcdBtn').classList.remove('d-none');
 
         let totalScoreRaw = 0;
 
@@ -1157,16 +1145,18 @@
 
                     // If user manually entered data, update styling to show it's no longer missing
                     if (isMissingData) {
-                        inputElement.style.border = '1px solid #ced4da';
-                        inputElement.style.backgroundColor = '#fff';
+                        inputElement.classList.remove('input-missing');
+                        inputElement.classList.add('form-control'); // Re-add default form-control styling
+
                         const inputGroup = inputElement.closest('.input-group');
                         if (inputGroup) {
                             const unitSpans = inputGroup.querySelectorAll('.input-group-text');
                             unitSpans.forEach(span => {
-                                span.style.border = '1px solid #ced4da';
-                                span.style.backgroundColor = '#e9ecef';
+                                span.classList.remove('unit-missing', 'icon-missing');
+                                span.classList.add('input-unit-lg'); // Re-add default unit styling
                             });
                         }
+                        inputElement.removeAttribute('data-missing'); // Mark as no longer missing
                     }
                 }
                 // Note: If input is empty, we already checked for critical data at the start
@@ -1196,7 +1186,7 @@
             const scoreBadge = document.getElementById(`score-${item.parameter}`);
             if (scoreBadge && !item.is_arc_hbr_element) {
                 scoreBadge.textContent = currentScore;
-                scoreBadge.className = `badge ${currentScore > 0 ? 'bg-danger' : 'bg-secondary'}`;
+                scoreBadge.className = `badge ${currentScore > 0 ? 'bg-danger' : 'bg-secondary'} score-badge`;
             }
         });
 
@@ -1210,7 +1200,7 @@
             const arcSummaryBadge = document.getElementById(`score-${arcHbrSummaryItem.parameter}`);
             if (arcSummaryBadge) {
                 arcSummaryBadge.textContent = arcHbrSummaryScore;
-                arcSummaryBadge.className = `badge ${arcHbrSummaryScore > 0 ? 'bg-danger' : 'bg-secondary'}`;
+                arcSummaryBadge.className = `badge ${arcHbrSummaryScore > 0 ? 'bg-danger' : 'bg-secondary'} score-badge`;
             }
         }
 
@@ -1278,8 +1268,8 @@
 
         // Apply color and bold to total score
         totalScoreEl.textContent = score;
-        totalScoreEl.style.color = scoreColor;
-        totalScoreEl.style.fontWeight = '900'; // Extra bold
+        totalScoreEl.style.color = scoreColor; // Color is dynamic, hard to move to class without many classes
+        totalScoreEl.className = 'display-3 font-weight-900';
 
         riskLevelEl.textContent = riskCategory;
         riskLevelEl.className = `h4 ${colorClass}`;
@@ -1318,20 +1308,20 @@
         const hbrRecommendationsSection = document.getElementById('hbr-recommendations-section');
         if (score >= 23) {
             // Show HBR recommendations with smooth animation
-            hbrRecommendationsSection.style.display = 'block';
+            hbrRecommendationsSection.classList.remove('d-none');
             // Smooth scroll to recommendations after a brief delay
             setTimeout(() => {
                 hbrRecommendationsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 500);
         } else {
             // Hide HBR recommendations if score drops below threshold
-            hbrRecommendationsSection.style.display = 'none';
+            hbrRecommendationsSection.classList.add('d-none');
         }
     }
 
     function displayError(errorMessage) {
-        document.getElementById('loading-container').style.display = 'none';
-        document.getElementById('error-container').style.display = 'block';
+        document.getElementById('loading-container').classList.add('d-none');
+        document.getElementById('error-container').classList.remove('d-none');
         document.getElementById('error-message').textContent = errorMessage;
     }
 
@@ -1361,7 +1351,7 @@
         currentFeedbackType = feedbackType;
 
         // Show comment section for additional feedback
-        document.getElementById('commentSection').style.display = 'block';
+        document.getElementById('commentSection').classList.remove('d-none');
 
         // Update button states
         document.getElementById('thumbsUpBtn').disabled = true;
@@ -1419,13 +1409,13 @@
                 if (data.status === 'success') {
                     // Show success message
                     document.getElementById('feedbackMessage').textContent = data.message;
-                    document.getElementById('feedbackSuccess').style.display = 'block';
-                    document.getElementById('feedbackError').style.display = 'none';
+                    document.getElementById('feedbackSuccess').classList.remove('d-none');
+                    document.getElementById('feedbackError').classList.add('d-none');
 
                     // Hide comment section and buttons
-                    document.getElementById('commentSection').style.display = 'none';
-                    document.getElementById('thumbsUpBtn').style.display = 'none';
-                    document.getElementById('thumbsDownBtn').style.display = 'none';
+                    document.getElementById('commentSection').classList.add('d-none');
+                    document.getElementById('thumbsUpBtn').classList.add('d-none');
+                    document.getElementById('thumbsDownBtn').classList.add('d-none');
 
                     // Show a thank you message
                     setTimeout(() => {
@@ -1439,14 +1429,14 @@
                     }, 2000);
                 } else {
                     // Show error message
-                    document.getElementById('feedbackError').style.display = 'block';
-                    document.getElementById('feedbackSuccess').style.display = 'none';
+                    document.getElementById('feedbackError').classList.remove('d-none');
+                    document.getElementById('feedbackSuccess').classList.add('d-none');
                 }
             })
             .catch(error => {
                 console.error('Error submitting feedback:', error);
-                document.getElementById('feedbackError').style.display = 'block';
-                document.getElementById('feedbackSuccess').style.display = 'none';
+                document.getElementById('feedbackError').classList.remove('d-none');
+                document.getElementById('feedbackSuccess').classList.add('d-none');
             })
             .finally(() => {
                 // Reset button state
@@ -1457,7 +1447,7 @@
 
     function cancelFeedback() {
         // Hide comment section
-        document.getElementById('commentSection').style.display = 'none';
+        document.getElementById('commentSection').classList.add('d-none');
 
         // Reset button states
         document.getElementById('thumbsUpBtn').disabled = false;

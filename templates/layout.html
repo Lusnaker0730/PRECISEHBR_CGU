@@ -1,25 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PRECISE-HBR Bleeding Risk Calculator - Evidence-based clinical decision support for high bleeding risk assessment in PCI patients">
+    <meta name="description"
+        content="PRECISE-HBR Bleeding Risk Calculator - Evidence-based clinical decision support for high bleeding risk assessment in PCI patients">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}PRECISE-HBR SMART FHIR App{% endblock %}</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    
+
+    <!-- Custom CSS for Security Compliance -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    
+
     <!-- Custom Styles -->
     <style>
         /* ONC (g)(5) Accessibility Enhancements - WCAG 2.1 AA Compliant */
-        
+
         /* Skip to main content link for keyboard navigation */
         .skip-link {
             position: absolute;
@@ -32,207 +37,234 @@
             z-index: 10000;
             font-weight: bold;
         }
+
         .skip-link:focus {
             top: 0;
         }
-        
+
         /* High contrast and readability */
-        body { 
+        body {
             background-color: #f8f9fa;
-            font-size: 16px; /* Minimum readable font size */
+            font-size: 16px;
+            /* Minimum readable font size */
             line-height: 1.5;
-            color: #212529; /* High contrast text */
+            color: #212529;
+            /* High contrast text */
         }
-        
+
         /* Focus indicators for keyboard navigation - WCAG 2.4.7 */
-        a:focus, button:focus, input:focus, select:focus, textarea:focus, .form-check-input:focus {
+        a:focus,
+        button:focus,
+        input:focus,
+        select:focus,
+        textarea:focus,
+        .form-check-input:focus {
             outline: 3px solid #0d6efd;
             outline-offset: 2px;
             box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
         }
-        
+
         /* Ensure sufficient color contrast - WCAG 1.4.3 */
         .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
-            background-color: #212529 !important; /* Darker for better contrast */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+            background-color: #212529 !important;
+            /* Darker for better contrast */
         }
-        
+
         .navbar-brand {
             color: #ffffff !important;
         }
-        
+
         .nav-link {
-            color: rgba(255,255,255,.85) !important;
+            color: rgba(255, 255, 255, .85) !important;
             font-weight: 500;
         }
-        
-        .nav-link:hover, .nav-link:focus {
+
+        .nav-link:hover,
+        .nav-link:focus {
             color: #ffffff !important;
         }
-        
+
         .card {
             border: 1px solid #dee2e6;
             border-radius: 0.5rem;
         }
-        
+
         .logout-btn {
-            color: rgba(255,255,255,.85);
+            color: rgba(255, 255, 255, .85);
             transition: color .15s ease-in-out;
             font-weight: 500;
         }
-        .logout-btn:hover, .logout-btn:focus {
+
+        .logout-btn:hover,
+        .logout-btn:focus {
             color: #ffffff;
             text-decoration: underline;
         }
-        
+
         /* Improve button contrast */
         .btn-primary {
             background-color: #0d6efd;
             border-color: #0d6efd;
             font-weight: 500;
         }
-        
-        .btn-primary:hover, .btn-primary:focus {
+
+        .btn-primary:hover,
+        .btn-primary:focus {
             background-color: #0b5ed7;
             border-color: #0a58ca;
         }
-        
+
         /* Badge contrast improvements */
         .badge.bg-primary {
             background-color: #0d6efd !important;
             color: #ffffff !important;
         }
-        
+
         .badge.bg-success {
             background-color: #198754 !important;
             color: #ffffff !important;
         }
-        
+
         .badge.bg-warning {
             background-color: #ffc107 !important;
-            color: #000000 !important; /* Black text on yellow for better contrast */
+            color: #000000 !important;
+            /* Black text on yellow for better contrast */
         }
-        
+
         .badge.bg-danger {
             background-color: #dc3545 !important;
             color: #ffffff !important;
         }
-        
+
         /* Alert contrast improvements */
         .alert-info {
             background-color: #cfe2ff;
             border-color: #9ec5fe;
-            color: #052c65; /* Dark blue for high contrast */
+            color: #052c65;
+            /* Dark blue for high contrast */
         }
-        
+
         .alert-warning {
             background-color: #fff3cd;
             border-color: #ffe69c;
-            color: #664d03; /* Dark brown for high contrast */
+            color: #664d03;
+            /* Dark brown for high contrast */
         }
-        
+
         .alert-danger {
             background-color: #f8d7da;
             border-color: #f1aeb5;
-            color: #58151c; /* Dark red for high contrast */
+            color: #58151c;
+            /* Dark red for high contrast */
         }
-        
+
         /* Ensure text on colored backgrounds meets contrast requirements */
         .text-success {
-            color: #0f5132 !important; /* Darker green */
+            color: #0f5132 !important;
+            /* Darker green */
         }
-        
+
         .text-warning {
-            color: #664d03 !important; /* Darker yellow/brown */
+            color: #664d03 !important;
+            /* Darker yellow/brown */
         }
-        
+
         .text-danger {
-            color: #842029 !important; /* Darker red */
+            color: #842029 !important;
+            /* Darker red */
         }
-        
+
         /* Card header contrast */
         .card-header.bg-primary {
             background-color: #0d6efd !important;
             color: #ffffff !important;
         }
-        
+
         /* Table accessibility */
         .table th {
             font-weight: 600;
         }
-        
+
         .table-hover tbody tr:hover {
             background-color: rgba(0, 0, 0, 0.075);
         }
-        
+
         /* Form accessibility */
         label {
             font-weight: 500;
             margin-bottom: 0.5rem;
         }
-        
+
         .form-control:focus {
             border-color: #86b7fe;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
-        
+
         /* Improve clickable area sizes - WCAG 2.5.5 (Target Size) */
         .btn {
             min-height: 44px;
             padding: 0.5rem 1rem;
         }
-        
+
         .btn-sm {
             min-height: 38px;
         }
-        
+
         .btn-lg {
             min-height: 48px;
         }
-        
+
         /* Ensure links are distinguishable */
         a {
             text-decoration: underline;
         }
-        
-        a:hover, a:focus {
+
+        a:hover,
+        a:focus {
             text-decoration: none;
         }
-        
+
         /* Improve spinner visibility for screen readers */
         .spinner-border {
             border-width: 0.3em;
         }
     </style>
-    
+
 </head>
+
 <body>
     <!-- Skip to main content link for keyboard accessibility - WCAG 2.4.1 -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4" role="navigation" aria-label="Main navigation">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#" style="display: flex; align-items: center;" aria-label="PRECISE-HBR Risk Calculator Home">
+            <a class="navbar-brand" href="#" style="display: flex; align-items: center;"
+                aria-label="PRECISE-HBR Risk Calculator Home">
                 <!-- PRECISE-HBR Logo -->
-                <svg width="32" height="32" viewBox="0 0 256 256" style="margin-right: 10px;" role="img" aria-label="PRECISE-HBR Logo">
-                    <circle cx="128" cy="128" r="118" fill="#f0f9ff" stroke="#2563eb" stroke-width="12"/>
-                    <path d="M 70 128 A 58 58 0 0 1 186 128" fill="none" stroke-width="20" stroke="url(#navGrad)" stroke-linecap="round"/>
-                    <circle cx="85" cy="145" r="10" fill="#10b981"/>
-                    <circle cx="128" cy="75" r="10" fill="#f59e0b"/>
-                    <circle cx="171" cy="145" r="10" fill="#ef4444"/>
-                    <path d="M128 90 C115 77, 95 77, 95 95 C95 115, 128 145, 128 145 C128 145, 161 115, 161 95 C161 77, 141 77, 128 90 Z" fill="#dc2626"/>
+                <svg width="32" height="32" viewBox="0 0 256 256" style="margin-right: 10px;" role="img"
+                    aria-label="PRECISE-HBR Logo">
+                    <circle cx="128" cy="128" r="118" fill="#f0f9ff" stroke="#2563eb" stroke-width="12" />
+                    <path d="M 70 128 A 58 58 0 0 1 186 128" fill="none" stroke-width="20" stroke="url(#navGrad)"
+                        stroke-linecap="round" />
+                    <circle cx="85" cy="145" r="10" fill="#10b981" />
+                    <circle cx="128" cy="75" r="10" fill="#f59e0b" />
+                    <circle cx="171" cy="145" r="10" fill="#ef4444" />
+                    <path
+                        d="M128 90 C115 77, 95 77, 95 95 C95 115, 128 145, 128 145 C128 145, 161 115, 161 95 C161 77, 141 77, 128 90 Z"
+                        fill="#dc2626" />
                     <defs>
                         <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" style="stop-color:#10b981"/>
-                            <stop offset="50%" style="stop-color:#f59e0b"/>
-                            <stop offset="100%" style="stop-color:#ef4444"/>
+                            <stop offset="0%" style="stop-color:#10b981" />
+                            <stop offset="50%" style="stop-color:#f59e0b" />
+                            <stop offset="100%" style="stop-color:#ef4444" />
                         </linearGradient>
                     </defs>
                 </svg>
                 PRECISE-HBR Risk Calculator
             </a>
-            
+
             <!-- Navigation Links -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
@@ -247,9 +279,9 @@
                     </a>
                 </li>
             </ul>
-            
+
             <div class="ms-auto">
-                 <a href="{{ url_for('logout') }}" class="logout-btn" aria-label="Logout and relaunch application">
+                <a href="{{ url_for('logout') }}" class="logout-btn" aria-label="Logout and relaunch application">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout & Relaunch
                 </a>
             </div>
@@ -276,4 +308,5 @@
     <!-- Page-specific scripts -->
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

@@ -12,6 +12,8 @@ from functools import wraps
 import requests
 from urllib.parse import urlparse
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_session import Session  # For server-side session storage
 # ONC Compliance: Audit logging
 from audit_logger import get_audit_logger, audit_ephi_access, log_user_authentication
@@ -170,6 +172,7 @@ def health_check():
 
 @app.route('/api/calculate_risk', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 @audit_ephi_access(action='calculate_risk_score', resource_type='Patient,Observation,Condition')
 def calculate_risk_api():
     """API endpoint for risk score calculation."""
@@ -249,6 +252,7 @@ def calculate_risk_api():
 
 @app.route('/api/export-ccd', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 @audit_ephi_access(action='export_ccd_document', resource_type='Patient,Observation,Condition')
 def export_ccd_api():
     """
@@ -668,6 +672,15 @@ def add_security_headers(response: Response):
     response.headers['Pragma'] = 'no-cache'
     return response
 
+# --- Rate Limiting ---
+# Initialize Flask-Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://" 
+)
+
 # --- Main Execution ---
 
 # Enable security headers with Flask-Talisman
@@ -683,7 +696,6 @@ csp = {
         '\'self\'',
         'cdn.jsdelivr.net',
         'cdnjs.cloudflare.com',
-        '\'unsafe-inline\''       # Allow inline styles (required for Bootstrap/legacy)
     ],
     'font-src': ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'],
     'img-src': ['\'self\'', 'data:'],  # Allow images from self and data URIs

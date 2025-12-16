@@ -1,0 +1,94 @@
+/* Custom Security Styles - Replaces inline styles for CSP Compliance */
+
+/* Utility Classes */
+.d-none { display: none !important; }
+.cursor-pointer { cursor: pointer; }
+.font-lg { font-size: 1.2rem; }
+.font-xl { font-size: 1.3rem; }
+.font-xxl { font-size: 1.4rem; }
+.font-weight-500 { font-weight: 500; }
+.font-weight-600 { font-weight: 600; }
+.font-weight-900 { font-weight: 900; }
+
+/* Alert Styles */
+.alert-hbr { border-left: 5px solid #ffc107; }
+
+/* Guideline Image */
+.hbr-guideline-img {
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+}
+
+/* ARC-HBR Guideline Image */
+.arc-guideline-img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+/* Session Warning */
+.session-warning-popup {
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+}
+
+/* Citation Box */
+.citation-box {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+/* Input Fields */
+.input-group-lg-text { font-size: 1.2rem; }
+.input-number-lg { font-size: 1.2rem; font-weight: 600; }
+.input-unit-lg { font-size: 1.1rem; font-weight: 500; background-color: #e9ecef; }
+
+/* Missing Data Input Styles */
+.input-missing {
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: 2px solid #ffc107;
+    background-color: #fff3cd;
+}
+.unit-missing {
+    font-size: 1.1rem;
+    font-weight: 500;
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-left: none;
+}
+.icon-missing {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-left: none;
+}
+
+/* Checkbox Switch */
+.form-switch-lg { width: 3em; height: 1.5em; }
+.form-check-label-lg { font-size: 1.2rem; font-weight: 500; margin-left: 0.5rem; }
+
+/* Table Styles */
+.table-th-35 { width: 35%; font-size: 1.3rem; }
+.table-th-40 { width: 40%; font-size: 1.3rem; }
+.table-th-10 { width: 10%; font-size: 1.3rem; }
+.table-th-15 { width: 15%; font-size: 1.3rem; }
+.table-cell-lg { font-size: 1.2rem; }
+.score-badge { font-size: 1.1rem; padding: 0.5rem 0.8rem; }
+.arc-badge-placeholder { font-size: 0.9rem; }
+.missing-list { padding-left: 1.5rem; }
+.missing-list-item { margin-bottom: 0.25rem; }
+
+/* Validation Message */
+.validation-message {
+    font-size: 0.85rem;
+    margin-top: 3px;
+}
