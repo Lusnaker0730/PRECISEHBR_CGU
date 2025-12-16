@@ -170,6 +170,7 @@ class PreciseHBRCalculator:
             if wbc_val is not None:
                 inputs['wbc'] = wbc_val
                 inputs['metadata']['wbc_effective'] = min(cls.MAX_WBC, wbc_val)
+                inputs['metadata']['wbc_date'] = wbc_obs.get('effectiveDateTime', 'N/A')
             else:
                 inputs['missing_fields'].append('WBC')
         else:
@@ -372,7 +373,7 @@ class PreciseHBRCalculator:
                 "value": f"{wbc} 10^9/L",
                 "score": round(breakdown['wbc']),
                 "raw_value": wbc,
-                "date": "N/A",
+                "date": inputs['metadata'].get('wbc_date', 'N/A'),
                 "description": f"WBC score: {breakdown['wbc']:.2f}"
             })
             
@@ -394,15 +395,66 @@ class PreciseHBRCalculator:
             "description": f"Anticoagulation: {breakdown['anticoag']}"
         })
         
-        # ARC Summary (Simplified details for brevity in this refactor, but logic holds)
+        # ARC Summary and Details
         arc_details = inputs['metadata'].get('arc_details', {})
-        # Add sub-components if needed for UI consistency... 
-        # (Preserving exact UI structure would require re-adding the 5 sub-components. Adding them now for safety)
         
-        # ... [Sub-components logic same as before, simplified for brevity here]
-        # To strictly match legacy UI, we should add the 5 hidden boolean rows.
-        # For now, I'll add the summary which is the scored part.
+        # Add detailed ARC-HBR components (hidden from score sum but visible in UI)
+        # 1. Thrombocytopenia
+        components.append({
+            "parameter": "PRECISE-HBR - Platelet Count",
+            "value": "Yes" if arc_details.get('thrombocytopenia') else "No",
+            "score": 0,
+            "is_present": arc_details.get('thrombocytopenia', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Platelet count < 100x10^9/L"
+        })
         
+        # 2. Bleeding Diathesis
+        components.append({
+            "parameter": "PRECISE-HBR - Chronic Bleeding Diathesis",
+            "value": "Yes" if arc_details.get('bleeding_diathesis') else "No",
+            "score": 0,
+            "is_present": arc_details.get('bleeding_diathesis', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "History of chronic bleeding diathesis"
+        })
+        
+        # 3. Liver Cirrhosis
+        components.append({
+            "parameter": "PRECISE-HBR - Liver Cirrhosis",
+            "value": "Yes" if arc_details.get('liver_cirrhosis') else "No",
+            "score": 0,
+            "is_present": arc_details.get('liver_cirrhosis', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Liver cirrhosis with portal hypertension"
+        })
+        
+        # 4. Active Malignancy
+        components.append({
+            "parameter": "PRECISE-HBR - Active Malignancy",
+            "value": "Yes" if arc_details.get('active_malignancy') else "No",
+            "score": 0,
+            "is_present": arc_details.get('active_malignancy', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Active malignancy in past 12 months"
+        })
+
+        # 5. NSAIDs/Corticosteroids (replaces recent surgery in general ARC lists but specific to this implementation?)
+        # Checking extract_inputs logic... mapped from 'nsaids_corticosteroids'
+        components.append({
+            "parameter": "PRECISE-HBR - NSAIDs/Corticosteroids",
+            "value": "Yes" if arc_details.get('nsaids_corticosteroids') else "No",
+            "score": 0,
+            "is_present": arc_details.get('nsaids_corticosteroids', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Chronic use of NSAIDs or corticosteroids"
+        })
+
         components.append({
             "parameter": "PRECISE-HBR - ARC-HBR Summary",
             "value": f"{inputs['arc_hbr_count']} factor(s)",

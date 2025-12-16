@@ -694,7 +694,9 @@ csp = {
     ]
 }
 # Security Issue C: Add nonce support
-Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src', 'style-src'])
+# Note: We only apply nonce to script-src. Applying it to style-src would disable 'unsafe-inline' 
+# which is required for Bootstrap and other inline styles in this legacy app.
+Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src'])
 
 # Initialize CSRF protection
 csrf = CSRFProtect()

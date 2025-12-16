@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html hidden>
+
 <head>
     <meta charset="UTF-8">
     <title>SMART Auth Callback</title>
-    
+
     <!-- Cerner Smart Embeddable Lib CSS -->
     <link rel='stylesheet' type='text/css' href='/static/css/cerner-smart-embeddable-lib-1.7.0.min.css'>
 
     <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
 </head>
+
 <body>
     <div class="container">
         <div id="status">正在驗證授權碼，請稍候...</div>
         <div id="error" style="display: none;"></div>
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
+    <script nonce="{{ csp_nonce() }}">
+        document.addEventListener("DOMContentLoaded", function () {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const state = urlParams.get('state');
@@ -30,23 +32,23 @@
                     },
                     body: JSON.stringify({ code: code, state: state }),
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'ok') {
-                        document.getElementById("status").innerText = "驗證成功，正在重新導向...";
-                        window.location.href = data.redirect_url;
-                    } else {
-                        throw new Error(data.error || 'Backend code exchange failed.');
-                    }
-                })
-                .catch(error => {
-                    console.error("Callback Error:", error);
-                    const errorDiv = document.getElementById('error');
-                    const statusDiv = document.getElementById('status');
-                    statusDiv.innerText = "授權失敗！";
-                    errorDiv.innerText = "Error: " + error.message;
-                    errorDiv.style.display = 'block';
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            document.getElementById("status").innerText = "驗證成功，正在重新導向...";
+                            window.location.href = data.redirect_url;
+                        } else {
+                            throw new Error(data.error || 'Backend code exchange failed.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Callback Error:", error);
+                        const errorDiv = document.getElementById('error');
+                        const statusDiv = document.getElementById('status');
+                        statusDiv.innerText = "授權失敗！";
+                        errorDiv.innerText = "Error: " + error.message;
+                        errorDiv.style.display = 'block';
+                    });
             } else {
                 const errorDiv = document.getElementById('error');
                 const statusDiv = document.getElementById('status');
@@ -56,9 +58,10 @@
             }
         });
     </script>
-    
+
     <!-- Babel Polyfill and Cerner Lib are likely not needed here anymore, but leaving them for now doesn't hurt -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
     <script src="/static/js/cerner-smart-embeddable-lib-1.7.0.min.js"></script>
 </body>
-</html> 
+
+</html>
