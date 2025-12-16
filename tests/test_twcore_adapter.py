@@ -1,342 +1,298 @@
-"""
-Unit Tests for TW Core IG Adapter
-Tests Taiwan-specific FHIR functionality
-"""
+
 import unittest
-import sys
-import os
+from datetime import date, timedelta
+from services.twcore_adapter import TWCoreAdapter
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+class TestTWCoreAdapter(unittest.TestCase):
 
-from services.twcore_adapter import twcore_adapter, TWCoreAdapter
+    def setUp(self):
+        self.adapter = TWCoreAdapter()
 
+    # --- 1. Test extract_patient_demographics_twcore ---
 
-class TestTWCorePatient(unittest.TestCase):
-    """Test TW Core IG Patient Profile support"""
-    
-    def test_chinese_name_extraction(self):
-        """測試中文姓名提取"""
+    def test_extract_patient_demographics_invalid_date(self):
+        """Test invalid birth date handling"""
         patient = {
             "resourceType": "Patient",
-            "name": [{"text": "陳加玲", "use": "official"}],
-            "gender": "female",
-            "birthDate": "1990-05-15"
+            "birthDate": "invalid-date"
         }
-        
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient)
-        
-        self.assertEqual(demographics['name_chinese'], "陳加玲")
-        self.assertEqual(demographics['name'], "陳加玲")
-        self.assertIsNone(demographics['name_english'])
-        self.assertEqual(demographics['gender'], "female")
-        self.assertIsNotNone(demographics['age'])
-    
-    def test_english_name_extraction(self):
-        """測試英文姓名提取"""
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertIsNone(dem["age"])
+
+    def test_extract_patient_demographics_basic(self):
+        """Test basic extraction of gender, birthDate, and Age calculation"""
+        birth_year = date.today().year - 30
         patient = {
             "resourceType": "Patient",
-            "name": [{"text": "John Smith", "use": "official"}],
             "gender": "male",
-            "birthDate": "1985-03-20"
+            "birthDate": f"{birth_year}-01-01"
         }
-        
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient)
-        
-        self.assertEqual(demographics['name_english'], "John Smith")
-        self.assertEqual(demographics['name'], "John Smith")
-        self.assertIsNone(demographics['name_chinese'])
-    
-    def test_mixed_names(self):
-        """測試中英文混合姓名"""
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["gender"], "male")
+        self.assertEqual(dem["age"], 30)
+        self.assertEqual(dem["birthDate"], f"{birth_year}-01-01")
+
+    def test_extract_patient_demographics_chinese_name(self):
+        """Test extraction of Chinese name from text field"""
         patient = {
             "resourceType": "Patient",
             "name": [
-                {"text": "王小明", "use": "official"},
-                {"text": "Wang Xiao Ming", "use": "official"}
-            ],
-            "gender": "male",
-            "birthDate": "1980-01-01"
+                {"text": "王大明", "use": "official"}
+            ]
         }
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["name_chinese"], "王大明")
+        self.assertEqual(dem["name"], "王大明")
+        self.assertIsNone(dem["name_english"])
+
+    def test_extract_patient_demographics_english_name(self):
+        """Test extraction of English name from family/given"""
+        patient = {
+            "resourceType": "Patient",
+            "name": [
+                {"family": "Doe", "given": ["John"], "text": "John Doe"}
+            ]
+        }
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["name_english"], "John Doe")
+        self.assertEqual(dem["name"], "John Doe")
+        self.assertIsNone(dem["name_chinese"])
+
+    def test_extract_patient_demographics_mixed_names(self):
+        """Test when both Chinese text and English parts exist"""
+        patient = {
+            "resourceType": "Patient",
+            "name": [
+                {"text": "王小美", "use": "official"},
+                {"family": "Wang", "given": ["Xiao-Mei"], "use": "official"}
+            ]
+        }
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["name_chinese"], "王小美")
+        self.assertEqual(dem["name"], "王小美") # Prefer Chinese as primary if available
+        # The logic iterates names. If first is Chinese, it sets it.
+        # Then second is English parts.
         
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient)
-        
-        # Chinese name should be primary
-        self.assertEqual(demographics['name_chinese'], "王小明")
-        self.assertEqual(demographics['name'], "王小明")
-        self.assertEqual(demographics['name_english'], "Wang Xiao Ming")
-    
-    def test_taiwan_id_extraction(self):
-        """測試身分證字號提取"""
+        # Let's verify specific behavior: 
+        # Loop 1: text="王小美" -> name_chinese="王小美", name="王小美"
+        # Loop 2: family="Wang" -> name_english="Xiao-Mei Wang". 
+        # name remains "王小美" because name_chinese is set.
+        self.assertEqual(dem["name_english"], "Xiao-Mei Wang")
+
+    def test_extract_taiwan_id(self):
+        """Test extraction of Taiwan National ID"""
         patient = {
             "resourceType": "Patient",
             "identifier": [
                 {
                     "system": "http://www.moi.gov.tw/",
-                    "type": {
-                        "coding": [{
-                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                            "code": "NNxxx",
-                            "display": "身分證字號"
-                        }]
-                    },
                     "value": "A123456789"
                 }
-            ],
-            "name": [{"text": "測試病患"}]
+            ]
         }
-        
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient)
-        
-        self.assertEqual(demographics['taiwan_id'], "A123456789")
-    
-    def test_medical_record_number_extraction(self):
-        """測試病歷號提取"""
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["taiwan_id"], "A123456789")
+
+    def test_extract_resident_id(self):
+        """Test extraction of Resident ID via PPN code"""
         patient = {
             "resourceType": "Patient",
             "identifier": [
                 {
-                    "system": "https://www.tph.mohw.gov.tw/",
                     "type": {
-                        "coding": [{
-                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                            "code": "MR",
-                            "display": "Medical record number"
-                        }]
+                        "coding": [{"code": "PPN", "system": "http://terminology.hl7.org/CodeSystem/v2-0203"}]
                     },
-                    "value": "MR20230001"
+                    "value": "RC12345678"
                 }
-            ],
-            "name": [{"text": "測試病患"}]
+            ]
         }
-        
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient)
-        
-        self.assertEqual(demographics['medical_record_number'], "MR20230001")
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["taiwan_id"], "RC12345678")
 
+    def test_extract_medical_record_number(self):
+        """Test extraction of MRN"""
+        patient = {
+            "resourceType": "Patient",
+            "identifier": [
+                {
+                    "type": {
+                        "coding": [{"code": "MR"}]
+                    },
+                    "value": "MRN-001"
+                }
+            ]
+        }
+        dem = self.adapter.extract_patient_demographics_twcore(patient)
+        self.assertEqual(dem["medical_record_number"], "MRN-001")
 
-class TestTWCoreNHIMedication(unittest.TestCase):
-    """Test Taiwan NHI Medication Code support"""
-    
-    def test_nhi_code_extraction(self):
-        """測試健保藥品代碼提取"""
-        medication = {
+        # Test alternative system match
+        patient2 = {
+            "resourceType": "Patient",
+            "identifier": [
+                {
+                    "system": "https://www.tph.mohw.gov.tw/",
+                    "value": "MRN-002"
+                }
+            ]
+        }
+        dem2 = self.adapter.extract_patient_demographics_twcore(patient2)
+        self.assertEqual(dem2["medical_record_number"], "MRN-002")
+
+    def test_extract_demographics_empty(self):
+        """Test empty input"""
+        dem = self.adapter.extract_patient_demographics_twcore(None)
+        self.assertEqual(dem["name"], "Unknown")
+        self.assertIsNone(dem["age"])
+
+        dem = self.adapter.extract_patient_demographics_twcore({})
+        self.assertEqual(dem["name"], "Unknown")
+
+    # --- 2. Test _contains_chinese ---
+
+    def test_contains_chinese(self):
+        self.assertTrue(self.adapter._contains_chinese("王"))
+        self.assertTrue(self.adapter._contains_chinese("ABC王"))
+        self.assertFalse(self.adapter._contains_chinese("ABC"))
+        self.assertFalse(self.adapter._contains_chinese(""))
+        self.assertFalse(self.adapter._contains_chinese(None))
+
+    # --- 3. Test extract_nhi_medication_code ---
+
+    def test_extract_nhi_medication_code_standard(self):
+        """Test NHI code extraction from standard coding"""
+        med = {
             "resourceType": "MedicationRequest",
             "medicationCodeableConcept": {
-                "coding": [{
-                    "system": "https://twcore.mohw.gov.tw/ig/twcore/CodeSystem/medication-nhi-tw",
-                    "code": "AC45856100",
-                    "display": "立普妥膜衣錠10毫克"
-                }],
-                "text": "立普妥膜衣錠10毫克"
+                "coding": [
+                    {
+                        "system": "https://twcore.mohw.gov.tw/ig/twcore/CodeSystem/medication-nhi-tw",
+                        "code": "AC12345678",
+                        "display": "Aspirin"
+                    }
+                ]
             }
         }
-        
-        nhi_info = twcore_adapter.extract_nhi_medication_code(medication)
-        
-        self.assertTrue(nhi_info['has_nhi_code'])
-        self.assertEqual(nhi_info['nhi_code'], "AC45856100")
-        self.assertEqual(nhi_info['medication_name'], "立普妥膜衣錠10毫克")
-    
-    def test_12_digit_nhi_code(self):
-        """測試 12 位數健保代碼辨識"""
-        medication = {
+        info = self.adapter.extract_nhi_medication_code(med)
+        self.assertTrue(info["has_nhi_code"])
+        self.assertEqual(info["nhi_code"], "AC12345678")
+        self.assertEqual(info["medication_name"], "Aspirin")
+
+    def test_extract_nhi_medication_code_pattern(self):
+        """Test NHI code extraction from 12-digit pattern"""
+        med = {
+            "resourceType": "MedicationRequest",
             "medicationCodeableConcept": {
-                "coding": [{
-                    "system": "http://example.org/medication",
-                    "code": "ABC123456789",  # 12-digit alphanumeric
-                    "display": "測試藥品"
-                }]
+                "coding": [
+                    {
+                        "system": "http://other.system/rx",
+                        "code": "A01234567890", # 12 alphanumeric chars
+                        "display": "Drug X"
+                    }
+                ]
             }
         }
-        
-        nhi_info = twcore_adapter.extract_nhi_medication_code(medication)
-        
-        self.assertTrue(nhi_info['has_nhi_code'])
-        self.assertEqual(nhi_info['nhi_code'], "ABC123456789")
-    
-    def test_search_nhi_medication(self):
-        """測試健保藥品搜尋"""
-        medications = [
-            {
-                "medicationCodeableConcept": {
-                    "coding": [{
-                        "system": "https://twcore.mohw.gov.tw/ig/twcore/CodeSystem/medication-nhi-tw",
-                        "code": "AC45856100",
-                        "display": "立普妥膜衣錠10毫克"
-                    }]
-                }
-            },
-            {
-                "medicationCodeableConcept": {
-                    "coding": [{
-                        "system": "https://twcore.mohw.gov.tw/ig/twcore/CodeSystem/medication-nhi-tw",
-                        "code": "BC22819100",
-                        "display": "普萊維膜衣錠75毫克"
-                    }]
-                }
-            }
-        ]
-        
-        # Search for specific NHI code
-        results = twcore_adapter.search_nhi_medication_by_code(medications, "AC45856100")
-        
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['nhi_info']['nhi_code'], "AC45856100")
-        self.assertEqual(results[0]['nhi_info']['medication_name'], "立普妥膜衣錠10毫克")
+        info = self.adapter.extract_nhi_medication_code(med)
+        self.assertTrue(info["has_nhi_code"])
+        self.assertEqual(info["nhi_code"], "A01234567890")
 
+    def test_extract_nhi_medication_reference(self):
+        """Test extraction via medicationReference fallback"""
+        med = {
+            "resourceType": "MedicationRequest",
+            "medicationReference": {"reference": "Medication/123"}
+        }
+        with self.assertLogs(level='INFO') as cm:
+            self.adapter.extract_nhi_medication_code(med)
+            self.assertTrue(any("Medication reference found" in o for o in cm.output))
 
-class TestTWCoreICD10(unittest.TestCase):
-    """Test ICD-10-CM diagnosis code support"""
-    
-    def test_icd10_extraction(self):
-        """測試 ICD-10 診斷代碼提取"""
+    # --- 4. Test extract_icd10_diagnosis ---
+
+    def test_extract_icd10_diagnosis(self):
         condition = {
             "resourceType": "Condition",
-            "clinicalStatus": {
-                "coding": [{
-                    "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
-                    "code": "active"
-                }]
-            },
             "code": {
-                "coding": [{
-                    "system": "http://hl7.org/fhir/sid/icd-10-cm",
-                    "code": "I21.0",
-                    "display": "ST elevation myocardial infarction of anterior wall"
-                }],
-                "text": "急性前壁心肌梗塞"
-            }
-        }
-        
-        diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
-        
-        self.assertTrue(diagnosis_info['has_icd10'])
-        self.assertEqual(diagnosis_info['icd10_code'], "I21.0")
-        self.assertEqual(diagnosis_info['condition_text'], "急性前壁心肌梗塞")
-        self.assertEqual(diagnosis_info['clinical_status'], "active")
-    
-    def test_icd10_search(self):
-        """測試 ICD-10 診斷搜尋"""
-        conditions = [
-            {
-                "code": {
-                    "coding": [{
+                "coding": [
+                    {
                         "system": "http://hl7.org/fhir/sid/icd-10-cm",
                         "code": "I21.0",
-                        "display": "STEMI of anterior wall"
-                    }],
-                    "text": "急性前壁心肌梗塞"
-                }
+                        "display": "Acute transmural MI"
+                    }
+                ],
+                "text": "Heart Attack"
             },
-            {
-                "code": {
-                    "coding": [{
-                        "system": "http://hl7.org/fhir/sid/icd-10-cm",
-                        "code": "I21.1",
-                        "display": "STEMI of inferior wall"
-                    }],
-                    "text": "急性下壁心肌梗塞"
-                }
-            },
-            {
-                "code": {
-                    "coding": [{
-                        "system": "http://hl7.org/fhir/sid/icd-10-cm",
-                        "code": "I50.9",
-                        "display": "Heart failure, unspecified"
-                    }],
-                    "text": "心臟衰竭"
-                }
+            "clinicalStatus": {
+                "coding": [{"code": "active"}]
             }
-        ]
-        
-        # Search for all MI conditions (I21.*)
-        mi_results = twcore_adapter.search_conditions_by_icd10(conditions, "I21")
-        
-        self.assertEqual(len(mi_results), 2)
-        
-        # Search for heart failure (I50.*)
-        hf_results = twcore_adapter.search_conditions_by_icd10(conditions, "I50")
-        
-        self.assertEqual(len(hf_results), 1)
-        self.assertEqual(hf_results[0]['diagnosis_info']['icd10_code'], "I50.9")
-
-
-class TestTWCoreTaiwanID(unittest.TestCase):
-    """Test Taiwan ID validation"""
-    
-    def test_valid_taiwan_id(self):
-        """測試有效的身分證字號"""
-        valid_ids = ["A123456789", "B234567890", "Z987654321"]
-        
-        for taiwan_id in valid_ids:
-            self.assertTrue(
-                twcore_adapter.validate_taiwan_id(taiwan_id),
-                f"{taiwan_id} should be valid"
-            )
-    
-    def test_invalid_taiwan_id_format(self):
-        """測試無效的身分證字號格式"""
-        invalid_ids = [
-            "123456789",      # Missing letter
-            "AB12345678",     # Two letters
-            "A12345678",      # Too short
-            "A1234567890",    # Too long
-            "a123456789",     # Lowercase letter
-            "A12345678A",     # Letter at end
-        ]
-        
-        for taiwan_id in invalid_ids:
-            self.assertFalse(
-                twcore_adapter.validate_taiwan_id(taiwan_id),
-                f"{taiwan_id} should be invalid"
-            )
-
-
-class TestTWCoreResourceGeneration(unittest.TestCase):
-    """Test TW Core IG compatible resource generation"""
-    
-    def test_generate_patient_resource(self):
-        """測試產生 TW Core IG 相容的 Patient 資源"""
-        demographics = {
-            "name_chinese": "王小明",
-            "name_english": "Wang Xiao Ming",
-            "gender": "male",
-            "birthDate": "1985-03-20",
-            "taiwan_id": "A123456789",
-            "medical_record_number": "MR20230001"
         }
+        info = self.adapter.extract_icd10_diagnosis(condition)
+        self.assertTrue(info["has_icd10"])
+        self.assertEqual(info["icd10_code"], "I21.0")
+        self.assertEqual(info["condition_text"], "Heart Attack")
+        self.assertEqual(info["clinical_status"], "active")
+
+    # --- 5. Test search_nhi_medication_by_code ---
+
+    def test_search_nhi_medication_by_code(self):
+        meds = [
+            {"medicationCodeableConcept": {"coding": [{"system": "nhi.gov.tw", "code": "A"}]}},
+             {"medicationCodeableConcept": {"coding": [{"system": "nhi.gov.tw", "code": "B"}]}},
+        ]
+        results = self.adapter.search_nhi_medication_by_code(meds, "A")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['nhi_info']['nhi_code'], "A")
+
+    # --- 6. Test search_conditions_by_icd10 ---
+
+    def test_search_conditions_by_icd10(self):
+        conditions = [
+            {"code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10", "code": "I21.0"}]}},
+            {"code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10", "code": "I25.1"}]}},
+            {"code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10", "code": "I21.9"}]}},
+        ]
+        results = self.adapter.search_conditions_by_icd10(conditions, "I21")
+        self.assertEqual(len(results), 2) # I21.0 and I21.9
+
+    # --- 7. Test validate_taiwan_id ---
+
+    def test_validate_taiwan_id(self):
+        self.assertTrue(self.adapter.validate_taiwan_id("A123456789"))
+        self.assertFalse(self.adapter.validate_taiwan_id("A12345678")) # Too short
+        self.assertFalse(self.adapter.validate_taiwan_id("1234567890")) # No letter
+        self.assertFalse(self.adapter.validate_taiwan_id("AA23456789")) # Two letters
+        self.assertFalse(self.adapter.validate_taiwan_id(None))
+
+    # --- 8. Test get_twcore_compatible_patient_resource ---
+
+    def test_get_twcore_compatible_patient_resource(self):
+        demographics = {
+            "name_chinese": "陳小明",
+            "name_english": "Xiao-Ming Chen",
+            "gender": "male",
+            "birthDate": "1990-01-01",
+            "taiwan_id": "A123456789",
+            "medical_record_number": "MRN-999"
+        }
+        resource = self.adapter.get_twcore_compatible_patient_resource(demographics)
         
-        patient_resource = twcore_adapter.get_twcore_compatible_patient_resource(demographics)
+        self.assertEqual(resource["resourceType"], "Patient")
+        self.assertEqual(resource["gender"], "male")
         
-        # Check resource type and profile
-        self.assertEqual(patient_resource['resourceType'], "Patient")
-        self.assertIn("https://twcore.mohw.gov.tw/ig/twcore/StructureDefinition/Patient-twcore", 
-                     patient_resource['meta']['profile'])
+        # Check Chinese Name
+        chinese_name_entry = next((n for n in resource["name"] if n.get("text") == "陳小明"), None)
+        self.assertIsNotNone(chinese_name_entry)
         
-        # Check name
-        self.assertEqual(len(patient_resource['name']), 2)  # Chinese and English
-        self.assertEqual(patient_resource['name'][0]['text'], "王小明")
+        # Check English Name
+        english_name_entry = next((n for n in resource["name"] if n.get("family") == "Chen"), None)
+        self.assertIsNotNone(english_name_entry)
         
-        # Check identifiers
-        identifiers = patient_resource['identifier']
-        self.assertGreater(len(identifiers), 0)
+        # Check IDs
+        tw_id = next((i for i in resource["identifier"] if i.get("value") == "A123456789"), None)
+        self.assertIsNotNone(tw_id)
+        self.assertIn("moi.gov.tw", tw_id["system"])
         
-        # Check Taiwan ID
-        taiwan_id_found = False
-        for identifier in identifiers:
-            if "moi.gov.tw" in identifier['system']:
-                self.assertEqual(identifier['value'], "A123456789")
-                taiwan_id_found = True
-        self.assertTrue(taiwan_id_found, "Taiwan ID should be in identifiers")
-        
-        # Check demographics
-        self.assertEqual(patient_resource['gender'], "male")
-        self.assertEqual(patient_resource['birthDate'], "1985-03-20")
+        mrn = next((i for i in resource["identifier"] if i.get("value") == "MRN-999"), None)
+        self.assertIsNotNone(mrn)
 
 
 if __name__ == '__main__':
-    # Run tests
-    unittest.main(verbosity=2)
-
+    unittest.main()

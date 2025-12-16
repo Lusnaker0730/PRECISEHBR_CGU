@@ -157,11 +157,16 @@ def test_golden_dataset_verification(case):
     
     with patch('services.condition_checker.condition_checker.check_prior_bleeding', return_value=(case['bleeding'], ['trace'])):
         with patch('services.condition_checker.condition_checker.check_oral_anticoagulation', return_value=case['anticoag']):
-            with patch('services.condition_checker.condition_checker.check_arc_hbr_factors_detailed', return_value={
+            # Fix: Ensure at least one factor is true if has_any_factor is true, because pure calculator logic sums them.
+            arc_factors = {
                 'has_any_factor': case['arc'], 
-                'thrombocytopenia': False, 'bleeding_diathesis': False, 
-                'liver_cirrhosis': False, 'active_malignancy': False, 'nsaids_corticosteroids': False
-            }):
+                'thrombocytopenia': case['arc'], # Set one true if arc is true
+                'bleeding_diathesis': False, 
+                'liver_cirrhosis': False, 
+                'active_malignancy': False, 
+                'nsaids_corticosteroids': False
+            }
+            with patch('services.condition_checker.condition_checker.check_arc_hbr_factors_detailed', return_value=arc_factors):
                 
                 # Execute Implementation
                 components, score_impl = PreciseHBRCalculator.calculate_score(raw_data, demographics)

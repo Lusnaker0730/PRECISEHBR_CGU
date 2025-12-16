@@ -227,18 +227,26 @@ class TradeoffModelCalculator:
         thresholds = tradeoff_config.get('risk_factor_thresholds', {})
         
         # Age threshold
+        missing_data = []
+        age = demographics.get('age')
         age_threshold = thresholds.get('age_threshold', 65)
-        if demographics.get('age', 0) >= age_threshold:
-            detected_factors['age_ge_65'] = True
+        
+        if age is not None:
+            if age >= age_threshold:
+                detected_factors['age_ge_65'] = True
+        else:
+            missing_data.append('Age')
         
         # Hemoglobin thresholds
         hb_obs = raw_data.get('HEMOGLOBIN', [])
+        hb_checked = False
         if hb_obs:
             hb_val = unit_converter.get_value_from_observation(
                 hb_obs[0], 
                 unit_converter.TARGET_UNITS['HEMOGLOBIN']
             )
-            if hb_val:
+            if hb_val is not None:
+                hb_checked = True
                 hb_ranges = thresholds.get('hemoglobin_ranges', {})
                 moderate = hb_ranges.get('moderate', {'min': 11, 'max': 13})
                 severe = hb_ranges.get('severe', {'max': 11})
@@ -248,29 +256,35 @@ class TradeoffModelCalculator:
                 elif hb_val < severe['max']:
                     detected_factors['hemoglobin_lt_11'] = True
         
+        if not hb_checked:
+            missing_data.append('Hemoglobin')
+        
         # eGFR thresholds
         egfr_obs = raw_data.get('EGFR', [])
         cr_obs = raw_data.get('CREATININE', [])
         egfr_val = None
+        egfr_checked = False
         
         if egfr_obs:
             egfr_val = unit_converter.get_value_from_observation(
                 egfr_obs[0], 
                 unit_converter.TARGET_UNITS['EGFR']
             )
-        elif cr_obs:
+        
+        if egfr_val is None and cr_obs:
             cr_val = unit_converter.get_value_from_observation(
                 cr_obs[0], 
                 unit_converter.TARGET_UNITS['CREATININE']
             )
-            if cr_val and demographics.get('age') and demographics.get('gender'):
+            if cr_val and age is not None and demographics.get('gender'):
                 egfr_val, _ = unit_converter.calculate_egfr(
                     cr_val, 
-                    demographics['age'], 
+                    age, 
                     demographics['gender']
                 )
         
-        if egfr_val:
+        if egfr_val is not None:
+            egfr_checked = True
             egfr_ranges = thresholds.get('egfr_ranges', {})
             moderate = egfr_ranges.get('moderate', {'min': 30, 'max': 60})
             severe = egfr_ranges.get('severe', {'max': 30})
@@ -279,6 +293,9 @@ class TradeoffModelCalculator:
                 detected_factors['egfr_30_59'] = True
             elif egfr_val < severe['max']:
                 detected_factors['egfr_lt_30'] = True
+                
+        if not egfr_checked:
+            missing_data.append('eGFR')
         
         # Clinical factors
         if tradeoff_data.get('diabetes'):
@@ -298,7 +315,7 @@ class TradeoffModelCalculator:
         if tradeoff_data.get('oac_discharge'):
             detected_factors['oac_discharge'] = True
         
-        return detected_factors
+        return detected_factors, missing_data
     
     @staticmethod
     def convert_hr_to_probability(total_hr_score, baseline_event_rate):
@@ -359,11 +376,19 @@ class TradeoffModelCalculator:
         thrombotic_hr_map = {p['factor']: p for p in model['thromboticEvents']['predictors']}
         
         # Detect which factors are active based on patient data
-        active_factors = cls.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
+        # Now returns tuple (active_factors, missing_data)
+        active_factors, missing_data = cls.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
         
         # Use the interactive calculation method with the detected factors
         # This ensures consistency between both calculation paths
-        return cls.calculate_tradeoff_scores_interactive(model, active_factors)
+        result = cls.calculate_tradeoff_scores_interactive(model, active_factors)
+        
+        # Inject missing data info
+        result['missing_data'] = missing_data
+        if missing_data:
+            result['warning'] = f"Missing data for: {', '.join(missing_data)}. Risks may be underestimated."
+            
+        return result
     
     @classmethod
     def calculate_tradeoff_scores_interactive(cls, model_predictors, active_factors):
@@ -436,7 +461,8 @@ def get_tradeoff_model_predictors():
 
 def detect_tradeoff_factors(raw_data, demographics, tradeoff_data):
     """Legacy function - calls the new service"""
-    return tradeoff_calculator.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
+    val, _ = tradeoff_calculator.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
+    return val
 
 
 def calculate_tradeoff_scores(raw_data, demographics, tradeoff_data):
