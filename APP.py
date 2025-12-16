@@ -76,6 +76,15 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# --- Rate Limiting ---
+# Initialize Flask-Limiter (must be defined before decorators)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://" 
+)
+
 # R-01 Risk Mitigation: Ensure FLASK_SECRET_KEY is set from environment
 SECRET_KEY = get_secret('FLASK_SECRET_KEY')
 if not SECRET_KEY:
@@ -672,14 +681,7 @@ def add_security_headers(response: Response):
     response.headers['Pragma'] = 'no-cache'
     return response
 
-# --- Rate Limiting ---
-# Initialize Flask-Limiter
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://" 
-)
+
 
 # --- Main Execution ---
 
@@ -696,6 +698,7 @@ csp = {
         '\'self\'',
         'cdn.jsdelivr.net',
         'cdnjs.cloudflare.com',
+        '\'unsafe-inline\''
     ],
     'font-src': ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'],
     'img-src': ['\'self\'', 'data:'],  # Allow images from self and data URIs
