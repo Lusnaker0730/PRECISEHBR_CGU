@@ -264,34 +264,61 @@ def export_ccd_api():
         
         # Log received data for debugging
         app.logger.info(f"CCD export request received")
-        app.logger.info(f"Request data keys: {list(data.keys())}")
         
         # Get patient data from session
         patient_id = session.get('patient_id', 'N/A')
-        app.logger.info(f"Patient ID from session: {patient_id}")
         
-        # Get or retrieve risk assessment data
+        # Get risk assessment data
         risk_data = data.get('risk_data')
         if not risk_data:
-            app.logger.error("Risk assessment data missing in CCD export request")
-            app.logger.error(f"Available keys in request: {list(data.keys())}")
-            return jsonify({'error': 'Risk assessment data is required. Please calculate risk first.'}), 400
+            return jsonify({'error': 'Risk assessment data is required.'}), 400
         
-        app.logger.info(f"Risk data received: {risk_data}")
-        
-        # Validate required risk data fields
-        required_fields = ['total_score', 'risk_category']
-        missing_fields = [field for field in required_fields if field not in risk_data]
-        if missing_fields:
-            app.logger.error(f"Missing required fields in risk_data: {missing_fields}")
-            app.logger.error(f"Available fields in risk_data: {list(risk_data.keys())}")
-            return jsonify({
-                'error': f'Missing required risk data fields: {", ".join(missing_fields)}',
-                'details': 'Please ensure all risk calculations are complete before exporting.',
-                'received_fields': list(risk_data.keys()),
-                'missing_fields': missing_fields
-            }), 400
-        
+        # Security Issue A: Clinical Data Integrity / Forgery Protection
+        # Recalculate score server-side based on inputs to ensure consistency
+        try:
+            # Construct inputs for calculator
+            calc_inputs = {
+                'age': float(data.get('patient_age')) if data.get('patient_age') and str(data.get('patient_age')) != 'Unknown' else None,
+                'hb': float(risk_data.get('hemoglobin')) if risk_data.get('hemoglobin') and risk_data.get('hemoglobin') != 'Not available' else None,
+                'egfr': float(risk_data.get('egfr')) if risk_data.get('egfr') and risk_data.get('egfr') != 'Not available' else None,
+                'wbc': float(risk_data.get('wbc')) if risk_data.get('wbc') and risk_data.get('wbc') != 'Not available' else None,
+                'prior_bleeding': 'Prior spontaneous bleeding' in str(risk_data.get('arc_hbr_factors', [])),
+                'oral_anticoag': 'oral anticoagulation' in str(risk_data.get('arc_hbr_factors', [])),
+                'arc_hbr_count': 0,
+                'missing_fields': [],
+                'metadata': {'age_effective': 0, 'hb_effective': 0, 'egfr_effective': 0, 'wbc_effective': 0}
+            }
+            
+            # Recalculate effective values
+            from services.precise_hbr_calculator import precise_hbr_calculator
+            
+            if calc_inputs['age']: calc_inputs['metadata']['age_effective'] = max(30, min(80, calc_inputs['age']))
+            if calc_inputs['hb']: calc_inputs['metadata']['hb_effective'] = max(5.0, min(15.0, calc_inputs['hb']))
+            if calc_inputs['egfr']: calc_inputs['metadata']['egfr_effective'] = max(5, min(100, calc_inputs['egfr']))
+            if calc_inputs['wbc']: calc_inputs['metadata']['wbc_effective'] = min(15.0, calc_inputs['wbc'])
+            
+            arc_factors = risk_data.get('arc_hbr_factors', [])
+            count_factors = 0
+            for f in arc_factors:
+                f_lower = f.lower()
+                if ('prior spontaneous bleeding' not in f_lower and 'oral anticoagulation' not in f_lower):
+                    count_factors += 1
+            calc_inputs['arc_hbr_count'] = count_factors
+            
+            # Perform calculation
+            calculated_score, _ = precise_hbr_calculator.calculate_pure_score(calc_inputs)
+            client_score = float(risk_data.get('total_score', 0))
+            
+            if abs(calculated_score - client_score) > 1.0:
+                app.logger.warning(f"SECURITY ADVISORY: Client score ({client_score}) mismatches server calculation ({calculated_score}). Enforcing server calculation.")
+                risk_data['total_score'] = calculated_score
+                from services.risk_classifier import risk_classifier
+                display_info = risk_classifier.get_precise_hbr_display_info(calculated_score)
+                risk_data['risk_category'] = display_info['full_label']
+            
+        except Exception as calc_err:
+            app.logger.error(f"Error verifying risk score: {calc_err}")
+            
         # Prepare patient demographics
         patient_data = {
             'id': patient_id,
@@ -301,35 +328,21 @@ def export_ccd_api():
             'age': data.get('patient_age', 'Unknown')
         }
         
-        app.logger.info(f"Generating CCD with patient_data: {patient_data}")
-        app.logger.info(f"Risk data for CCD: egfr={risk_data.get('egfr')}, hemoglobin={risk_data.get('hemoglobin')}, wbc={risk_data.get('wbc')}")
-        
         # Generate CCD document
         try:
             ccd_xml = generate_ccd_from_session_data(
                 patient_data=patient_data,
                 risk_data=risk_data,
-                raw_fhir_data={}  # Optional: could pass full FHIR data if needed
+                raw_fhir_data={}
             )
         except Exception as ccd_error:
             app.logger.error(f"Error generating CCD document: {str(ccd_error)}")
-            app.logger.error(f"Error type: {type(ccd_error).__name__}")
-            import traceback
-            app.logger.error(f"Traceback: {traceback.format_exc()}")
-            return jsonify({
-                'error': 'Failed to generate CCD document',
-                'details': str(ccd_error),
-                'error_type': type(ccd_error).__name__
-            }), 500
+            return jsonify({'error': 'Failed to generate CCD document', 'details': str(ccd_error)}), 500
         
-        # Log successful export
-        app.logger.info(f"CCD document generated for patient: {patient_id}")
-        
-        # Sanitize patient_id for safe use in filename (prevent header injection)
+        # Sanitize patient_id
         safe_patient_id = re.sub(r'[^\w\-]', '_', str(patient_id))
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Return the CCD as downloadable XML
         return Response(
             ccd_xml,
             mimetype='application/xml',
@@ -664,14 +677,13 @@ csp = {
     'script-src': [
         '\'self\'',
         'cdn.jsdelivr.net',
-        'cdnjs.cloudflare.com',  # Allow scripts from Cloudflare CDN
-        '\'unsafe-inline\''       # Allow inline scripts for compatibility
+        'cdnjs.cloudflare.com',
     ],
     'style-src': [
         '\'self\'',
         'cdn.jsdelivr.net',
         'cdnjs.cloudflare.com',
-        '\'unsafe-inline\''       # Allow inline styles for compatibility
+        '\'unsafe-inline\''       # Allow inline styles (required for Bootstrap/legacy)
     ],
     'font-src': ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'],
     'img-src': ['\'self\'', 'data:'],  # Allow images from self and data URIs
@@ -681,7 +693,8 @@ csp = {
         'cdnjs.cloudflare.com'
     ]
 }
-Talisman(app, content_security_policy=csp)
+# Security Issue C: Add nonce support
+Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src', 'style-src'])
 
 # Initialize CSRF protection
 csrf = CSRFProtect()
@@ -691,9 +704,8 @@ csrf.init_app(app)
 csrf.exempt(launch)
 csrf.exempt(callback)
 csrf.exempt(exchange_code)
-csrf.exempt(calculate_risk_api)
-csrf.exempt(export_ccd_api)  # Exempt CCD export API
-csrf.exempt(tradeoff_bp) # Exempt the entire blueprint
+# Security Issue B: Remove exemptions for sensitive endpoints
+# calculate_risk_api, export_ccd_api, tradeoff_bp are now protected.
 csrf.exempt(hooks_bp) # Exempt CDS Hooks blueprint (external services)
 
 # Enable CORS for CDS Hooks endpoints (required for external CDS Hooks clients)
