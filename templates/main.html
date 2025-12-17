@@ -1208,7 +1208,16 @@
         }
 
         const finalScore = Math.round(totalScoreRaw);
-        updateTotalScoreUI(finalScore);
+
+        // Check if any component is outdated (check original scoreComponentData for is_outdated flag)
+        // AND use the check if the value hasn't been manually overruled (though currently we don't track overruled easily, 
+        // so we stick to the safe assumption: if source was outdated, warn the user).
+        let hasOutdatedData = false;
+        if (scoreComponentData) {
+            hasOutdatedData = scoreComponentData.some(item => item.is_outdated === true);
+        }
+
+        updateTotalScoreUI(finalScore, hasOutdatedData);
 
         // Update missing data warning after recalculation
         updateMissingDataWarning();
@@ -1236,7 +1245,7 @@
         displayMissingDataWarning(remainingMissingItems);
     }
 
-    function updateTotalScoreUI(score) {
+    function updateTotalScoreUI(score, hasOutdatedData = false) {
         const totalScoreEl = document.getElementById('total-score');
         const riskLevelEl = document.getElementById('risk-level');
 
@@ -1319,6 +1328,23 @@
         } else {
             // Hide HBR recommendations if score drops below threshold
             hbrRecommendationsSection.classList.add('d-none');
+        }
+
+        // --- NEW: Outdated Data Warning ---
+        // Add warning about outdated data
+        const outdatedWarningId = 'outdated-data-warning';
+        const existingOutdated = totalScoreCard.querySelector(`#${outdatedWarningId}`);
+        if (existingOutdated) existingOutdated.remove();
+
+        if (hasOutdatedData) {
+            const outdatedDiv = document.createElement('div');
+            outdatedDiv.id = outdatedWarningId;
+            outdatedDiv.className = 'alert alert-danger mt-3 mb-0';
+            outdatedDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Data Outdated (>3 months):</strong> Risk score may be unreliable. Please re-verify values.
+            `;
+            totalScoreCard.appendChild(outdatedDiv);
         }
     }
 
