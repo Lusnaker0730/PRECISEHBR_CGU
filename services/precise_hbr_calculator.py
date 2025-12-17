@@ -5,6 +5,8 @@ Calculates PRECISE-HBR bleeding risk score
 import logging
 from services.unit_conversion_service import unit_converter
 from services.condition_checker import condition_checker
+from datetime import datetime, timedelta
+import re
 
 
 class PreciseHBRCalculator:
@@ -16,6 +18,42 @@ class PreciseHBRCalculator:
     MIN_EGFR, MAX_EGFR = 5, 100
     MAX_WBC = 15.0
     
+    @staticmethod
+    def _is_outdated(date_str):
+        """Checks if the date is older than 3 months"""
+        if not date_str or date_str == 'N/A':
+            return False
+            
+        try:
+            # Clean up date string
+            date_str = str(date_str).strip()
+            
+            # Handle pure date "YYYY-MM-DD"
+            if len(date_str) == 10 and '-' in date_str:
+                 dt = datetime.strptime(date_str, "%Y-%m-%d")
+            # Handle ISO format
+            elif 'T' in date_str:
+                # Simple truncation to seconds/handling Z
+                # Replace Z with +00:00 for fromisoformat compatibility
+                if date_str.endswith('Z'):
+                    date_str = date_str[:-1] + '+00:00'
+                dt = datetime.fromisoformat(date_str)
+            else:
+                return False
+                
+            # Compare with 3 months ago (90 days)
+            # Handle timezone awareness
+            if dt.tzinfo:
+                now = datetime.now(dt.tzinfo)
+            else:
+                now = datetime.now()
+                
+            return (now - dt) > timedelta(days=90)
+            
+        except Exception as e:
+            logging.warning(f"Error parsing date {date_str}: {e}")
+            return False
+
     @classmethod
     def calculate_score(cls, raw_data, demographics):
         """
@@ -143,6 +181,7 @@ class PreciseHBRCalculator:
             egfr_obs = egfr_list[0]
             egfr_val = unit_converter.get_value_from_observation(egfr_obs, unit_converter.TARGET_UNITS['EGFR'])
             egfr_source = "Direct eGFR"
+            inputs['metadata']['egfr_date'] = egfr_obs.get('effectiveDateTime', 'N/A')
             
         if egfr_val is None:
             creatinine_list = raw_data.get('CREATININE', [])
@@ -154,6 +193,8 @@ class PreciseHBRCalculator:
                     if calc_egfr:
                         egfr_val = calc_egfr
                         egfr_source = reason
+                        inputs['metadata']['egfr_date'] = creatinine_obs.get('effectiveDateTime', 'N/A')
+
         
         if egfr_val is not None:
             inputs['egfr'] = egfr_val
@@ -340,7 +381,9 @@ class PreciseHBRCalculator:
                 "value": f"{hb} g/dL",
                 "score": round(breakdown['hb']),
                 "raw_value": hb,
+                "raw_value": hb,
                 "date": inputs['metadata'].get('hb_date', 'N/A'),
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('hb_date', 'N/A')),
                 "description": f"Hb score: {breakdown['hb']:.2f}"
             })
             
@@ -357,7 +400,9 @@ class PreciseHBRCalculator:
                 "value": f"{egfr} mL/min/1.73m²",
                 "score": round(breakdown['egfr']),
                 "raw_value": egfr,
-                "date": "N/A", 
+                "raw_value": egfr,
+                "date": inputs['metadata'].get('egfr_date', 'N/A'), 
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('egfr_date', 'N/A')),
                 "description": f"eGFR score: {breakdown['egfr']:.2f}"
             })
             
@@ -373,7 +418,9 @@ class PreciseHBRCalculator:
                 "value": f"{wbc} 10^9/L",
                 "score": round(breakdown['wbc']),
                 "raw_value": wbc,
+                "raw_value": wbc,
                 "date": inputs['metadata'].get('wbc_date', 'N/A'),
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('wbc_date', 'N/A')),
                 "description": f"WBC score: {breakdown['wbc']:.2f}"
             })
             

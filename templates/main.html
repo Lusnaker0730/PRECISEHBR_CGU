@@ -1004,7 +1004,10 @@
                         </td>
                         <td>${valueControl}</td>
                         <td>${scoreBadgeHtml}</td>
-                        <td class="table-cell-lg">${item.date || 'N/A'}</td>
+                        <td class="table-cell-lg ${item.is_outdated ? 'text-danger' : ''}">
+                            ${item.date || 'N/A'}
+                            ${item.is_outdated ? '<br><small><i class="fas fa-exclamation-circle"></i> 請重新檢驗</small>' : ''}
+                        </td>
                     </tr>
                 `;
                 componentsBody.innerHTML += row;
