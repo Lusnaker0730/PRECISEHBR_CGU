@@ -569,13 +569,21 @@ def main_page():
     patient_id = session.get('patient_id', 'N/A')
     return render_template('main.html', patient_id=patient_id)
 
+import random
+
+# ... (imports) ...
+
 @app.route('/report-issue')
 def report_issue_page():
     """
     ONC Compliance: 45 CFR 170.523 (n) - Complaint Process
     Display the complaint/issue reporting form
     """
-    return render_template('report_issue.html')
+    # Generate simple math CAPTCHA
+    num1 = random.randint(1, 10)
+    num2 = random.randint(1, 10)
+    session['captcha_answer'] = num1 + num2
+    return render_template('report_issue.html', captcha_question=f"{num1} + {num2} = ?")
 
 @app.route('/submit-complaint', methods=['POST'])
 def submit_complaint():
@@ -583,6 +591,21 @@ def submit_complaint():
     ONC Compliance: 45 CFR 170.523 (n) - Complaint Process
     Handle complaint submission and storage
     """
+    # Verify CAPTCHA
+    user_answer = request.form.get('captcha_answer')
+    expected_answer = session.pop('captcha_answer', None)
+    
+    if not expected_answer or not user_answer or str(expected_answer) != str(user_answer).strip():
+        # Regenerate CAPTCHA for retry
+        num1 = random.randint(1, 10)
+        num2 = random.randint(1, 10)
+        session['captcha_answer'] = num1 + num2
+        
+        return render_template('report_issue.html', 
+                             error="Security check failed. Please solve the math problem correctly.",
+                             captcha_question=f"{num1} + {num2} = ?",
+                             prev_data=request.form), 400
+
     import datetime
     import json
     import uuid
