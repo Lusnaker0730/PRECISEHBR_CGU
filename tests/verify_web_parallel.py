@@ -121,7 +121,7 @@ def verify_parallel():
                 if match:
                     try:
                         web_score = int(float(match.group(1)))
-                    except:
+                    except ValueError:
                         pass
                 
                 case_id = case['case_id']

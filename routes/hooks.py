@@ -99,7 +99,7 @@ def create_precise_hbr_warning_card(
         "indicator": indicator,
         "source": {
             "label": "PRECISE-HBR Bleeding Risk Calculator",
-            "url": "https://www.precisehbr.com"
+            "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
         },
         "suggestions": [
             {
@@ -320,7 +320,7 @@ def precise_hbr_patient_view():
                           f"The score assumes normal values for missing fields, which may underestimate risk.",
                 "source": {
                     "label": "PRECISE-HBR Risk Assessment",
-                    "url": "https://www.precisehbr.com"
+                    "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
                 },
                 "suggestions": [
                      {
@@ -368,7 +368,7 @@ def precise_hbr_patient_view():
                  # This means get_precise_hbr_display_info behaves differently or I misread. 
                  # Let's assume it returns a DICT based on line 264 which is in the same function we are editing.
                  pass
-        except:
+        except Exception:
              # Fallback
              full_label = "Risk Assessment"
              recommendation = ""

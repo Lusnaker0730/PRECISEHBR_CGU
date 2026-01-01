@@ -864,8 +864,8 @@
                 <span class="tooltip-content">
                     <strong>${tooltip.title}</strong><br><br>
                     ${tooltip.content}<br><br>
-                    <strong>正常範圍:</strong><br>${tooltip.normalRange}<br><br>
-                    <strong>風險因子:</strong><br>${tooltip.riskFactors}
+                    <strong>Normal Range:</strong><br>${tooltip.normalRange}<br><br>
+                    <strong>Risk Factors:</strong><br>${tooltip.riskFactors}
                 </span>
             </span>
         `;
@@ -924,7 +924,7 @@
 
                     // Add unit toggle button for Hemoglobin
                     const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                        `<button type="button" class="unit-toggle-btn" title="切換單位">⇄</button>` : '';
+                        `<button type="button" class="unit-toggle-btn" title="Toggle Unit">⇄</button>` : '';
 
                     valueControl = `
                         <div class="input-group input-group-lg-text">
@@ -962,7 +962,7 @@
 
                     // Add unit toggle button for Hemoglobin
                     const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                        `<button type="button" class="unit-toggle-btn" title="切換單位">⇄</button>` : '';
+                        `<button type="button" class="unit-toggle-btn" title="Toggle Unit">⇄</button>` : '';
 
                     valueControl = `
                         <div class="input-group input-group-lg-text">
@@ -1006,7 +1006,7 @@
                         <td>${scoreBadgeHtml}</td>
                         <td class="table-cell-lg ${item.is_outdated ? 'text-danger' : ''}">
                             ${item.date || 'N/A'}
-                            ${item.is_outdated ? '<br><small><i class="fas fa-exclamation-circle"></i> 請重新檢驗</small>' : ''}
+                            ${item.is_outdated ? '<br><small><i class="fas fa-exclamation-circle"></i> Please Retest</small>' : ''}
                         </td>
                     </tr>
                 `;
@@ -1071,22 +1071,22 @@
                 <i class="fas fa-exclamation-triangle text-warning"></i>
             `;
             document.getElementById('risk-level').innerHTML = `
-                <span class="text-warning">資訊不完整</span>
+                <span class="text-warning">Incomplete Data</span>
             `;
             document.getElementById('recommendation').innerHTML = `
                 <div class="alert alert-warning mb-0" role="alert">
-                    <strong><i class="fas fa-edit"></i> 請填入以下缺少的資料：</strong>
+                    <strong><i class="fas fa-edit"></i> Please enter the following missing data:</strong>
                     <ul class="mb-0 mt-2">
                         ${missingCriticalData.map(param => {
                 let displayName = param;
-                if (param === 'Age') displayName = 'Age（年齡）';
-                if (param === 'Hemoglobin') displayName = 'Hemoglobin（血紅素）';
-                if (param === 'eGFR') displayName = 'eGFR（腎絲球過濾率）';
-                if (param === 'White Blood Cell') displayName = 'White Blood Cell（白血球）';
+                if (param === 'Age') displayName = 'Age';
+                if (param === 'Hemoglobin') displayName = 'Hemoglobin';
+                if (param === 'eGFR') displayName = 'eGFR (Glomerular Filtration Rate)';
+                if (param === 'White Blood Cell') displayName = 'White Blood Cell Count';
                 return `<li><strong>${displayName}</strong></li>`;
             }).join('')}
                     </ul>
-                    <p class="mb-0 mt-2"><small>填入完整資料後，風險分數將自動計算。</small></p>
+                    <p class="mb-0 mt-2"><small>Once complete data is entered, the risk score will be calculated automatically.</small></p>
                 </div>
             `;
 
@@ -1261,19 +1261,19 @@
             riskPercent = 0.5 + (score / 22) * 3.0;
             riskCategory = `Not high bleeding risk (score ≤22)`;
             colorClass = 'text-success';
-            scoreColor = '#28a745'; // 綠色 (green)
+            scoreColor = '#28a745'; // green
         } else if (score <= 26) {
             riskPercent = 3.5 + ((score - 22) / 4) * 2.0;
             riskCategory = `HBR (score 23-26)`;
             colorClass = 'text-warning';
-            scoreColor = '#fd7e14'; // 橘色 (orange)
+            scoreColor = '#fd7e14'; // orange
         } else { // score >= 27
             riskPercent = 5.5 + ((score - 26) / 4) * 2.5;
             if (score > 30) riskPercent = 8.0 + ((score - 30) / 5) * 4.0;
             if (score > 35) riskPercent = 12.0 + ((score - 35) / 10) * 3.0;
             riskCategory = `Very HBR (score ≥27)`;
             colorClass = 'text-danger';
-            scoreColor = '#dc3545'; // 紅色 (red)
+            scoreColor = '#dc3545'; // red
         }
         riskPercent = Math.min(15.0, riskPercent);
         recommendation = `1-year risk of major bleeding: ${riskPercent.toFixed(2)}% (Bleeding Academic Research Consortium [BARC] type 3 or 5)`;

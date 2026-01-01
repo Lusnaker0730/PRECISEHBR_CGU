@@ -10,15 +10,17 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 60vh; /* Adjust as needed */
+        min-height: 60vh;
+        /* Adjust as needed */
     }
+
     .launch-card {
         max-width: 500px;
         width: 100%;
         padding: 2rem;
         background: white;
         border-radius: 0.5rem;
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
     }
 </style>
 
@@ -26,10 +28,11 @@
     <div class="launch-card">
         <h2 class="text-center mb-4">Standalone App Launch</h2>
         <p class="text-muted text-center mb-4">Enter the FHIR Server URL (ISS) to launch the application.</p>
-        <form action="{{ url_for('initiate_launch') }}" method="POST">
+        <form action="{{ url_for('web.initiate_launch') }}" method="POST">
             <div class="mb-3">
                 <label for="iss" class="form-label">FHIR Server URL (ISS)</label>
-                <input type="url" class="form-control" id="iss" name="iss" placeholder="https://fhir.example.com/r4" required>
+                <input type="url" class="form-control" id="iss" name="iss" placeholder="https://fhir.example.com/r4"
+                    required>
             </div>
             <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-lg">Launch</button>
