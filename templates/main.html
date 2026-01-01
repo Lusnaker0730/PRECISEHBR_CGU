@@ -375,106 +375,106 @@
     // === NEW: Clinical tooltips data ===
     const clinicalTooltips = {
         'Age': {
-            title: 'Age（年齡）',
-            content: '年齡是 PRECISE-HBR 模型中的連續變數。計算時會截斷至 30-80 歲範圍，年齡越大分數越高。',
-            normalRange: '計算範圍：30-80 歲',
-            riskFactors: '計分權重：每增加 1 歲 = +0.25 分<br>範例：65歲 = (65-30)×0.25 = 8.75 分'
+            title: 'Age',
+            content: 'Age is a continuous variable in the PRECISE-HBR model. It is truncated to the 30-80 years range during calculation; older age increases the score.',
+            normalRange: 'Calculation Range: 30-80 years',
+            riskFactors: 'Score Weight: +0.25 points per year increase<br>Example: 65 years = (65-30) × 0.25 = 8.75 points'
         },
         'Hemoglobin': {
-            title: 'Hemoglobin（血紅素）',
-            content: '血紅素是 PRECISE-HBR 模型中的連續變數。計算時會截斷至 5-15 g/dL 範圍，血紅素越低分數越高。',
-            normalRange: '計算範圍：5-15 g/dL',
-            riskFactors: '計分權重：每降低 1 g/dL = +2.5 分<br>範例：12 g/dL = (15-12)×2.5 = 7.5 分'
+            title: 'Hemoglobin',
+            content: 'Hemoglobin is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-15 g/dL range during calculation; lower hemoglobin increases the score.',
+            normalRange: 'Calculation Range: 5-15 g/dL',
+            riskFactors: 'Score Weight: +2.5 points per 1 g/dL decrease<br>Example: 12 g/dL = (15-12) × 2.5 = 7.5 points'
         },
         'eGFR': {
-            title: 'eGFR（腎絲球過濾率）',
-            content: 'eGFR 是 PRECISE-HBR 模型中的連續變數。計算時會截斷至 5-100 mL/min 範圍，腎功能越差分數越高。',
-            normalRange: '計算範圍：5-100 mL/min/1.73m²',
-            riskFactors: '計分權重：每降低 1 mL/min = +0.05 分<br>範例：60 mL/min = (100-60)×0.05 = 2.0 分'
+            title: 'eGFR (Estimated Glomerular Filtration Rate)',
+            content: 'eGFR is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-100 mL/min range; lower kidney function increases the score.',
+            normalRange: 'Calculation Range: 5-100 mL/min/1.73m²',
+            riskFactors: 'Score Weight: +0.05 points per 1 mL/min decrease<br>Example: 60 mL/min = (100-60) × 0.05 = 2.0 points'
         },
         'White Blood Cell': {
-            title: 'White Blood Cell（白血球）',
-            content: '白血球是 PRECISE-HBR 模型中的連續變數。計算時會截斷至最高 15 ×10⁹/L，白血球越高分數越高。',
-            normalRange: '計算範圍：0-15 ×10⁹/L',
-            riskFactors: '計分權重：每增加 1 ×10⁹/L = +0.5 分<br>範例：10 ×10⁹/L = 10×0.5 = 5.0 分'
+            title: 'White Blood Cell',
+            content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 ×10⁹/L; higher WBC increases the score.',
+            normalRange: 'Calculation Range: 0-15 ×10⁹/L',
+            riskFactors: 'Score Weight: +0.5 points per 1 ×10⁹/L increase<br>Example: 10 ×10⁹/L = 10 × 0.5 = 5.0 points'
         },
         'White Blood Cell Count': {
-            title: 'White Blood Cell Count（白血球計數）',
-            content: '白血球是 PRECISE-HBR 模型中的連續變數。計算時會截斷至最高 15 ×10⁹/L，白血球越高分數越高。',
-            normalRange: '計算範圍：0-15 ×10⁹/L',
-            riskFactors: '計分權重：每增加 1 ×10⁹/L = +0.5 分<br>範例：10 ×10⁹/L = 10×0.5 = 5.0 分'
+            title: 'White Blood Cell Count',
+            content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 ×10⁹/L; higher WBC increases the score.',
+            normalRange: 'Calculation Range: 0-15 ×10⁹/L',
+            riskFactors: 'Score Weight: +0.5 points per 1 ×10⁹/L increase<br>Example: 10 ×10⁹/L = 10 × 0.5 = 5.0 points'
         },
         'Previous bleeding': {
-            title: 'Previous Bleeding（既往出血史）',
-            content: '既往嚴重出血史是未來出血最強的預測因子。包括消化道出血、顱內出血、需要輸血的出血等。',
-            normalRange: '無出血史',
-            riskFactors: '有出血史者風險顯著增加（+7分）'
+            title: 'Previous Bleeding',
+            content: 'History of spontaneous bleeding is the strongest predictor of future bleeding. Includes gastrointestinal bleeding, intracranial hemorrhage, or bleeding requiring transfusion.',
+            normalRange: 'No history of bleeding',
+            riskFactors: 'Significant risk increase for those with history (+7 points)'
         },
         'Long-term OAC': {
-            title: 'Long-term Oral Anticoagulation（長期口服抗凝藥）',
-            content: '長期使用口服抗凝劑（如Warfarin、DOAC）會顯著增加出血風險，特別是與抗血小板藥物合併使用時。',
-            normalRange: '未使用',
-            riskFactors: '使用者出血風險翻倍（+5分）'
+            title: 'Long-term Oral Anticoagulation',
+            content: 'Long-term use of oral anticoagulants (e.g., Warfarin, DOACs) significantly increases bleeding risk, especially when combined with antiplatelet therapy.',
+            normalRange: 'Not used',
+            riskFactors: 'Doubles the bleeding risk (+5 points)'
         },
         'Long-term oral anticoagulation': {
-            title: 'Long-term Oral Anticoagulation（長期口服抗凝藥）',
-            content: '長期使用口服抗凝劑（如Warfarin、新型口服抗凝劑DOAC）會顯著增加出血風險。與雙重或三重抗血小板治療併用時，出血風險進一步升高。',
-            normalRange: '未使用抗凝劑',
-            riskFactors: 'ARC-HBR 主要準則，單獨即達高出血風險'
+            title: 'Long-term Oral Anticoagulation',
+            content: 'Long-term use of oral anticoagulants (e.g., Warfarin, DOACs) significantly increases bleeding risk. Bleeding risk is further elevated when used with dual or triple antiplatelet therapy.',
+            normalRange: 'Not used',
+            riskFactors: 'ARC-HBR Major Criterion'
         },
         'Platelet count': {
-            title: 'Platelet Count（血小板計數）',
-            content: '血小板是凝血功能的關鍵。血小板過低（<100×10⁹/L）會削弱凝血能力，增加自發性出血和創傷後出血風險。可能由骨髓疾病、脾功能亢進或藥物引起。',
+            title: 'Platelet Count',
+            content: 'Platelets are key for coagulation. Low platelet count (<100×10⁹/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding. Can be caused by marrow disease, hypersplenism, or medications.',
             normalRange: '150-400 ×10⁹/L',
-            riskFactors: '<100 ×10⁹/L 為 ARC-HBR 主要準則<br><50 ×10⁹/L 為嚴重血小板減少'
+            riskFactors: '<100 ×10⁹/L is an ARC-HBR Major Criterion<br><50 ×10⁹/L is severe thrombocytopenia'
         },
         'Platelet count <100': {
-            title: 'Platelet Count <100 ×10⁹/L（血小板減少）',
-            content: '血小板是凝血功能的關鍵。血小板過低（<100×10⁹/L）會削弱凝血能力，增加自發性出血和創傷後出血風險。可能由骨髓疾病、脾功能亢進或藥物引起。',
+            title: 'Platelet Count <100 ×10⁹/L (Thrombocytopenia)',
+            content: 'Platelets are key for coagulation. Low platelet count (<100×10⁹/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding.',
             normalRange: '150-400 ×10⁹/L',
-            riskFactors: '<100 ×10⁹/L 為 ARC-HBR 主要準則<br><50 ×10⁹/L 為嚴重血小板減少'
+            riskFactors: '<100 ×10⁹/L is an ARC-HBR Major Criterion'
         },
         'Chronic bleeding diathesis': {
-            title: 'Chronic Bleeding Diathesis（慢性出血體質）',
-            content: '指先天或後天的凝血功能障礙，如血友病、von Willebrand病、纖維蛋白原缺乏症等。這些患者的凝血機制本身存在缺陷，抗血小板治療會進一步增加出血風險。',
-            normalRange: '無凝血功能障礙',
-            riskFactors: 'ARC-HBR 主要準則<br>包括：血友病、von Willebrand病、凝血因子缺乏'
+            title: 'Chronic Bleeding Diathesis',
+            content: 'Refers to congenital or acquired coagulation disorders, such as Hemophilia, von Willebrand disease, etc. These patients have inherent clotting defects, and antiplatelet therapy further increases risk.',
+            normalRange: 'No coagulation disorder',
+            riskFactors: 'ARC-HBR Major Criterion<br>Includes: Hemophilia, von Willebrand disease, Factor deficiency'
         },
         'Liver cirrhosis': {
-            title: 'Liver Cirrhosis with Portal Hypertension（肝硬化合併門脈高壓）',
-            content: '肝硬化導致凝血因子合成減少，門脈高壓造成食道靜脈曲張和脾功能亢進（導致血小板減少）。這些因素共同顯著增加消化道大出血風險。',
-            normalRange: '無肝硬化',
-            riskFactors: 'ARC-HBR 主要準則<br>食道靜脈曲張破裂死亡率高達20-30%'
+            title: 'Liver Cirrhosis with Portal Hypertension',
+            content: 'Cirrhosis reduces coagulation factor synthesis, while portal hypertension causes esophageal varices and hypersplenism (low platelets). Together, these significantly increase risk of major GI bleeding.',
+            normalRange: 'No cirrhosis',
+            riskFactors: 'ARC-HBR Major Criterion<br>Mortality from variceal bleeding is 20-30%'
         },
         'Active malignancy': {
-            title: 'Active Malignancy（活動性惡性腫瘤）',
-            content: '活動性癌症（過去12個月內診斷或治療中的惡性腫瘤，不包括皮膚基底細胞癌）會增加出血風險。腫瘤本身、化療和放療都可能影響凝血功能和血小板數量。',
-            normalRange: '無活動性惡性腫瘤',
-            riskFactors: 'ARC-HBR 主要準則<br>出血風險與腫瘤類型、分期和治療相關'
+            title: 'Active Malignancy',
+            content: 'Active cancer (diagnosed or treated within past 12 months, excluding non-melanoma skin cancer) increases bleeding risk. The tumor itself, chemotherapy, and radiation can affect coagulation and platelets.',
+            normalRange: 'No active malignancy',
+            riskFactors: 'ARC-HBR Major Criterion<br>Risk depends on tumor type, stage, and treatment'
         },
         'Chronic use of nsaids': {
-            title: 'Chronic Use of NSAIDs or Corticosteroids（長期使用消炎藥或類固醇）',
-            content: 'NSAIDs（非類固醇消炎藥）會抑制血小板功能並損傷胃黏膜，增加消化道出血風險。類固醇長期使用會削弱血管壁，增加出血傾向。兩者與抗血小板藥物併用時風險疊加。',
-            normalRange: '未長期使用',
-            riskFactors: 'ARC-HBR 次要準則<br>包括：ibuprofen、naproxen、類固醇等'
+            title: 'Chronic Use of NSAIDs or Corticosteroids',
+            content: 'NSAIDs inhibit platelet function and damage gastric mucosa, increasing GI bleeding risk. Long-term steroids weaken vessel walls. Risk is additive when combined with antiplatelet drugs.',
+            normalRange: 'No chronic use',
+            riskFactors: 'ARC-HBR Minor Criterion<br>Includes: ibuprofen, naproxen, steroids, etc.'
         },
         'Anemia': {
-            title: 'Anemia（貧血）',
-            content: '貧血（血紅素 <11 g/dL）本身可能是慢性出血的表現，也會降低患者對出血併發症的耐受性。貧血患者若發生出血事件，更容易出現血流動力學不穩定。',
-            normalRange: '血紅素 ≥13 g/dL（男性）、≥12 g/dL（女性）',
-            riskFactors: 'Hb <11 g/dL 為 ARC-HBR 次要準則'
+            title: 'Anemia',
+            content: 'Anemia (Hb <11 g/dL) may indicate chronic bleeding and reduces tolerance to bleeding complications. Anemic patients are more prone to hemodynamic instability if bleeding occurs.',
+            normalRange: 'Hb ≥13 g/dL (Male), ≥12 g/dL (Female)',
+            riskFactors: 'Hb <11 g/dL is an ARC-HBR Minor Criterion'
         },
         'Chronic kidney disease': {
-            title: 'Chronic Kidney Disease（慢性腎臟病）',
-            content: '慢性腎臟病（eGFR <60 mL/min）會影響血小板功能和凝血因子代謝，同時許多抗血栓藥物需要經腎臟代謝，腎功能不全會導致藥物蓄積，增加出血風險。',
+            title: 'Chronic Kidney Disease',
+            content: 'CKD (eGFR <60 mL/min) affects platelet function and coagulation factor metabolism. Also, many antithrombotics are renally cleared; impairment leads to accumulation and bleeding.',
             normalRange: 'eGFR ≥60 mL/min/1.73m²',
-            riskFactors: 'eGFR <60 為 ARC-HBR 次要準則<br>eGFR <30 為主要準則'
+            riskFactors: 'eGFR <60 is an ARC-HBR Minor Criterion<br>eGFR <30 is a Major Criterion'
         },
         'Thrombocytopenia': {
-            title: 'Thrombocytopenia（血小板減少）',
-            content: '血小板計數低於正常值會影響初級止血功能。中度血小板減少（<100×10⁹/L）即可能增加出血風險，特別是在接受侵入性操作或抗血栓治療時。',
+            title: 'Thrombocytopenia',
+            content: 'Low platelet count affects primary hemostasis. Moderate thrombocytopenia (<100×10⁹/L) may increase bleeding risk, especially during invasive procedures or antithrombotic therapy.',
             normalRange: '150-400 ×10⁹/L',
-            riskFactors: '<100 ×10⁹/L 為 ARC-HBR 主要準則'
+            riskFactors: '<100 ×10⁹/L is an ARC-HBR Major Criterion'
         }
     };
 
@@ -763,58 +763,58 @@
         if (parameterName.includes("Age")) {
             if (numValue < 18) {
                 result.level = 'error';
-                result.message = '年齡應 ≥18 歲';
+                result.message = 'Age must be ≥ 18';
             } else if (numValue > 120) {
                 result.level = 'error';
-                result.message = '年齡超出合理範圍';
+                result.message = 'Age is out of reasonable range';
             } else if (numValue >= 75) {
                 result.level = 'warning';
-                result.message = '高齡患者（≥75歲）為高出血風險';
+                result.message = 'Elderly patient (≥75 years) is at high bleeding risk';
             }
         } else if (parameterName.includes("Hemoglobin")) {
             const unit = unitSettings.hemoglobin || 'g/dL';
             if (unit === 'g/dL') {
                 if (numValue < 5) {
                     result.level = 'error';
-                    result.message = '嚴重貧血 (<5 g/dL)';
+                    result.message = 'Severe anemia (<5 g/dL)';
                 } else if (numValue < 11) {
                     result.level = 'error';
-                    result.message = '重度貧血 (<11 g/dL) - 高風險';
+                    result.message = 'Severe anemia (<11 g/dL) - High Risk';
                 } else if (numValue < 13) {
                     result.level = 'warning';
-                    result.message = '輕中度貧血 (11-13 g/dL)';
+                    result.message = 'Mild to moderate anemia (11-13 g/dL)';
                 } else if (numValue > 18) {
                     result.level = 'warning';
-                    result.message = '血紅素過高，請確認數值';
+                    result.message = 'Hemoglobin is too high, please check value';
                 }
             }
         } else if (parameterName.includes("eGFR")) {
             if (numValue < 15) {
                 result.level = 'error';
-                result.message = '嚴重腎功能不全 (<15) - 高風險';
+                result.message = 'Severe renal impairment (<15) - High Risk';
             } else if (numValue < 30) {
                 result.level = 'error';
-                result.message = '中重度腎功能不全 (<30) - 高風險';
+                result.message = 'Moderate-severe renal impairment (<30) - High Risk';
             } else if (numValue < 60) {
                 result.level = 'warning';
-                result.message = '輕中度腎功能不全 (30-60)';
+                result.message = 'Mild-moderate renal impairment (30-60)';
             } else if (numValue > 150) {
                 result.level = 'warning';
-                result.message = 'eGFR 過高，請確認數值';
+                result.message = 'eGFR is too high, please check value';
             }
         } else if (parameterName.includes("White Blood Cell")) {
-            if (numValue < 2) {
+            if (numValue < 0) {
                 result.level = 'error';
-                result.message = '白血球過低 (<2) - 可能有感染風險';
+                result.message = 'Value must be positive';
             } else if (numValue < 4) {
                 result.level = 'warning';
-                result.message = '白血球偏低 (2-4)';
-            } else if (numValue > 15) {
+                result.message = 'WBC is too low (<4)';
+            } else if (numValue > 50) {
                 result.level = 'error';
-                result.message = '白血球過高 (>15) - 提示炎症或感染';
-            } else if (numValue > 11) {
+                result.message = 'WBC is extremely high (>50)';
+            } else if (numValue > 20) {
                 result.level = 'warning';
-                result.message = '白血球偏高 (11-15)';
+                result.message = 'WBC is too high (>20)';
             }
         }
 

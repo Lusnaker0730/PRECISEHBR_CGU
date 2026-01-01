@@ -13,7 +13,7 @@
 
 <body>
     <div class="container">
-        <div id="status">正在驗證授權碼，請稍候...</div>
+        <div id="status">Validating authorization code, please wait...</div>
         <div id="error" style="display: none;"></div>
     </div>
 
@@ -35,7 +35,7 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'ok') {
-                            document.getElementById("status").innerText = "驗證成功，正在重新導向...";
+                            document.getElementById("status").innerText = "Validation successful, redirecting...";
                             window.location.href = data.redirect_url;
                         } else {
                             throw new Error(data.error || 'Backend code exchange failed.');
@@ -45,15 +45,15 @@
                         console.error("Callback Error:", error);
                         const errorDiv = document.getElementById('error');
                         const statusDiv = document.getElementById('status');
-                        statusDiv.innerText = "授權失敗！";
+                        statusDiv.innerText = "Authorization Failed!";
                         errorDiv.innerText = "Error: " + error.message;
                         errorDiv.style.display = 'block';
                     });
             } else {
                 const errorDiv = document.getElementById('error');
                 const statusDiv = document.getElementById('status');
-                statusDiv.innerText = "授權失敗！";
-                errorDiv.innerText = "URL 中缺少授權碼 (code) 或狀態 (state)。";
+                statusDiv.innerText = "Authorization Failed!";
+                errorDiv.innerText = "Authorization code or state is missing from URL.";
                 errorDiv.style.display = 'block';
             }
         });

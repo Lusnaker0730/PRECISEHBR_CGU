@@ -82,8 +82,8 @@ def get_patient_demographics(patient_resource, use_twcore=True):
     
     Enhanced to support Taiwan Core IG (TW Core IG) for Taiwan-specific requirements:
     - Chinese name support (text field)
-    - Taiwan ID (身分證字號) / Resident ID (居留證)
-    - Medical Record Number (病歷號)
+    - Taiwan ID (National ID) / Resident ID
+    - Medical Record Number
     
     Args:
         patient_resource: FHIR Patient resource dictionary

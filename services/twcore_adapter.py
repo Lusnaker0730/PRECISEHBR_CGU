@@ -49,13 +49,13 @@ class TWCoreAdapter:
         """
         demographics = {
             "name": "Unknown",
-            "name_chinese": None,  # 中文姓名
-            "name_english": None,  # 英文姓名
+            "name_chinese": None,  # Chinese name
+            "name_english": None,  # English name
             "gender": None,
             "age": None,
             "birthDate": None,
-            "taiwan_id": None,  # 身分證字號或居留證號
-            "medical_record_number": None,  # 病歷號
+            "taiwan_id": None,  # National ID or Resident ID
+            "medical_record_number": None,  # Medical Record Number
             "identifiers": []  # All identifiers
         }
         
@@ -407,7 +407,7 @@ class TWCoreAdapter:
                     "coding": [{
                         "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
                         "code": "NNxxx",  # National ID
-                        "display": "身分證字號"
+                        "display": "National ID"
                     }]
                 },
                 "value": demographics["taiwan_id"]

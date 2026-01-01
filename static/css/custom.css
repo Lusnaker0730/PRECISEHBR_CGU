@@ -1,5 +1,22 @@
 /* Custom Security Styles - Replaces inline styles for CSP Compliance */
 
+/* Import Google Fonts - Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Apply Font globally */
+body {
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
 /* Utility Classes */
 .d-none { display: none !important; }
 .cursor-pointer { cursor: pointer; }
@@ -11,7 +28,10 @@
 .font-weight-900 { font-weight: 900; }
 
 /* Alert Styles */
-.alert-hbr { border-left: 5px solid #ffc107; }
+.alert-hbr { 
+    border-left: 5px solid #ffc107;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
 
 /* Guideline Image */
 .hbr-guideline-img {
@@ -19,6 +39,12 @@
     height: auto;
     cursor: pointer;
     border: 2px solid #dee2e6;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.hbr-guideline-img:hover {
+    transform: scale(1.01);
 }
 
 /* ARC-HBR Guideline Image */
@@ -26,7 +52,8 @@
     max-width: 100%;
     height: auto;
     border: 1px solid #dee2e6;
-    border-radius: 4px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Session Warning */
@@ -35,39 +62,42 @@
     right: 20px;
     z-index: 9999;
     max-width: 400px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
 }
 
 /* Citation Box */
 .citation-box {
-    font-family: 'Courier New', monospace;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 0.9rem;
     background-color: #f8f9fa;
     padding: 1rem;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    color: #495057;
 }
 
 /* Input Fields */
 .input-group-lg-text { font-size: 1.2rem; }
-.input-number-lg { font-size: 1.2rem; font-weight: 600; }
-.input-unit-lg { font-size: 1.1rem; font-weight: 500; background-color: #e9ecef; }
+.input-number-lg { font-size: 1.2rem; font-weight: 600; border-radius: 6px; }
+.input-unit-lg { font-size: 1.1rem; font-weight: 500; background-color: #f8f9fa; }
 
 /* Missing Data Input Styles */
 .input-missing {
     font-size: 1.2rem;
     font-weight: 600;
     border: 2px solid #ffc107;
-    background-color: #fff3cd;
+    background-color: #fff8e1;
 }
 .unit-missing {
     font-size: 1.1rem;
     font-weight: 500;
-    background-color: #fff3cd;
+    background-color: #fff8e1;
     border: 2px solid #ffc107;
     border-left: none;
 }
 .icon-missing {
-    background-color: #fff3cd;
+    background-color: #fff8e1;
     border: 2px solid #ffc107;
     border-left: none;
 }
@@ -77,12 +107,12 @@
 .form-check-label-lg { font-size: 1.2rem; font-weight: 500; margin-left: 0.5rem; }
 
 /* Table Styles */
-.table-th-35 { width: 35%; font-size: 1.3rem; }
-.table-th-40 { width: 40%; font-size: 1.3rem; }
-.table-th-10 { width: 10%; font-size: 1.3rem; }
-.table-th-15 { width: 15%; font-size: 1.3rem; }
+.table-th-35 { width: 35%; font-size: 1.3rem; font-weight: 600; }
+.table-th-40 { width: 40%; font-size: 1.3rem; font-weight: 600; }
+.table-th-10 { width: 10%; font-size: 1.3rem; font-weight: 600; }
+.table-th-15 { width: 15%; font-size: 1.3rem; font-weight: 600; }
 .table-cell-lg { font-size: 1.2rem; }
-.score-badge { font-size: 1.1rem; padding: 0.5rem 0.8rem; }
+.score-badge { font-size: 1.1rem; padding: 0.5rem 0.8rem; border-radius: 6px; }
 .arc-badge-placeholder { font-size: 0.9rem; }
 .missing-list { padding-left: 1.5rem; }
 .missing-list-item { margin-bottom: 0.25rem; }
@@ -90,5 +120,48 @@
 /* Validation Message */
 .validation-message {
     font-size: 0.85rem;
-    margin-top: 3px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* Card Improvements */
+.card {
+    border: none;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    transition: box-shadow 0.2s;
+}
+
+.card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 1.25rem;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Button Improvements */
+.btn {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
+    transform: translateY(-1px);
 }
