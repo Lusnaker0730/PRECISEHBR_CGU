@@ -48,9 +48,15 @@ def create_app():
             '\'self\'',
             'cdn.jsdelivr.net',
             'cdnjs.cloudflare.com',
+            'fonts.googleapis.com',
             '\'unsafe-inline\''
         ],
-        'font-src': ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'],
+        'font-src': [
+            '\'self\'',
+            'cdnjs.cloudflare.com',
+            'cdn.jsdelivr.net',
+            'fonts.gstatic.com'
+        ],
         'img-src': ['\'self\'', 'data:'],
         'connect-src': [
             '\'self\'',

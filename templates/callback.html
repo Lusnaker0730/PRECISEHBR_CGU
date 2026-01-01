@@ -1,30 +1,411 @@
 <!DOCTYPE html>
-<html hidden>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>SMART Auth Callback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticating... | PRECISE-HBR</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 
     <!-- Cerner Smart Embeddable Lib CSS -->
     <link rel='stylesheet' type='text/css' href='/static/css/cerner-smart-embeddable-lib-1.7.0.min.css'>
 
     <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 48px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-container {
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+        }
+
+        .logo svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .app-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .app-subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .spinner-container {
+            margin: 32px 0;
+        }
+
+        .spinner {
+            width: 56px;
+            height: 56px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-text {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .status-description {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        /* Success State */
+        .auth-container.success .spinner-container {
+            display: none;
+        }
+
+        .success-icon {
+            display: none;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            margin: 32px auto;
+            position: relative;
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        .success-icon::after {
+            content: '';
+            position: absolute;
+            left: 22px;
+            top: 32px;
+            width: 12px;
+            height: 24px;
+            border: 3px solid white;
+            border-top: none;
+            border-left: none;
+            transform: rotate(45deg) translate(-50%, -50%);
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .auth-container.success .success-icon {
+            display: block;
+        }
+
+        .auth-container.success .status-text {
+            color: #059669;
+        }
+
+        /* Error State */
+        .auth-container.error .spinner-container {
+            display: none;
+        }
+
+        .error-icon {
+            display: none;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-radius: 50%;
+            margin: 32px auto;
+            position: relative;
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        .error-icon::before,
+        .error-icon::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 24px;
+            height: 3px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        .error-icon::before {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .error-icon::after {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        .auth-container.error .error-icon {
+            display: block;
+        }
+
+        .auth-container.error .status-text {
+            color: #dc2626;
+        }
+
+        .error-message {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 24px;
+            text-align: left;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .error-message-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #991b1b;
+            margin-bottom: 4px;
+        }
+
+        .error-message-text {
+            font-size: 0.8125rem;
+            color: #b91c1c;
+            word-break: break-word;
+        }
+
+        .retry-btn {
+            display: none;
+            margin-top: 24px;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .auth-container.error .retry-btn {
+            display: inline-block;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 32px;
+        }
+
+        .step {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: #667eea;
+            transform: scale(1.2);
+        }
+
+        .step.completed {
+            background: #10b981;
+        }
+
+        .security-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 32px;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .security-badge i {
+            color: #10b981;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
-        <div id="status">Validating authorization code, please wait...</div>
-        <div id="error" style="display: none;"></div>
+    <div class="auth-container" id="authContainer">
+        <!-- Logo -->
+        <div class="logo-container">
+            <div class="logo">
+                <svg viewBox="0 0 256 256">
+                    <circle cx="128" cy="128" r="118" fill="#f0f9ff" stroke="#667eea" stroke-width="12" />
+                    <path d="M 70 128 A 58 58 0 0 1 186 128" fill="none" stroke-width="20" stroke="url(#grad)"
+                        stroke-linecap="round" />
+                    <circle cx="85" cy="145" r="10" fill="#10b981" />
+                    <circle cx="128" cy="75" r="10" fill="#f59e0b" />
+                    <circle cx="171" cy="145" r="10" fill="#ef4444" />
+                    <path
+                        d="M128 90 C115 77, 95 77, 95 95 C95 115, 128 145, 128 145 C128 145, 161 115, 161 95 C161 77, 141 77, 128 90 Z"
+                        fill="#dc2626" />
+                    <defs>
+                        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#10b981" />
+                            <stop offset="50%" style="stop-color:#f59e0b" />
+                            <stop offset="100%" style="stop-color:#ef4444" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="app-name">PRECISE-HBR</div>
+            <div class="app-subtitle">Bleeding Risk Calculator</div>
+        </div>
+
+        <!-- Spinner -->
+        <div class="spinner-container">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Success Icon (hidden by default) -->
+        <div class="success-icon"></div>
+
+        <!-- Error Icon (hidden by default) -->
+        <div class="error-icon"></div>
+
+        <!-- Status -->
+        <div class="status-text" id="statusText">Authenticating...</div>
+        <div class="status-description" id="statusDescription">Securely connecting to your EHR system</div>
+
+        <!-- Error Message Box -->
+        <div class="error-message" id="errorMessage">
+            <div class="error-message-title"><i class="fas fa-exclamation-triangle"></i> Authentication Error</div>
+            <div class="error-message-text" id="errorText"></div>
+        </div>
+
+        <!-- Retry Button -->
+        <a href="/" class="retry-btn">
+            <i class="fas fa-redo"></i> Try Again
+        </a>
+
+        <!-- Progress Steps -->
+        <div class="progress-steps">
+            <div class="step completed" id="step1"></div>
+            <div class="step active" id="step2"></div>
+            <div class="step" id="step3"></div>
+        </div>
+
+        <!-- Security Badge -->
+        <div class="security-badge">
+            <i class="fas fa-shield-alt"></i>
+            <span>Secured with SMART on FHIR OAuth 2.0</span>
+        </div>
     </div>
 
     <script nonce="{{ csp_nonce() }}">
         document.addEventListener("DOMContentLoaded", function () {
+            const container = document.getElementById('authContainer');
+            const statusText = document.getElementById('statusText');
+            const statusDescription = document.getElementById('statusDescription');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const state = urlParams.get('state');
 
+            function showError(message) {
+                container.classList.remove('success');
+                container.classList.add('error');
+                statusText.textContent = 'Authentication Failed';
+                statusDescription.textContent = 'Unable to complete the authorization';
+                errorText.textContent = message;
+                errorMessage.classList.add('visible');
+                step2.classList.remove('active');
+                step2.style.background = '#ef4444';
+            }
+
+            function showSuccess() {
+                container.classList.add('success');
+                statusText.textContent = 'Success!';
+                statusDescription.textContent = 'Redirecting to your dashboard...';
+                step2.classList.remove('active');
+                step2.classList.add('completed');
+                step3.classList.add('active');
+            }
+
             if (code && state) {
-                // We have the code and state, now send them to the backend to handle the token exchange.
+                // Update status
+                statusText.textContent = 'Validating credentials...';
+                statusDescription.textContent = 'Exchanging authorization code';
+
                 fetch('/api/exchange-code', {
                     method: 'POST',
                     headers: {
@@ -35,31 +416,25 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'ok') {
-                            document.getElementById("status").innerText = "Validation successful, redirecting...";
-                            window.location.href = data.redirect_url;
+                            showSuccess();
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 800);
                         } else {
                             throw new Error(data.error || 'Backend code exchange failed.');
                         }
                     })
                     .catch(error => {
                         console.error("Callback Error:", error);
-                        const errorDiv = document.getElementById('error');
-                        const statusDiv = document.getElementById('status');
-                        statusDiv.innerText = "Authorization Failed!";
-                        errorDiv.innerText = "Error: " + error.message;
-                        errorDiv.style.display = 'block';
+                        showError(error.message);
                     });
             } else {
-                const errorDiv = document.getElementById('error');
-                const statusDiv = document.getElementById('status');
-                statusDiv.innerText = "Authorization Failed!";
-                errorDiv.innerText = "Authorization code or state is missing from URL.";
-                errorDiv.style.display = 'block';
+                showError('Authorization code or state is missing from URL.');
             }
         });
     </script>
 
-    <!-- Babel Polyfill and Cerner Lib are likely not needed here anymore, but leaving them for now doesn't hurt -->
+    <!-- Babel Polyfill and Cerner Lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
     <script src="/static/js/cerner-smart-embeddable-lib-1.7.0.min.js"></script>
 </body>
