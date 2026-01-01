@@ -202,12 +202,22 @@
                     <canvas id="tradeoffChart"></canvas>
                 </div>
                 <div id="chart-legend" class="mt-3">
-                    <p><span style="color: #87CEEB;">■</span> Blue Area: Ischemic/thrombotic risk is higher than
-                        bleeding risk.</p>
-                    <p><span style="color: #DCDCDC;">■</span> Gray Area: Considering associated mortality, bleeding and
-                        ischemic risks can be considered equivalent.</p>
-                    <p><span style="color: #FFDB58;">■</span> Yellow Area: Considering associated mortality, bleeding
-                        risk is higher than ischemic risk.</p>
+                    <p><span style="color: #87CEEB;">■</span> <strong>Teal Area:</strong> Above equal trade-off line
+                        (y=x).
+                        Ischemic risk is higher than bleeding risk.</p>
+                    <p><span style="color: #C8C8C8;">■</span> <strong>Gray Area:</strong> Between equal (1:1) and
+                        mortality-weighted lines.
+                        Considering that MI/ST has 1.9× higher associated mortality, risks can be considered equivalent.
+                    </p>
+                    <p><span style="color: #FFC896;">■</span> <strong>Orange Area:</strong> Below mortality-weighted
+                        line (y=x/1.9).
+                        Bleeding risk dominates when considering associated mortality.</p>
+                    <hr>
+                    <small class="text-muted">
+                        <strong>Lines:</strong><br>
+                        <span style="color: #006464;">---</span> Equal trade-off (1:1)<br>
+                        <span style="color: #FF8C00;">---</span> Mortality-weighted trade-off (1:1.9)
+                    </small>
                 </div>
             </div>
             <div class="col-md-5" id="risk-factors-column">
@@ -345,46 +355,53 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Risk Trade-off Model</h5>
+                        <h5 class="mb-0">Trade-off Scatter Plot</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/trade_off.png') }}"
-                            alt="Trade-off Analysis Model" class="img-fluid rounded shadow"
-                            style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/jama_tradeoff_scatter.png') }}"
+                            alt="JAMA Trade-off Scatter Plot" class="img-fluid rounded shadow"
+                            style="max-height: 400px; object-fit: contain; cursor: pointer;"
+                            onclick="window.open(this.src, '_blank')">
                     </div>
                     <div class="card-footer text-muted">
-                        <small>Visual representation of bleeding vs. thrombotic risk trade-off</small>
+                        <small><strong>Figure 3:</strong> Trade-off model showing equal (1:1) and mortality-weighted
+                            (1:1.9) lines with patient distribution</small>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">Mortality Risk</h5>
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">Mortality Comparison</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/mortality_risk.png') }}"
-                            alt="Mortality Risk Analysis" class="img-fluid rounded shadow"
-                            style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/jama_mortality_curve.png') }}"
+                            alt="JAMA Mortality Curves" class="img-fluid rounded shadow"
+                            style="max-height: 400px; object-fit: contain; cursor: pointer;"
+                            onclick="window.open(this.src, '_blank')">
                     </div>
                     <div class="card-footer text-muted">
-                        <small>Mortality risk associated with bleeding and ischemic events</small>
+                        <small><strong>Figure 2:</strong> Mortality after MI/ST (~29%) vs BARC 3-5 bleeding (~26%).
+                            Excess mortality ratio: 1.9×</small>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Risk Predictors</h5>
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Model Calibration</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/predictors.png') }}" alt="Risk Predictors"
-                            class="img-fluid rounded shadow" style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/jama_calibration.png') }}"
+                            alt="JAMA Model Calibration" class="img-fluid rounded shadow"
+                            style="max-height: 400px; object-fit: contain; cursor: pointer;"
+                            onclick="window.open(this.src, '_blank')">
                     </div>
                     <div class="card-footer text-muted">
-                        <small>Key predictors for bleeding and thrombotic events</small>
+                        <small><strong>Figure S1:</strong> Observed vs predicted risk by quintiles. Model shows good
+                            calibration (C-statistic: 0.68-0.69)</small>
                     </div>
                 </div>
             </div>
@@ -443,6 +460,15 @@
                     <p class="mb-0">
                         <strong>Key References:</strong>
                     <ul class="mt-2 mb-0">
+                        <li><strong style="color: #dc3545;">PRIMARY SOURCE:</strong> Costa F, Valgimigli M, et al.
+                            Assessing the Risks of Bleeding vs Thrombotic Events in Patients at High Bleeding Risk
+                            After Coronary Stent Implantation: The ARC-High Bleeding Risk Trade-off Model.
+                            <em>JAMA Cardiology.</em> 2021;6(4):410-419.
+                            <a href="https://jamanetwork.com/journals/jamacardiology/fullarticle/2774812"
+                                target="_blank" class="text-primary">
+                                doi:10.1001/jamacardio.2020.6602
+                            </a>
+                        </li>
                         <li>Urban P, et al. Defining high bleeding risk in patients undergoing percutaneous coronary
                             intervention. <em>Circulation.</em> 2019;140:240-261.</li>
                         <li>Costa F, et al. Derivation and validation of the predicting bleeding complications in
@@ -460,6 +486,11 @@
         let modelData;
 
         // Chart.js Plugin for background colors
+        // Based on JAMA Cardiology paper: mortality ratio is 1.9x higher after MI/ST vs bleeding
+        // Equal trade-off line: y = x (1:1)
+        // Mortality-weighted trade-off line: y = 0.53x (approximately 1/1.9, where 1.9 is the excess mortality ratio)
+        const MORTALITY_RATIO = 1.9; // From paper: MI/ST mortality vs bleeding mortality ratio
+
         const backgroundPlugin = {
             id: 'customCanvasBackgroundColor',
             beforeDraw: (chart) => {
@@ -468,37 +499,63 @@
                 const { left, right, top, bottom } = chartArea;
                 const { x, y } = scales;
 
-                // Define the lines
-                const line1 = (val) => y.getPixelForValue(1.5 * x.getValueForPixel(val)); // Upper bound of grey
-                const line2 = (val) => y.getPixelForValue(0.5 * x.getValueForPixel(val)); // Lower bound of grey
+                // Define the lines based on JAMA paper
+                // Upper line: Equal trade-off (y = x, or thrombotic = bleeding)
+                const equalTradeoff = (val) => y.getPixelForValue(x.getValueForPixel(val));
+                // Lower line: Mortality-weighted (y = x/1.9, accounting for higher MI/ST mortality)
+                const mortalityWeighted = (val) => y.getPixelForValue(x.getValueForPixel(val) / MORTALITY_RATIO);
 
                 ctx.save();
+
+                // Teal/Cyan area (above equal trade-off line): Thrombotic risk dominates
                 ctx.beginPath();
                 ctx.moveTo(left, top);
                 ctx.lineTo(right, top);
-                ctx.lineTo(right, line1(right));
-                ctx.lineTo(left, line1(left));
+                ctx.lineTo(right, equalTradeoff(right));
+                ctx.lineTo(left, equalTradeoff(left));
                 ctx.closePath();
-                ctx.fillStyle = 'rgba(230, 230, 250, 0.7)'; // Blue area
+                ctx.fillStyle = 'rgba(135, 206, 220, 0.5)'; // Teal/cyan like paper
                 ctx.fill();
 
+                // Gray area (between lines): Risks are approximately equivalent when mortality is considered
                 ctx.beginPath();
-                ctx.moveTo(left, line1(left));
-                ctx.lineTo(right, line1(right));
-                ctx.lineTo(right, line2(right));
-                ctx.lineTo(left, line2(left));
+                ctx.moveTo(left, equalTradeoff(left));
+                ctx.lineTo(right, equalTradeoff(right));
+                ctx.lineTo(right, mortalityWeighted(right));
+                ctx.lineTo(left, mortalityWeighted(left));
                 ctx.closePath();
-                ctx.fillStyle = 'rgba(220, 220, 220, 0.5)'; // Grey area
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.4)'; // Gray area
                 ctx.fill();
 
+                // Orange/Peach area (below mortality-weighted line): Bleeding risk dominates
                 ctx.beginPath();
-                ctx.moveTo(left, line2(left));
-                ctx.lineTo(right, line2(right));
+                ctx.moveTo(left, mortalityWeighted(left));
+                ctx.lineTo(right, mortalityWeighted(right));
                 ctx.lineTo(right, bottom);
                 ctx.lineTo(left, bottom);
                 ctx.closePath();
-                ctx.fillStyle = 'rgba(255, 255, 224, 0.7)'; // Yellow area
+                ctx.fillStyle = 'rgba(255, 200, 150, 0.5)'; // Orange/peach like paper
                 ctx.fill();
+
+                // Draw the trade-off lines
+                ctx.setLineDash([5, 5]);
+
+                // Equal trade-off line (darker)
+                ctx.beginPath();
+                ctx.moveTo(left, equalTradeoff(left));
+                ctx.lineTo(right, equalTradeoff(right));
+                ctx.strokeStyle = 'rgba(0, 100, 100, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Mortality-weighted line (orange)
+                ctx.beginPath();
+                ctx.moveTo(left, mortalityWeighted(left));
+                ctx.lineTo(right, mortalityWeighted(right));
+                ctx.strokeStyle = 'rgba(255, 140, 0, 0.9)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
                 ctx.restore();
             }
         };

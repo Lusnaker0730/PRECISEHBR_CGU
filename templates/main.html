@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+﻿{% extends "layout.html" %}
 
 {% block title %}PRECISE-HBR Bleeding Risk Calculator{% endblock %}
 
@@ -753,73 +753,178 @@
         recalculateAndRefreshUI();
     }
 
-    // === NEW: Value Validation Functions ===
+    // === ENHANCED: Value Validation Functions with Clinical Bounds ===
+    // Clinical validation ranges based on physiologically plausible values
+    const VALIDATION_RANGES = {
+        Age: { absoluteMin: 0, absoluteMax: 120, warningMin: 18, warningMax: 100, errorMin: 1, errorMax: 120 },
+        Hemoglobin: { absoluteMin: 1, absoluteMax: 25, warningMin: 7, warningMax: 18, errorMin: 3, errorMax: 22 },
+        eGFR: { absoluteMin: 0, absoluteMax: 200, warningMin: 15, warningMax: 150, errorMin: 0, errorMax: 180 },
+        WBC: { absoluteMin: 0, absoluteMax: 100, warningMin: 4, warningMax: 20, errorMin: 0.1, errorMax: 50 },
+        Platelet: { absoluteMin: 0, absoluteMax: 2000, warningMin: 100, warningMax: 450, errorMin: 5, errorMax: 1000 }
+    };
+
     function validateValue(parameterName, value) {
         const numValue = parseFloat(value);
-        if (isNaN(numValue)) return { valid: true, level: 'normal', message: '' };
+        if (isNaN(numValue)) return { valid: true, level: 'normal', message: '', blockCalculation: false };
 
-        let result = { valid: true, level: 'normal', message: '' };
+        let result = { valid: true, level: 'normal', message: '', blockCalculation: false };
 
         if (parameterName.includes("Age")) {
-            if (numValue < 18) {
+            const range = VALIDATION_RANGES.Age;
+            if (numValue < range.absoluteMin || numValue > range.absoluteMax) {
                 result.level = 'error';
-                result.message = 'Age must be ≥ 18';
-            } else if (numValue > 120) {
+                result.message = `Age must be between ${range.absoluteMin} and ${range.absoluteMax} years`;
+                result.blockCalculation = true;
+            } else if (numValue < range.warningMin) {
                 result.level = 'error';
-                result.message = 'Age is out of reasonable range';
+                result.message = 'Age must be ≥ 18 for adult risk calculation';
+                result.blockCalculation = true;
+            } else if (numValue > range.warningMax) {
+                result.level = 'warning';
+                result.message = 'Age exceeds typical range (>100 years)';
             } else if (numValue >= 75) {
                 result.level = 'warning';
-                result.message = 'Elderly patient (≥75 years) is at high bleeding risk';
+                result.message = 'Elderly patient (≥75 years) - increased bleeding risk';
             }
         } else if (parameterName.includes("Hemoglobin")) {
+            const range = VALIDATION_RANGES.Hemoglobin;
             const unit = unitSettings.hemoglobin || 'g/dL';
-            if (unit === 'g/dL') {
-                if (numValue < 5) {
-                    result.level = 'error';
-                    result.message = 'Severe anemia (<5 g/dL)';
-                } else if (numValue < 11) {
-                    result.level = 'error';
-                    result.message = 'Severe anemia (<11 g/dL) - High Risk';
+
+            // Convert mmol/L limits if needed (1 g/dL = 0.6206 mmol/L)
+            let effectiveMin = range.absoluteMin;
+            let effectiveMax = range.absoluteMax;
+            let errorMin = range.errorMin;
+            let errorMax = range.errorMax;
+
+            if (unit === 'mmol/L') {
+                effectiveMin = range.absoluteMin * 0.6206;
+                effectiveMax = range.absoluteMax * 0.6206;
+                errorMin = range.errorMin * 0.6206;
+                errorMax = range.errorMax * 0.6206;
+            }
+
+            if (numValue < effectiveMin || numValue > effectiveMax) {
+                result.level = 'error';
+                result.message = `Hemoglobin must be between ${effectiveMin.toFixed(1)} and ${effectiveMax.toFixed(1)} ${unit}`;
+                result.blockCalculation = true;
+            } else if (numValue < errorMin) {
+                result.level = 'error';
+                result.message = `Critically low hemoglobin (<${errorMin.toFixed(1)} ${unit}) - Value may be incorrect`;
+                result.blockCalculation = true;
+            } else if (numValue > errorMax) {
+                result.level = 'error';
+                result.message = `Hemoglobin too high (>${errorMax.toFixed(1)} ${unit}) - Please verify`;
+                result.blockCalculation = true;
+            } else if (unit === 'g/dL') {
+                if (numValue < 11) {
+                    result.level = 'warning';
+                    result.message = 'Anemia (<11 g/dL) - Increased bleeding risk';
                 } else if (numValue < 13) {
                     result.level = 'warning';
-                    result.message = 'Mild to moderate anemia (11-13 g/dL)';
+                    result.message = 'Mild anemia (11-13 g/dL)';
                 } else if (numValue > 18) {
                     result.level = 'warning';
-                    result.message = 'Hemoglobin is too high, please check value';
+                    result.message = 'Elevated hemoglobin (>18 g/dL)';
                 }
             }
         } else if (parameterName.includes("eGFR")) {
-            if (numValue < 15) {
+            const range = VALIDATION_RANGES.eGFR;
+            if (numValue < range.absoluteMin) {
                 result.level = 'error';
-                result.message = 'Severe renal impairment (<15) - High Risk';
+                result.message = 'eGFR cannot be negative';
+                result.blockCalculation = true;
+            } else if (numValue > range.absoluteMax) {
+                result.level = 'error';
+                result.message = `eGFR exceeds maximum plausible value (>${range.absoluteMax})`;
+                result.blockCalculation = true;
+            } else if (numValue < 15) {
+                result.level = 'warning';
+                result.message = 'Severe renal impairment (<15) - Very high risk';
             } else if (numValue < 30) {
-                result.level = 'error';
-                result.message = 'Moderate-severe renal impairment (<30) - High Risk';
+                result.level = 'warning';
+                result.message = 'Severe renal impairment (<30) - High risk';
             } else if (numValue < 60) {
                 result.level = 'warning';
-                result.message = 'Mild-moderate renal impairment (30-60)';
-            } else if (numValue > 150) {
+                result.message = 'Moderate renal impairment (30-60)';
+            } else if (numValue > range.warningMax) {
                 result.level = 'warning';
-                result.message = 'eGFR is too high, please check value';
+                result.message = 'eGFR unusually high (>150) - Please verify';
             }
         } else if (parameterName.includes("White Blood Cell")) {
-            if (numValue < 0) {
+            const range = VALIDATION_RANGES.WBC;
+            if (numValue < range.absoluteMin) {
                 result.level = 'error';
-                result.message = 'Value must be positive';
-            } else if (numValue < 4) {
-                result.level = 'warning';
-                result.message = 'WBC is too low (<4)';
-            } else if (numValue > 50) {
+                result.message = 'WBC cannot be negative';
+                result.blockCalculation = true;
+            } else if (numValue > range.absoluteMax) {
                 result.level = 'error';
-                result.message = 'WBC is extremely high (>50)';
-            } else if (numValue > 20) {
+                result.message = `WBC exceeds maximum plausible value (>${range.absoluteMax} ×10⁹/L)`;
+                result.blockCalculation = true;
+            } else if (numValue < range.errorMin) {
+                result.level = 'error';
+                result.message = 'Critically low WBC - Value may be incorrect';
+                result.blockCalculation = true;
+            } else if (numValue > range.errorMax) {
+                result.level = 'error';
+                result.message = `Extremely high WBC (>${range.errorMax}) - Please verify`;
+                result.blockCalculation = true;
+            } else if (numValue < range.warningMin) {
                 result.level = 'warning';
-                result.message = 'WBC is too high (>20)';
+                result.message = 'Low WBC (<4 ×10⁹/L) - Leukopenia';
+            } else if (numValue > range.warningMax) {
+                result.level = 'warning';
+                result.message = 'Elevated WBC (>20 ×10⁹/L) - Leukocytosis';
+            }
+        } else if (parameterName.includes("Platelet")) {
+            const range = VALIDATION_RANGES.Platelet;
+            if (numValue < range.absoluteMin) {
+                result.level = 'error';
+                result.message = 'Platelet count cannot be negative';
+                result.blockCalculation = true;
+            } else if (numValue > range.absoluteMax) {
+                result.level = 'error';
+                result.message = `Platelet count exceeds maximum (>${range.absoluteMax} ×10⁹/L)`;
+                result.blockCalculation = true;
+            } else if (numValue < range.errorMin) {
+                result.level = 'error';
+                result.message = 'Critically low platelet - Value may be incorrect';
+                result.blockCalculation = true;
+            } else if (numValue > range.errorMax) {
+                result.level = 'error';
+                result.message = `Extremely high platelet (>${range.errorMax}) - Please verify`;
+                result.blockCalculation = true;
+            } else if (numValue < range.warningMin) {
+                result.level = 'warning';
+                result.message = 'Thrombocytopenia (<100 ×10⁹/L) - High bleeding risk';
+            } else if (numValue > range.warningMax) {
+                result.level = 'warning';
+                result.message = 'Thrombocytosis (>450 ×10⁹/L)';
             }
         }
 
         return result;
     }
+
+    // Check all inputs for validation errors that should block calculation
+    function hasValidationErrors() {
+        let errors = [];
+
+        scoreComponentData.forEach(item => {
+            const inputElement = document.getElementById(`input-${item.parameter}`);
+            if (inputElement && inputElement.type === 'number' && inputElement.value) {
+                const validation = validateValue(item.parameter, inputElement.value);
+                if (validation.blockCalculation) {
+                    errors.push({
+                        parameter: item.parameter,
+                        message: validation.message
+                    });
+                }
+            }
+        });
+
+        return errors;
+    }
+
 
     function applyValidationStyling(inputElement, validation) {
         // Remove all validation classes
@@ -1096,7 +1201,36 @@
             return; // Stop calculation but keep UI visible
         }
 
-        // If we get here, all critical data is present
+        // === NEW: Check for validation errors that should block calculation ===
+        const validationErrors = hasValidationErrors();
+        if (validationErrors.length > 0) {
+            // Show validation error message instead of risk score
+            document.getElementById('total-score').innerHTML = `
+                <i class="fas fa-times-circle text-danger"></i>
+            `;
+            document.getElementById('risk-level').innerHTML = `
+                <span class="text-danger">Invalid Values</span>
+            `;
+            document.getElementById('recommendation').innerHTML = `
+                <div class="alert alert-danger mb-0" role="alert">
+                    <strong><i class="fas fa-exclamation-circle"></i> Cannot calculate risk score - Please correct the following errors:</strong>
+                    <ul class="mb-0 mt-2">
+                        ${validationErrors.map(err => {
+                const cleanParam = err.parameter.replace('PRECISE-HBR - ', '');
+                return `<li><strong>${cleanParam}:</strong> ${err.message}</li>`;
+            }).join('')}
+                    </ul>
+                    <p class="mb-0 mt-2"><small>Please enter clinically valid values to calculate the risk score.</small></p>
+                </div>
+            `;
+
+            // Hide CCD export button when there are validation errors
+            document.getElementById('exportCcdBtn').classList.add('d-none');
+
+            return; // Stop calculation
+        }
+
+        // If we get here, all critical data is present and valid
         // Show CCD export button
         document.getElementById('exportCcdBtn').classList.remove('d-none');
 
