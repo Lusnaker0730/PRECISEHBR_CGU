@@ -14,7 +14,7 @@ class ConfigLoader:
     _config = None
     
     # Configuration file path relative to project root
-    CONFIG_FILENAME = 'cdss_config.json'
+    CONFIG_FILENAME = 'config/cdss_config.json'
     
     def __new__(cls):
         if cls._instance is None:
@@ -27,7 +27,8 @@ class ConfigLoader:
         # Go up one level from services/ to project root
         services_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(services_dir)
-        return os.path.join(project_root, self.CONFIG_FILENAME)
+        # Note: CONFIG_FILENAME already includes 'config/' but we construct it robustly
+        return os.path.join(project_root, 'config', 'cdss_config.json')
     
     def _load_config(self):
         """Load CDSS configuration from JSON file"""

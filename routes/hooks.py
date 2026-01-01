@@ -5,7 +5,7 @@ import os
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 
-from fhir_data_service import (
+from services.fhir_data_service import (
     get_patient_demographics,
     calculate_precise_hbr_score,
     get_precise_hbr_display_info
@@ -127,11 +127,14 @@ def create_precise_hbr_warning_card(
 def cds_services_discovery():
     """CDS Hooks service discovery endpoint."""
     try:
-        with open('cds-services.json', 'r', encoding='utf-8') as f:
+        # Construct path relative to root where app runs
+        config_path = os.path.join(os.getcwd(), 'config', 'cds-services.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
         return jsonify(config_data)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        logging.error(f"Could not load cds-services.json: {e}")
+        config_path = os.path.join(os.getcwd(), 'config', 'cds-services.json')
+        logging.error(f"Could not load cds-services.json from {config_path}: {e}")
         # Fallback config
         fallback_config = {
             "services": [

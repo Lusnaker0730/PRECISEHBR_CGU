@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, session, jsonify, redirect, url_for
-from functools import wraps
-import fhir_data_service
+from services import fhir_data_service
 from fhirclient import client
 import logging
+from utils.web_utils import login_required
 
 # Use Flask's logger
 logger = logging.getLogger('werkzeug')
@@ -10,34 +10,17 @@ logger = logging.getLogger('werkzeug')
 # Create a Blueprint
 tradeoff_bp = Blueprint('tradeoff', __name__, template_folder='templates')
 
-# --- Decorator for session validation (specific to this Blueprint) ---
-def login_required_bp(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        required_keys = ['server', 'token', 'client_id']
-        fhir_data = session.get('fhir_data')
-        is_valid = bool(fhir_data and all(key in fhir_data for key in required_keys))
-        
-        if not is_valid:
-            logger.warning(f"Access to protected blueprint route '{request.path}' denied. No valid session.")
-            if request.path.startswith('/api/'):
-                return jsonify({"error": "Authentication required."}), 401
-            # For blueprints, it's safer to redirect to the main index
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 # --- Blueprint Routes ---
 
 @tradeoff_bp.route('/tradeoff_analysis')
-@login_required_bp
+@login_required
 def tradeoff_analysis_page():
     """Renders the tradeoff analysis page."""
     patient_id = session.get('patient_id', 'N/A')
     return render_template('tradeoff_analysis.html', patient_id=patient_id)
 
 @tradeoff_bp.route('/api/calculate_tradeoff', methods=['POST'])
-@login_required_bp
+@login_required
 def calculate_tradeoff_api():
     """
     API endpoint for the bleeding vs. thrombosis tradeoff analysis.
