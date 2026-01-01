@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,97 +9,121 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <style>
         body {
             font-family: Arial, sans-serif;
         }
-        
+
         .chart-container {
             position: relative;
             width: 100%;
             aspect-ratio: 1;
         }
-        .factor-list { max-height: 300px; overflow-y: auto; }
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(255, 255, 255, 0.9); display: flex;
-            justify-content: center; align-items: center; z-index: 9999;
+
+        .factor-list {
+            max-height: 300px;
+            overflow-y: auto;
         }
-        .loading-spinner { text-align: center; }
-        .spinner-border { width: 3rem; height: 3rem; }
-        .content-hidden { opacity: 0.3; pointer-events: none; }
-        
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            text-align: center;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .content-hidden {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
         /* Image card styling */
         .card {
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        
+
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         }
-        
+
         .card img {
             transition: transform 0.3s;
             cursor: pointer;
         }
-        
+
         .card img:hover {
             transform: scale(1.05);
         }
-        
+
         /* Responsive images */
         @media (max-width: 768px) {
             .card img {
                 max-height: 250px !important;
             }
         }
-        
+
         /* Citation button styling */
         .btn-success {
             transition: all 0.3s;
         }
-        
+
         .btn-success:hover {
             transform: scale(1.05);
             box-shadow: 0 4px 12px rgba(25, 135, 84, 0.4);
         }
-        
+
         /* Alert styling */
         .alert-secondary {
             background-color: #f8f9fa;
             border-left: 4px solid #6c757d;
         }
-        
+
         .alert-info {
             background-color: #e7f3ff;
             border-left: 4px solid #0dcaf0;
         }
-        
+
         /* Factor list item styling */
         .list-group-item {
             font-family: Arial, sans-serif;
             font-size: 1.1rem;
             padding: 1rem 1.25rem;
         }
-        
+
         .list-group-item:hover {
             background-color: #f8f9fa;
         }
-        
+
         /* Factor checkbox styling */
         .form-check-input {
             width: 1.5em;
             height: 1.5em;
             margin-top: 0.1em;
         }
-        
+
         .form-check-input:checked {
             background-color: #198754;
             border-color: #198754;
         }
-        
+
         /* Badge alignment and sizing */
         .badge {
             font-family: Arial, sans-serif;
@@ -106,7 +131,7 @@
             padding: 0.35em 0.65em;
             font-weight: 600;
         }
-        
+
         /* Better spacing for factor labels */
         .form-check-label {
             cursor: pointer;
@@ -114,77 +139,86 @@
             font-family: Arial, sans-serif;
             line-height: 1.6;
         }
-        
+
         /* HR info text */
         .form-check-label small {
             font-size: 0.95rem;
             font-family: Arial, sans-serif;
         }
-        
+
         /* Legend box at bottom of factors */
         .alert-light {
             font-family: Arial, sans-serif;
             font-size: 1rem;
         }
-        
+
         /* Recommendations section styling */
         #recommendations-section {
             font-family: Arial, sans-serif;
         }
-        
+
         #recommendations-section h4,
         #recommendations-section h5,
         #recommendations-section h6 {
             font-family: Arial, sans-serif;
         }
-        
+
         #recommendations-section .alert,
         #recommendations-section .card-body {
             font-family: Arial, sans-serif;
             font-size: 1rem;
             line-height: 1.6;
         }
-        
+
         #recommendations-section ul li {
             margin-bottom: 0.5rem;
         }
-        
+
         #recommendations-section .card-header h5 {
             font-size: 1.15rem;
         }
     </style>
 </head>
+
 <body>
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="loading-spinner">
             <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
-            <div class="mt-3"><h5>Loading Trade-off Analysis...</h5><p class="text-muted">Please wait...</p></div>
+            <div class="mt-3">
+                <h5>Loading Trade-off Analysis...</h5>
+                <p class="text-muted">Please wait...</p>
+            </div>
         </div>
     </div>
 
     <div class="container-fluid mt-4" id="main-content">
         <h3 class="text-center">Risk Trade-off Analysis (Bleeding vs. Ischemic Risk)</h3>
         <p class="text-center text-muted">Patient ID: {{ patient_id }}</p>
-        
+
         <div class="row justify-content-center" id="content-row" style="visibility: visible;">
             <div class="col-md-4" id="chart-column">
                 <div class="chart-container">
                     <canvas id="tradeoffChart"></canvas>
                 </div>
                 <div id="chart-legend" class="mt-3">
-                    <p><span style="color: #87CEEB;">■</span> Blue Area: Ischemic/thrombotic risk is higher than bleeding risk.</p>
-                    <p><span style="color: #DCDCDC;">■</span> Gray Area: Considering associated mortality, bleeding and ischemic risks can be considered equivalent.</p>
-                    <p><span style="color: #FFDB58;">■</span> Yellow Area: Considering associated mortality, bleeding risk is higher than ischemic risk.</p>
+                    <p><span style="color: #87CEEB;">■</span> Blue Area: Ischemic/thrombotic risk is higher than
+                        bleeding risk.</p>
+                    <p><span style="color: #DCDCDC;">■</span> Gray Area: Considering associated mortality, bleeding and
+                        ischemic risks can be considered equivalent.</p>
+                    <p><span style="color: #FFDB58;">■</span> Yellow Area: Considering associated mortality, bleeding
+                        risk is higher than ischemic risk.</p>
                 </div>
             </div>
             <div class="col-md-5" id="risk-factors-column">
                 <div class="card">
-                    <div class="card-header bg-gradient" style="background: linear-gradient(90deg, #dc3545 0%, #0d6efd 100%); color: white;">
+                    <div class="card-header bg-gradient"
+                        style="background: linear-gradient(90deg, #dc3545 0%, #0d6efd 100%); color: white;">
                         <h5 class="mb-0">Risk Factors</h5>
                         <small>Select applicable factors - they will be applied to relevant risk calculations</small>
                     </div>
-                    <ul class="list-group list-group-flush factor-list" id="all-factors" style="max-height: 500px;"></ul>
+                    <ul class="list-group list-group-flush factor-list" id="all-factors" style="max-height: 500px;">
+                    </ul>
                 </div>
                 <div class="mt-3">
                     <div class="alert alert-light border">
@@ -205,21 +239,22 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Clinical Recommendations Section -->
         <div class="row mt-5" id="recommendations-section" style="display: none;">
             <div class="col-12">
                 <hr class="my-4">
                 <div class="alert alert-warning border-warning" style="border-left: 5px solid #ffc107;">
                     <h4 class="mb-3">
-                        <i class="bi bi-exclamation-triangle-fill text-warning"></i> 
+                        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                         <strong>High Bleeding Risk (HBR) Detected</strong>
                     </h4>
                     <p class="mb-3">
-                        Based on the ARC-HBR criteria, this patient has been identified as having <strong>high bleeding risk</strong>. 
+                        Based on the ARC-HBR criteria, this patient has been identified as having <strong>high bleeding
+                            risk</strong>.
                         Consider the following antiplatelet strategies to reduce bleeding risk:
                     </p>
-                    
+
                     <div class="card mb-3">
                         <div class="card-header bg-primary text-white">
                             <h5 class="mb-0">💊 Recommended Antiplatelet Strategies (Post-ACS)</h5>
@@ -261,40 +296,42 @@
                                     </ul>
                                 </div>
                             </div>
-                            
+
                             <div class="alert alert-info mb-3">
                                 <strong><i class="bi bi-info-circle"></i> Clinical Guideline:</strong>
                                 <p class="mb-2">
-                                    These recommendations are based on ESC (European Society of Cardiology) guidelines for 
-                                    managing antiplatelet therapy in patients with high bleeding risk after acute coronary syndrome (ACS).
+                                    These recommendations are based on ESC (European Society of Cardiology) guidelines
+                                    for
+                                    managing antiplatelet therapy in patients with high bleeding risk after acute
+                                    coronary syndrome (ACS).
                                 </p>
                             </div>
-                            
+
                             <div class="text-center mt-3">
-                                <img src="{{ url_for('static', filename='images/HBR_guideline.jpg') }}" 
-                                     alt="HBR Antiplatelet Strategy Guideline" 
-                                     class="img-fluid rounded shadow"
-                                     style="max-width: 100%; height: auto; cursor: pointer;"
-                                     onclick="window.open(this.src, '_blank')">
+                                <img src="{{ url_for('static', filename='images/HBR_guideline.jpg') }}"
+                                    alt="HBR Antiplatelet Strategy Guideline" class="img-fluid rounded shadow"
+                                    id="hbr-guideline-image" style="max-width: 100%; height: auto; cursor: pointer;">
                                 <p class="text-muted mt-2">
                                     <small>Click image to view full size | Source: ESC Guidelines</small>
                                 </p>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="alert alert-danger mb-0">
                         <strong><i class="bi bi-shield-exclamation"></i> Important Note:</strong>
                         <p class="mb-0">
-                            These are general recommendations based on clinical guidelines. <strong>Always consult with the treating physician</strong> 
-                            before making any changes to antiplatelet therapy. Individual patient factors, concomitant medications, 
+                            These are general recommendations based on clinical guidelines. <strong>Always consult with
+                                the treating physician</strong>
+                            before making any changes to antiplatelet therapy. Individual patient factors, concomitant
+                            medications,
                             and clinical context must be considered.
                         </p>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Research Evidence Section -->
         <div class="row mt-5">
             <div class="col-12">
@@ -302,7 +339,7 @@
                 <h4 class="text-center mb-4">📚 Research Evidence and Citations</h4>
             </div>
         </div>
-        
+
         <!-- Images Section -->
         <div class="row mt-4">
             <div class="col-md-4 mb-4">
@@ -311,44 +348,40 @@
                         <h5 class="mb-0">Risk Trade-off Model</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/trade_off.png') }}" 
-                             alt="Trade-off Analysis Model" 
-                             class="img-fluid rounded shadow"
-                             style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/trade_off.png') }}"
+                            alt="Trade-off Analysis Model" class="img-fluid rounded shadow"
+                            style="max-height: 400px; object-fit: contain;">
                     </div>
                     <div class="card-footer text-muted">
                         <small>Visual representation of bleeding vs. thrombotic risk trade-off</small>
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header bg-warning text-dark">
                         <h5 class="mb-0">Mortality Risk</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/mortality_risk.png') }}" 
-                             alt="Mortality Risk Analysis" 
-                             class="img-fluid rounded shadow"
-                             style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/mortality_risk.png') }}"
+                            alt="Mortality Risk Analysis" class="img-fluid rounded shadow"
+                            style="max-height: 400px; object-fit: contain;">
                     </div>
                     <div class="card-footer text-muted">
                         <small>Mortality risk associated with bleeding and ischemic events</small>
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">Risk Predictors</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ url_for('static', filename='images/predictors.png') }}" 
-                             alt="Risk Predictors" 
-                             class="img-fluid rounded shadow"
-                             style="max-height: 400px; object-fit: contain;">
+                        <img src="{{ url_for('static', filename='images/predictors.png') }}" alt="Risk Predictors"
+                            class="img-fluid rounded shadow" style="max-height: 400px; object-fit: contain;">
                     </div>
                     <div class="card-footer text-muted">
                         <small>Key predictors for bleeding and thrombotic events</small>
@@ -356,7 +389,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Citations Section -->
         <div class="row mt-4 mb-5">
             <div class="col-12">
@@ -369,15 +402,16 @@
                             <strong>Citation Format:</strong> Research Information Systems (RIS)
                         </p>
                         <div class="d-flex align-items-center">
-                            <i class="bi bi-file-earmark-text" style="font-size: 2rem; color: #198754; margin-right: 1rem;"></i>
+                            <i class="bi bi-file-earmark-text"
+                                style="font-size: 2rem; color: #198754; margin-right: 1rem;"></i>
                             <div>
-                                <a href="{{ url_for('static', filename='images/citations-20251018T005817.ris') }}" 
-                                   class="btn btn-success btn-lg" 
-                                   download="ARC-HBR-Citations.ris">
+                                <a href="{{ url_for('static', filename='images/citations-20251018T005817.ris') }}"
+                                    class="btn btn-success btn-lg" download="ARC-HBR-Citations.ris">
                                     <i class="bi bi-download"></i> Download Citations (RIS)
                                 </a>
                                 <p class="text-muted mt-2 mb-0">
-                                    <small>Compatible with: EndNote, Mendeley, Zotero, RefWorks, and other reference management software</small>
+                                    <small>Compatible with: EndNote, Mendeley, Zotero, RefWorks, and other reference
+                                        management software</small>
                                 </p>
                             </div>
                         </div>
@@ -393,30 +427,35 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Additional Information -->
         <div class="row mt-3 mb-5">
             <div class="col-12">
                 <div class="alert alert-secondary">
                     <h6><strong>About this Analysis</strong></h6>
                     <p class="mb-2">
-                        This trade-off analysis is based on the ARC-HBR (Academic Research Consortium for High Bleeding Risk) 
-                        consensus document and PRECISE-HBR bleeding risk model, validated in multiple clinical trials involving 
+                        This trade-off analysis is based on the ARC-HBR (Academic Research Consortium for High Bleeding
+                        Risk)
+                        consensus document and PRECISE-HBR bleeding risk model, validated in multiple clinical trials
+                        involving
                         patients undergoing percutaneous coronary intervention (PCI).
                     </p>
                     <p class="mb-0">
                         <strong>Key References:</strong>
-                        <ul class="mt-2 mb-0">
-                            <li>Urban P, et al. Defining high bleeding risk in patients undergoing percutaneous coronary intervention. <em>Circulation.</em> 2019;140:240-261.</li>
-                            <li>Costa F, et al. Derivation and validation of the predicting bleeding complications in patients undergoing stent implantation and subsequent dual antiplatelet therapy (PRECISE-DAPT) score. <em>Lancet.</em> 2017;389:1025-1034.</li>
-                        </ul>
+                    <ul class="mt-2 mb-0">
+                        <li>Urban P, et al. Defining high bleeding risk in patients undergoing percutaneous coronary
+                            intervention. <em>Circulation.</em> 2019;140:240-261.</li>
+                        <li>Costa F, et al. Derivation and validation of the predicting bleeding complications in
+                            patients undergoing stent implantation and subsequent dual antiplatelet therapy
+                            (PRECISE-DAPT) score. <em>Lancet.</em> 2017;389:1025-1034.</li>
+                    </ul>
                     </p>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         let tradeoffChart;
         let modelData;
 
@@ -424,15 +463,15 @@
         const backgroundPlugin = {
             id: 'customCanvasBackgroundColor',
             beforeDraw: (chart) => {
-                const {ctx, chartArea, scales} = chart;
+                const { ctx, chartArea, scales } = chart;
                 if (!chartArea) return;
-                const {left, right, top, bottom} = chartArea;
-                const {x, y} = scales;
+                const { left, right, top, bottom } = chartArea;
+                const { x, y } = scales;
 
                 // Define the lines
                 const line1 = (val) => y.getPixelForValue(1.5 * x.getValueForPixel(val)); // Upper bound of grey
                 const line2 = (val) => y.getPixelForValue(0.5 * x.getValueForPixel(val)); // Lower bound of grey
-                
+
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(left, top);
@@ -463,7 +502,7 @@
                 ctx.restore();
             }
         };
-        
+
         Chart.register(backgroundPlugin);
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -471,16 +510,19 @@
                 // Show loading overlay
                 document.getElementById('loading-overlay').style.display = 'flex';
                 document.getElementById('main-content').classList.add('content-hidden');
-                
+
                 const patientId = "{{ patient_id }}";
                 if (!patientId || patientId === "N/A") {
                     throw new Error("Patient ID is not available.");
                 }
 
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
                 const response = await fetch('/api/calculate_tradeoff', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({ patientId: patientId }),
                 });
@@ -491,14 +533,14 @@
                 }
 
                 modelData = await response.json();
-                
+
                 if (modelData.error) {
                     alert('Error loading tradeoff model: ' + modelData.error);
                     return;
                 }
-                
+
                 populateFactorLists();
-                
+
                 // Use initial scores from the GET request to display the chart immediately
                 console.log('Model data received:', modelData);
                 if (modelData.initial_scores) {
@@ -507,14 +549,32 @@
                 } else {
                     console.error('No initial scores in model data');
                 }
-                
+
                 // Hide loading overlay after a short delay to ensure smooth transition
                 setTimeout(() => {
                     document.getElementById('loading-overlay').style.display = 'none';
                     document.getElementById('main-content').classList.remove('content-hidden');
                     document.getElementById('content-row').style.visibility = 'visible';
                 }, 300);
-                
+
+                // Event delegation for factor checkboxes
+                const allFactorsList = document.getElementById('all-factors');
+                if (allFactorsList) {
+                    allFactorsList.addEventListener('change', (e) => {
+                        if (e.target && e.target.matches('.form-check-input')) {
+                            recalculateScores();
+                        }
+                    });
+                }
+
+                // Event listener for guideline image
+                const guidelineImg = document.getElementById('hbr-guideline-image');
+                if (guidelineImg) {
+                    guidelineImg.addEventListener('click', function () {
+                        window.open(this.src, '_blank');
+                    });
+                }
+
             } catch (error) {
                 console.error('Error loading tradeoff analysis:', error);
                 alert('Error loading tradeoff analysis. Please try again.');
@@ -524,10 +584,10 @@
 
         function populateFactorLists() {
             const allFactorsList = document.getElementById('all-factors');
-            
+
             // Create a map to combine factors that appear in both lists
             const factorMap = new Map();
-            
+
             // Process bleeding factors
             modelData.model.bleedingEvents.predictors.forEach(p => {
                 if (!factorMap.has(p.factor)) {
@@ -542,7 +602,7 @@
                     existing.bleeding = { hr: p.hazardRatio, ci: p.confidenceInterval };
                 }
             });
-            
+
             // Process thrombotic factors
             modelData.model.thromboticEvents.predictors.forEach(p => {
                 if (!factorMap.has(p.factor)) {
@@ -557,7 +617,7 @@
                     existing.thrombotic = { hr: p.hazardRatio, ci: p.confidenceInterval };
                 }
             });
-            
+
             // Sort factors: first show factors affecting both risks, then single risk factors
             const sortedFactors = Array.from(factorMap.values()).sort((a, b) => {
                 const aBoth = (a.bleeding && a.thrombotic) ? 1 : 0;
@@ -565,7 +625,7 @@
                 if (aBoth !== bBoth) return bBoth - aBoth; // Both risks first
                 return a.description.localeCompare(b.description); // Then alphabetically
             });
-            
+
             // Create checkboxes for all factors
             sortedFactors.forEach(factorData => {
                 allFactorsList.appendChild(createFactorCheckbox(factorData));
@@ -576,11 +636,11 @@
             const li = document.createElement('li');
             li.className = 'list-group-item';
             const isChecked = modelData.detected_factors[factorData.factor] ? 'checked' : '';
-            
+
             // Create badges based on which risks are affected
             let badges = '';
             let hrInfo = '';
-            
+
             if (factorData.bleeding && factorData.thrombotic) {
                 badges = '<span class="badge bg-danger me-1">Bleeding</span><span class="badge bg-primary">Thrombotic</span>';
                 hrInfo = `<small class="d-block mt-1 text-muted">
@@ -593,11 +653,11 @@
                 badges = '<span class="badge bg-primary">Thrombotic</span>';
                 hrInfo = `<small class="d-block mt-1 text-muted">HR: ${factorData.thrombotic.hr}</small>`;
             }
-            
+
             li.innerHTML = `
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" value="${factorData.factor}" 
-                           id="check-${factorData.factor}" ${isChecked} onchange="recalculateScores()">
+                           id="check-${factorData.factor}" ${isChecked}>
                     <label class="form-check-label w-100" for="check-${factorData.factor}">
                         <div class="d-flex justify-content-between align-items-start">
                             <span>${factorData.description}</span>
@@ -612,12 +672,17 @@
         async function recalculateScores() {
             const activeFactors = {};
             document.querySelectorAll('.form-check-input').forEach(input => {
-                if(input.checked) activeFactors[input.value] = true;
+                if (input.checked) activeFactors[input.value] = true;
             });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             const response = await fetch('/api/calculate_tradeoff', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
                 body: JSON.stringify({ active_factors: activeFactors })
             });
             const scores = await response.json();
@@ -628,13 +693,13 @@
             console.log('updateChart called with scores:', scores);
             console.log('Bleeding score:', scores.bleeding_score);
             console.log('Thrombotic score:', scores.thrombotic_score);
-            
+
             // Check if scores are valid numbers
             if (!scores || typeof scores.bleeding_score !== 'number' || typeof scores.thrombotic_score !== 'number') {
                 console.error('Invalid scores received:', scores);
                 return;
             }
-            
+
             // Check for High Bleeding Risk (HBR) - threshold at 4% per year
             // Show recommendations if bleeding risk >= 4% (ARC-HBR criteria)
             const isHBR = scores.bleeding_score >= 4.0;
@@ -644,14 +709,14 @@
             } else {
                 recommendationsSection.style.display = 'none';
             }
-            
+
             // Handle zero values for logarithmic scale (log(0) is undefined)
             const bleeding_score = Math.max(scores.bleeding_score, 0.1);
             const thrombotic_score = Math.max(scores.thrombotic_score, 0.1);
-            
+
             console.log('Adjusted scores - Bleeding:', bleeding_score, 'Thrombotic:', thrombotic_score);
             console.log('High Bleeding Risk (HBR):', isHBR);
-            
+
             const chartData = {
                 datasets: [{
                     label: 'Patient Risk Profile',
@@ -686,7 +751,7 @@
                                 title: { display: true, text: 'Estimated 1-Year Bleeding Risk (BARC 3-5, %)' },
                                 min: 0.1, max: 50,
                                 ticks: {
-                                    callback: function(value, index, values) { return Number(value.toString()); }
+                                    callback: function (value, index, values) { return Number(value.toString()); }
                                 }
                             },
                             y: {
@@ -694,7 +759,7 @@
                                 title: { display: true, text: 'Estimated 1-Year Ischemic Risk (MI/ST, %)' },
                                 min: 0.1, max: 50,
                                 ticks: {
-                                    callback: function(value, index, values) { return Number(value.toString()); }
+                                    callback: function (value, index, values) { return Number(value.toString()); }
                                 }
                             }
                         },
@@ -705,9 +770,10 @@
                 });
             }
         }
-        
+
         // --- Helper functions (populateFactorLists, createFactorCheckbox) are assumed to be here ---
 
     </script>
 </body>
-</html> 
+
+</html>

@@ -236,7 +236,7 @@
     }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
     // Character counter for subject field
     document.getElementById('subject').addEventListener('input', function (e) {
         const maxLength = 200;
