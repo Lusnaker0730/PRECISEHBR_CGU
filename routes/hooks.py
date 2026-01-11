@@ -5,12 +5,17 @@ import os
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 
+from services.config_loader import config_loader
 from services.fhir_data_service import (
     get_patient_demographics,
     calculate_precise_hbr_score,
     get_precise_hbr_display_info
 )
 from services.precise_hbr_calculator import get_calculator_inputs, precise_hbr_calculator
+
+# Load medication and CDS hooks configuration
+_med_config = config_loader.config.get('medication_keywords', {})
+_cds_config = config_loader.config.get('cds_hooks_config', {})
 
 hooks_bp = Blueprint('hooks', __name__)
 
@@ -22,23 +27,49 @@ CORS(hooks_bp,
      supports_credentials=False)
 
 
-def check_high_bleeding_risk_medications(medications):
-    """
-    Check if patient is on medications that increase bleeding risk.
-    """
-    # This function contains detailed logic for identifying specific medications
-    # based on RxNorm codes and common names.
-    aspirin_codes = {'rxnorm': ['1191'], 'names': ['aspirin']}
-    antiplatelet_agents = {
-        'clopidogrel': {'rxnorm': ['32968'], 'names': ['clopidogrel', 'plavix']},
-        'prasugrel': {'rxnorm': ['861634'], 'names': ['prasugrel', 'effient']},
-        'ticagrelor': {'rxnorm': ['1116632'], 'names': ['ticagrelor', 'brilinta']}
+def _build_medication_lookup():
+    """Build medication lookup dictionaries from config."""
+    aspirin_cfg = _med_config.get('aspirin', {})
+    aspirin_codes = {
+        'rxnorm': aspirin_cfg.get('rxnorm_codes', ['1191']),
+        'names': aspirin_cfg.get('generic_names', []) + aspirin_cfg.get('brand_names', [])
     }
+
+    antiplatelet_cfg = _med_config.get('antiplatelet_agents', {})
+    antiplatelet_agents = {}
+    for agent in ['clopidogrel', 'prasugrel', 'ticagrelor']:
+        agent_cfg = antiplatelet_cfg.get(agent, {})
+        if agent_cfg:
+            antiplatelet_agents[agent] = {
+                'rxnorm': agent_cfg.get('rxnorm_codes', []),
+                'names': agent_cfg.get('generic_names', []) + agent_cfg.get('brand_names', [])
+            }
+
+    oac_cfg = _med_config.get('oral_anticoagulants', {})
     oral_anticoagulants = {
         'warfarin': {'rxnorm': ['11289'], 'names': ['warfarin', 'coumadin']},
         'apixaban': {'rxnorm': ['1364430'], 'names': ['apixaban', 'eliquis']},
         'rivaroxaban': {'rxnorm': ['1114195'], 'names': ['rivaroxaban', 'xarelto']}
     }
+    # Override with config if available
+    if oac_cfg.get('rxnorm_codes'):
+        for i, name in enumerate(oac_cfg.get('generic_names', [])):
+            if i < len(oac_cfg['rxnorm_codes']):
+                brand = oac_cfg.get('brand_names', [])[i] if i < len(oac_cfg.get('brand_names', [])) else ''
+                oral_anticoagulants[name] = {
+                    'rxnorm': [oac_cfg['rxnorm_codes'][i]],
+                    'names': [name, brand] if brand else [name]
+                }
+
+    return aspirin_codes, antiplatelet_agents, oral_anticoagulants
+
+
+def check_high_bleeding_risk_medications(medications):
+    """
+    Check if patient is on medications that increase bleeding risk.
+    Uses medication codes from cdss_config.json.
+    """
+    aspirin_codes, antiplatelet_agents, oral_anticoagulants = _build_medication_lookup()
 
     found_meds = {'aspirin': False, 'antiplatelet': None, 'anticoagulant': None}
     medication_details = []
@@ -74,6 +105,34 @@ def check_high_bleeding_risk_medications(medications):
     return has_dapt or has_anticoagulant, medication_details
 
 
+def _get_risk_indicator(risk_category):
+    """Get CDS Hooks indicator from risk category using config."""
+    indicators = _cds_config.get('risk_indicators', {})
+    if "Very" in risk_category:
+        return indicators.get('very_high_risk', 'critical')
+    elif "HBR" in risk_category:
+        return indicators.get('high_risk', 'warning')
+    return indicators.get('low_risk', 'info')
+
+
+def _get_source_info():
+    """Get source information from config."""
+    source = _cds_config.get('source', {})
+    return {
+        "label": source.get('label', 'PRECISE-HBR Bleeding Risk Calculator'),
+        "url": source.get('url', 'https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci')
+    }
+
+
+def _get_service_request_code():
+    """Get service request code from config."""
+    code_cfg = _cds_config.get('service_request_code', {})
+    return {
+        "system": code_cfg.get('system', 'http://loinc.org'),
+        "code": code_cfg.get('code', 'LA-PRECISE-HBR')
+    }
+
+
 def create_precise_hbr_warning_card(
         patient_name,
         precise_hbr_score,
@@ -83,24 +142,16 @@ def create_precise_hbr_warning_card(
     """Create a CDS Hooks card for PRECISE-HBR high bleeding risk warning."""
 
     medication_list = ", ".join([med['name'] for med in medications_found])
-
-    # Determine alert level based on risk category
-    if risk_category == "Very HBR":
-        indicator = "critical"
-    elif risk_category == "HBR":
-        indicator = "warning"
-    else:
-        indicator = "info"
+    indicator = _get_risk_indicator(risk_category)
+    source = _get_source_info()
+    service_code = _get_service_request_code()
 
     card = {
         "summary": f"{risk_category}: Patient score {precise_hbr_score} ({bleeding_risk_percentage}% 1-yr risk)",
         "detail": f"Patient on {medication_list} has a PRECISE-HBR score of {precise_hbr_score}. "
                   "Consider shorter DAPT duration and enhanced monitoring.",
         "indicator": indicator,
-        "source": {
-            "label": "PRECISE-HBR Bleeding Risk Calculator",
-            "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
-        },
+        "source": source,
         "suggestions": [
             {
                 "label": "View Detailed Assessment",
@@ -112,7 +163,7 @@ def create_precise_hbr_warning_card(
                             "resourceType": "ServiceRequest",
                             "status": "draft",
                             "intent": "proposal",
-                            "code": {"coding": [{"system": "http://loinc.org", "code": "LA-PRECISE-HBR"}]},
+                            "code": {"coding": [service_code]},
                             "subject": {"reference": f"Patient/{{{{context.patientId}}}}"}
                         }
                     }
@@ -135,14 +186,15 @@ def cds_services_discovery():
     except (FileNotFoundError, json.JSONDecodeError) as e:
         config_path = os.path.join(os.getcwd(), 'config', 'cds-services.json')
         logging.error(f"Could not load cds-services.json from {config_path}: {e}")
-        # Fallback config
+        # Fallback config from cdss_config.json
+        fallback_svc = _cds_config.get('fallback_service', {})
         fallback_config = {
             "services": [
                 {
-                    "hook": "medication-prescribe",
-                    "id": "precise_hbr_bleeding_risk_alert",
-                    "title": "PRECISE-HBR High Bleeding Risk Alert",
-                    "description": "Alert for patients with high bleeding risk (PRECISE-HBR >= 23)"
+                    "hook": fallback_svc.get("hook", "medication-prescribe"),
+                    "id": fallback_svc.get("id", "precise_hbr_bleeding_risk_alert"),
+                    "title": fallback_svc.get("title", "PRECISE-HBR High Bleeding Risk Alert"),
+                    "description": fallback_svc.get("description", "Alert for patients with high bleeding risk (PRECISE-HBR >= 23)")
                 }
             ]
         }
@@ -206,7 +258,8 @@ def handle_precise_hbr_bleeding_risk_hook():
         # Calculate score using pure calculator (or legacy wrapper)
         total_score, _ = precise_hbr_calculator.calculate_pure_score(inputs)
 
-        if total_score >= 23:
+        high_risk_threshold = config_loader.config.get('scoring_logic', {}).get('high_risk_threshold', 23)
+        if total_score >= high_risk_threshold:
             risk_category = get_precise_hbr_display_info(total_score) # get_precise_hbr_display_info returns dict or tuple? Checking usages... 
             # Looking at original code: risk_category, bleeding_risk_percentage = get_precise_hbr_display_info(total_score)
             # Wait, view_file of risk_classifier.py showed get_precise_hbr_display_info returns a DICT. 
@@ -313,15 +366,14 @@ def precise_hbr_patient_view():
         if missing_fields:
             # SAFETY WARNING CARD
             missing_str = ", ".join(missing_fields)
+            source = _get_source_info()
+            service_code = _get_service_request_code()
             warning_card = {
                 "summary": "Data Missing: PRECISE-HBR Risk Assessment incomplete",
-                "indicator": "warning", 
+                "indicator": "warning",
                 "detail": f"Cannot calculate reliable bleeding risk score. Missing data: {missing_str}. "
                           f"The score assumes normal values for missing fields, which may underestimate risk.",
-                "source": {
-                    "label": "PRECISE-HBR Risk Assessment",
-                    "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
-                },
+                "source": source,
                 "suggestions": [
                      {
                         "label": "Open Calculator to Edit Data",
@@ -333,7 +385,7 @@ def precise_hbr_patient_view():
                                     "resourceType": "ServiceRequest",
                                     "status": "draft",
                                     "intent": "proposal",
-                                    "code": {"coding": [{"system": "http://loinc.org", "code": "LA-PRECISE-HBR"}]},
+                                    "code": {"coding": [service_code]},
                                     "subject": {"reference": f"Patient/{{{{context.patientId}}}}"}
                                 }
                             }
@@ -386,7 +438,8 @@ def precise_hbr_patient_view():
              recommendation = display_info_obj.get('recommendation', '')
 
         # Always show an info card in patient-view (even for low risk)
-        if total_score >= 23:
+        high_risk_threshold = config_loader.config.get('scoring_logic', {}).get('high_risk_threshold', 23)
+        if total_score >= high_risk_threshold:
             # High risk - show warning card
             card = create_precise_hbr_warning_card(
                 patient_name, total_score, full_label,
@@ -398,15 +451,13 @@ def precise_hbr_patient_view():
                  card['summary'] = f"{full_label}: Patient score {total_score} ({display_info_obj['bleeding_risk_percent']} 1-yr risk)"
         else:
             # Low/moderate risk - show info card
+            source = _get_source_info()
             card = {
                 "summary": f"PRECISE-HBR Score: {total_score} - {full_label}",
                 "indicator": "info",
                 "detail": f"{patient_name} has a {full_label.lower()} for major bleeding. "
                          f"PRECISE-HBR score: {total_score}. {recommendation}",
-                "source": {
-                    "label": "PRECISE-HBR Risk Assessment",
-                    "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
-                },
+                "source": source,
                 "links": []
             }
         

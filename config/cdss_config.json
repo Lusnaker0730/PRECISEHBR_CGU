@@ -207,6 +207,30 @@
         }
     },
     "medication_keywords": {
+        "aspirin": {
+            "generic_names": ["aspirin"],
+            "brand_names": ["bayer", "ecotrin"],
+            "rxnorm_codes": ["1191"],
+            "description": "Aspirin (阿斯匹靈)"
+        },
+        "antiplatelet_agents": {
+            "clopidogrel": {
+                "generic_names": ["clopidogrel"],
+                "brand_names": ["plavix"],
+                "rxnorm_codes": ["32968"]
+            },
+            "prasugrel": {
+                "generic_names": ["prasugrel"],
+                "brand_names": ["effient"],
+                "rxnorm_codes": ["861634"]
+            },
+            "ticagrelor": {
+                "generic_names": ["ticagrelor"],
+                "brand_names": ["brilinta"],
+                "rxnorm_codes": ["1116632"]
+            },
+            "description": "P2Y12 inhibitors for antiplatelet therapy (P2Y12抑制劑)"
+        },
         "oral_anticoagulants": {
             "generic_names": [
                 "warfarin",
@@ -225,7 +249,7 @@
             "rxnorm_codes": [
                 "11289",
                 "1364430",
-                "21821",
+                "1114195",
                 "1037042",
                 "1537033"
             ],
@@ -415,5 +439,27 @@
             "medications": 100
         },
         "_rxnorm_codes_note": "Oral anticoagulant RxNorm codes defined in medication_keywords.oral_anticoagulants.rxnorm_codes"
+    },
+    "cds_hooks_config": {
+        "risk_indicators": {
+            "very_high_risk": "critical",
+            "high_risk": "warning",
+            "low_risk": "info"
+        },
+        "source": {
+            "label": "PRECISE-HBR Bleeding Risk Calculator",
+            "url": "https://www.acc.org/latest-in-cardiology/articles/2022/01/18/16/19/predicting-out-of-hospital-bleeding-after-pci"
+        },
+        "service_request_code": {
+            "system": "http://loinc.org",
+            "code": "LA-PRECISE-HBR",
+            "description": "PRECISE-HBR risk assessment service request code"
+        },
+        "fallback_service": {
+            "hook": "medication-prescribe",
+            "id": "precise_hbr_bleeding_risk_alert",
+            "title": "PRECISE-HBR High Bleeding Risk Alert",
+            "description": "Alert for patients with high bleeding risk (PRECISE-HBR >= 23)"
+        }
     }
 } 
