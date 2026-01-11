@@ -8,23 +8,33 @@ import logging
 class UnitConversionService:
     """Service for converting laboratory values to canonical units"""
     
+    # Clinical validation ranges for input values
+    VALIDATION_RANGES = {
+        'creatinine': {'min': 0.1, 'max': 30.0},  # mg/dL
+        'age': {'min': 18, 'max': 120},            # years (adult only)
+    }
+    
     # Define the canonical units the application will use internally for calculations
     TARGET_UNITS = {
         'HEMOGLOBIN': {
             'unit': 'g/dl',
             # Factors to convert a source unit TO the target unit (g/dL)
+            # Reference: https://unitslab.com/node/53
             'factors': {
                 'g/l': 0.1,
-                'mmol/l': 1.61135,  # Based on Hb molar mass of 64,458 g/mol
-                'mg/dl': 0.001,  # Conversion for mg/dL to g/dL
+                # 1 mmol/L Hb = 16.1135 g/L = 1.61135 g/dL
+                # Based on Hb tetramer molar mass of ~64,458 g/mol
+                'mmol/l': 1.61135,
+                'mg/dl': 0.001,
             }
         },
         'CREATININE': {
             'unit': 'mg/dl',
             # Factors to convert a source unit TO the target unit (mg/dL)
             'factors': {
-                'umol/l': 0.0113,  # µmol/L to mg/dL
-                'µmol/l': 0.0113,  # Handle unicode character
+                'umol/l': 0.0113,   # µmol/L to mg/dL
+                'µmol/l': 0.0113,   # Handle unicode character
+                'μmol/l': 0.0113,   # Handle Greek mu character
             }
         },
         'WBC': {
@@ -36,7 +46,11 @@ class UnitConversionService:
                 '/ul': 0.001,       # cells/µL ÷ 1000 = 10^9/L
                 '/mm3': 0.001,      # cells/mm³ = cells/µL, same conversion
                 '10^9/l': 1.0,      # Already in target unit
-                'giga/l': 1.0       # Giga/L = 10^9/L
+                'giga/l': 1.0,      # Giga/L = 10^9/L
+                # Additional UCUM variants
+                '10e9/l': 1.0,      # Scientific notation format
+                'x10^9/l': 1.0,     # x-prefix format
+                '10*9/ul': 1000.0,  # 10^9/µL (rare but possible)
             }
         },
         'EGFR': {
@@ -49,7 +63,10 @@ class UnitConversionService:
                 'ml/min/1.73 m^2': 1.0,     # Space and caret
                 'ml/min per 1.73m2': 1.0,   # With 'per'
                 'ml/min/bsa': 1.0,          # Body surface area
-                'ml/min': 1.0               # Without BSA normalization
+                'ml/min': 1.0,              # Without BSA normalization
+                # Additional UCUM variants
+                'ml/min/1.73m**2': 1.0,     # Python-style exponent
+                'ml/min/1.73m²': 1.0,       # Unicode superscript
             } 
         },
         'PLATELETS': {
@@ -59,7 +76,11 @@ class UnitConversionService:
                 'k/ul': 1.0,        # K/µL = thousands/µL = 10^9/L
                 '/ul': 0.001,       # cells/µL ÷ 1000 = 10^9/L
                 '10^9/l': 1.0,      # Already in target unit
-                'giga/l': 1.0       # Giga/L = 10^9/L
+                'giga/l': 1.0,      # Giga/L = 10^9/L
+                # Additional UCUM variants
+                '10e9/l': 1.0,      # Scientific notation format
+                'x10^9/l': 1.0,     # x-prefix format
+                'x10*9/l': 1.0,     # x-prefix with asterisk
             }
         }
     }
@@ -80,19 +101,16 @@ class UnitConversionService:
         value = value_quantity.get('value')
         if value is None or not isinstance(value, (int, float)):
             return None
-            
-        source_unit = value_quantity.get('unit', '').lower()
-        target_unit = unit_system['unit']
         
-        # 1. Direct match
+        # Normalize both units to lowercase for consistent comparison
+        source_unit = value_quantity.get('unit', '').lower().strip()
+        target_unit = unit_system['unit'].lower()
+        
+        # 1. Direct match (case-insensitive)
         if source_unit == target_unit:
             return value
 
-        # 2. Check for common alternative writings of the target unit
-        if source_unit.lower() == target_unit.lower():
-            return value
-
-        # 3. Attempt conversion
+        # 2. Attempt conversion using factors
         conversion_factors = unit_system.get('factors', {})
         if source_unit in conversion_factors:
             conversion_factor = conversion_factors[source_unit]
@@ -100,38 +118,100 @@ class UnitConversionService:
             logging.info(f"Converted {value} {source_unit} to {converted_value:.2f} {target_unit}")
             return converted_value
 
-        # 4. If no conversion is possible, log a warning and return None
-        logging.warning(f"Unit mismatch and no conversion rule found for Observation. "
-                        f"Received: '{source_unit}', Expected: '{target_unit}'. Cannot proceed with this value.")
+        # 3. If no conversion is possible, log a warning and return None
+        logging.warning(
+            f"Unit mismatch and no conversion rule found for Observation. "
+            f"Received: '{source_unit}', Expected: '{target_unit}'. Cannot proceed with this value."
+        )
         return None
+    
+    @classmethod
+    def validate_egfr_inputs(cls, cr_val, age, gender):
+        """
+        Validate inputs for eGFR calculation.
+        
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check for None values
+        if cr_val is None:
+            return False, "Creatinine value is required"
+        if age is None:
+            return False, "Age is required"
+        if gender is None:
+            return False, "Gender is required"
+        
+        # Validate gender
+        if gender not in ['male', 'female']:
+            return False, f"Invalid gender: '{gender}'. Must be 'male' or 'female'"
+        
+        # Validate creatinine range
+        cr_range = cls.VALIDATION_RANGES['creatinine']
+        if cr_val <= 0:
+            return False, "Creatinine must be a positive value"
+        if cr_val < cr_range['min']:
+            return False, f"Creatinine {cr_val} mg/dL is below minimum ({cr_range['min']} mg/dL)"
+        if cr_val > cr_range['max']:
+            return False, f"Creatinine {cr_val} mg/dL exceeds maximum ({cr_range['max']} mg/dL)"
+        
+        # Validate age range
+        age_range = cls.VALIDATION_RANGES['age']
+        if age < age_range['min']:
+            return False, f"eGFR calculation requires adult age (≥{age_range['min']} years)"
+        if age > age_range['max']:
+            return False, f"Age {age} exceeds maximum ({age_range['max']} years)"
+        
+        return True, None
     
     @classmethod
     def calculate_egfr(cls, cr_val, age, gender):
         """
-        Calculates eGFR using the CKD-EPI 2021 equation.
+        Calculates eGFR using the CKD-EPI 2021 equation (race-free version).
+        
+        Reference:
+            Inker LA, et al. New creatinine- and cystatin C-based equations to estimate 
+            GFR without race. N Engl J Med. 2021;385(19):1737-1749.
+            doi: 10.1056/NEJMoa2102953
         
         Args:
             cr_val: Creatinine value in mg/dL
-            age: Patient age in years
+            age: Patient age in years (must be ≥18)
             gender: 'male' or 'female'
         
         Returns:
-            Tuple of (egfr_value, calculation_method)
+            Tuple of (egfr_value, calculation_method_or_error)
         """
-        if not all([cr_val, age, gender]) or gender not in ['male', 'female']:
-            return None, "Missing data for eGFR calculation"
+        # Validate inputs
+        is_valid, error_message = cls.validate_egfr_inputs(cr_val, age, gender)
+        if not is_valid:
+            logging.warning(f"eGFR calculation skipped: {error_message}")
+            return None, error_message
         
-        k = 0.7 if gender == 'female' else 0.9
+        # CKD-EPI 2021 constants
+        # κ (kappa) = 0.7 for females, 0.9 for males
+        # α (alpha) = -0.241 for females, -0.302 for males
+        kappa = 0.7 if gender == 'female' else 0.9
         alpha = -0.241 if gender == 'female' else -0.302
+        female_multiplier = 1.012 if gender == 'female' else 1.0
         
-        # CKD-EPI 2021 formula
-        egfr = 142 * (min(cr_val / k, 1) ** alpha) * (max(cr_val / k, 1) ** -1.2) * (0.9938 ** age)
-        if gender == 'female':
-            egfr *= 1.012
-            
-        return round(egfr), "CKD-EPI 2021"
+        # CKD-EPI 2021 formula:
+        # eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^(-1.2) × 0.9938^age × (1.012 if female)
+        scr_over_kappa = cr_val / kappa
+        min_term = min(scr_over_kappa, 1.0) ** alpha
+        max_term = max(scr_over_kappa, 1.0) ** (-1.2)
+        age_term = 0.9938 ** age
+        
+        egfr = 142 * min_term * max_term * age_term * female_multiplier
+        
+        # Round to integer (clinical standard)
+        egfr_rounded = round(egfr)
+        
+        logging.debug(
+            f"eGFR calculated: Cr={cr_val} mg/dL, Age={age}, Gender={gender} -> {egfr_rounded} mL/min/1.73m²"
+        )
+        
+        return egfr_rounded, "CKD-EPI 2021"
 
 
 # Global instance for easy access
 unit_converter = UnitConversionService()
-
