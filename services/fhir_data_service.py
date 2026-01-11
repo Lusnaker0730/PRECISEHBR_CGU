@@ -1,45 +1,42 @@
 """
 FHIR Data Service - Unified Entry Point
-This module serves as a backward-compatible facade for the refactored microservices.
 
-Original monolithic service has been refactored into the following microservices:
-- services/config_loader.py: Configuration management
-- services/unit_conversion_service.py: Laboratory value unit conversions
-- services/fhir_client_service.py: FHIR server interactions
-- services/condition_checker.py: Medical condition checking
-- services/risk_classifier.py: Risk categorization
-- services/precise_hbr_calculator.py: PRECISE-HBR risk calculation
-- services/tradeoff_model_calculator.py: Bleeding-thrombosis tradeoff analysis
-
-This file maintains backward compatibility by re-exporting all legacy functions.
+Backward-compatible facade for the refactored microservices:
+- config_loader: Configuration management
+- unit_conversion_service: Laboratory value unit conversions
+- fhir_client_service: FHIR server interactions
+- condition_checker: Medical condition checking
+- risk_classifier: Risk categorization
+- precise_hbr_calculator: PRECISE-HBR risk calculation
+- tradeoff_model_calculator: Bleeding-thrombosis tradeoff analysis
 """
-import logging
 import datetime as dt
+import logging
+
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
 
-# Import all refactored services
-from services.config_loader import config_loader, ConfigLoader
-from services.unit_conversion_service import unit_converter, UnitConversionService
+from services.config_loader import ConfigLoader, config_loader
+from services.condition_checker import ConditionCheckerService, condition_checker
 from services.fhir_client_service import FHIRClientService, get_fhir_data
-from services.condition_checker import condition_checker, ConditionCheckerService
-from services.risk_classifier import risk_classifier, RiskClassifierService
 from services.precise_hbr_calculator import (
-    precise_hbr_calculator,
     PreciseHBRCalculator,
     calculate_precise_hbr_score,
-    calculate_risk_components
+    calculate_risk_components,
+    precise_hbr_calculator,
 )
+from services.risk_classifier import RiskClassifierService, risk_classifier
 from services.tradeoff_model_calculator import (
-    tradeoff_calculator,
     TradeoffModelCalculator,
+    calculate_tradeoff_scores,
+    calculate_tradeoff_scores_interactive,
+    detect_tradeoff_factors,
     get_tradeoff_model_data,
     get_tradeoff_model_predictors,
-    detect_tradeoff_factors,
-    calculate_tradeoff_scores,
-    calculate_tradeoff_scores_interactive
+    tradeoff_calculator,
 )
-from services.twcore_adapter import twcore_adapter, TWCoreAdapter
+from services.twcore_adapter import TWCoreAdapter, twcore_adapter
+from services.unit_conversion_service import UnitConversionService, unit_converter
 
 # --- Legacy Global Variables (for backward compatibility) ---
 CDSS_CONFIG = config_loader.config
@@ -50,318 +47,334 @@ TARGET_UNITS = unit_converter.TARGET_UNITS
 # --- Legacy Helper Functions ---
 
 def _get_loinc_codes():
-    """Legacy function - replaced by config_loader.get_loinc_codes()"""
+    """Legacy wrapper for config_loader.get_loinc_codes()."""
     return config_loader.get_loinc_codes()
 
+
 def _get_text_search_terms():
-    """Legacy function - replaced by config_loader.get_text_search_terms()"""
+    """Legacy wrapper for config_loader.get_text_search_terms()."""
     return config_loader.get_text_search_terms()
 
+
 def _resource_has_code(resource, system, code):
-    """Legacy function - replaced by condition_checker.resource_has_code()"""
+    """Legacy wrapper for condition_checker.resource_has_code()."""
     return condition_checker.resource_has_code(resource, system, code)
 
+
 def _is_within_time_window(resource_date_str, min_months=None, max_months=None):
-    """Checks if a resource date is within the specified time window from today."""
+    """Check if a resource date falls within the specified time window from today."""
     if not resource_date_str:
         return False
+
     try:
         resource_date = parse_date(resource_date_str).date()
         today = dt.date.today()
-        if min_months is not None and resource_date > today - relativedelta(months=min_months):
+
+        earliest_allowed = today - relativedelta(months=max_months) if max_months else None
+        latest_allowed = today - relativedelta(months=min_months) if min_months else None
+
+        if earliest_allowed and resource_date < earliest_allowed:
             return False
-        if max_months is not None and resource_date < today - relativedelta(months=max_months):
+        if latest_allowed and resource_date > latest_allowed:
             return False
+
         return True
     except (ValueError, TypeError):
         return False
 
 def get_patient_demographics(patient_resource, use_twcore=True):
     """
-    Extracts and returns key demographics from a patient resource.
-    
-    Enhanced to support Taiwan Core IG (TW Core IG) for Taiwan-specific requirements:
+    Extract key demographics from a FHIR Patient resource.
+
+    Supports Taiwan Core IG (TW Core IG) for Taiwan-specific fields:
     - Chinese name support (text field)
     - Taiwan ID (National ID) / Resident ID
     - Medical Record Number
-    
+
     Args:
         patient_resource: FHIR Patient resource dictionary
         use_twcore: If True, use TW Core IG adapter for enhanced Taiwan support
-    
+
     Returns:
         Dictionary with name, gender, age, birthDate, and Taiwan-specific fields
     """
-    # Use TW Core IG adapter if enabled
     if use_twcore:
-        demographics = twcore_adapter.extract_patient_demographics_twcore(patient_resource)
-        return demographics
-    
+        return twcore_adapter.extract_patient_demographics_twcore(patient_resource)
+
     # Legacy support (backward compatible)
     demographics = {
         "name": "Unknown",
         "gender": None,
         "age": None,
-        "birthDate": None
+        "birthDate": None,
     }
+
     if not patient_resource:
         return demographics
 
-    # Name
-    if patient_resource.get("name"):
-        name_data = patient_resource["name"][0]
-        # Support for Taiwan Core FHIR Profile where name is in a single 'text' field
+    # Extract name
+    name_list = patient_resource.get("name")
+    if name_list:
+        name_data = name_list[0]
         if name_data.get("text"):
             demographics["name"] = name_data["text"]
         else:
-            demographics["name"] = " ".join(name_data.get("given", []) + [name_data.get("family", "")]).strip()
+            name_parts = name_data.get("given", []) + [name_data.get("family", "")]
+            demographics["name"] = " ".join(name_parts).strip()
 
-    # Gender
     demographics["gender"] = patient_resource.get("gender")
 
-    # Age
-    if patient_resource.get("birthDate"):
-        demographics["birthDate"] = patient_resource["birthDate"]
+    # Calculate age from birthDate
+    birth_date_str = patient_resource.get("birthDate")
+    if birth_date_str:
+        demographics["birthDate"] = birth_date_str
         try:
-            birth_date = dt.datetime.strptime(patient_resource["birthDate"], "%Y-%m-%d").date()
+            birth_date = dt.datetime.strptime(birth_date_str, "%Y-%m-%d").date()
             today = dt.date.today()
-            demographics["age"] = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            age = today.year - birth_date.year
+            if (today.month, today.day) < (birth_date.month, birth_date.day):
+                age -= 1
+            demographics["age"] = age
         except (ValueError, TypeError):
             pass
-            
+
     return demographics
 
 def get_value_from_observation(obs, unit_system):
-    """
-    Legacy function - replaced by unit_converter.get_value_from_observation()
-    
-    Safely extracts a numeric value from an Observation resource, handling unit conversions.
-    Returns the numeric value in the target unit, or None if conversion is not possible.
-    """
+    """Legacy wrapper for unit_converter.get_value_from_observation()."""
     return unit_converter.get_value_from_observation(obs, unit_system)
 
+
 def calculate_egfr(cr_val, age, gender):
-    """
-    Legacy function - replaced by unit_converter.calculate_egfr()
-    
-    Calculates eGFR using the CKD-EPI 2021 equation.
-    """
+    """Legacy wrapper for unit_converter.calculate_egfr()."""
     return unit_converter.calculate_egfr(cr_val, age, gender)
 
 def get_score_from_table(value, score_table, range_key):
     """
-    Helper function to get score from lookup tables.
-    Note: This function is kept for potential legacy use, but may not be actively used in refactored code.
+    Get score from lookup tables based on value ranges.
+
+    Note: This function is kept for potential legacy use but may not be
+    actively used in refactored code.
     """
-    matched_score = None
-    
+    # Check for exact range match
     for item in score_table:
-        if range_key in item:
-            range_values = item[range_key]
-            if len(range_values) == 2 and range_values[0] <= value <= range_values[1]:
-                return item.get('base_score', 0)
-    
-    # If no exact match, check if value exceeds the highest range
-    if range_key == 'age_range':
-        max_range_item = max(score_table, key=lambda x: x[range_key][1] if range_key in x else 0)
-        if value > max_range_item[range_key][1]:
-            logging.info(f"Age {value} exceeds max range {max_range_item[range_key]}, using highest score: {max_range_item.get('base_score', 0)}")
-            return max_range_item.get('base_score', 0)
-    elif range_key == 'hb_range':
-        min_range_item = min(score_table, key=lambda x: x[range_key][0] if range_key in x else float('inf'))
-        if value < min_range_item[range_key][0]:
-            logging.info(f"Hemoglobin {value} below min range {min_range_item[range_key]}, using highest score: {min_range_item.get('base_score', 0)}")
-            return min_range_item.get('base_score', 0)
-    elif range_key == 'ccr_range':
-        min_range_item = min(score_table, key=lambda x: x[range_key][0] if range_key in x else float('inf'))
-        if value < min_range_item[range_key][0]:
-            logging.info(f"Creatinine clearance {value} below min range {min_range_item[range_key]}, using highest score: {min_range_item.get('base_score', 0)}")
-            return min_range_item.get('base_score', 0)
-    elif range_key == 'wbc_range':
-        max_range_item = max(score_table, key=lambda x: x[range_key][1] if range_key in x else 0)
-        if value > max_range_item[range_key][1]:
-            logging.info(f"WBC {value} exceeds max range {max_range_item[range_key]}, using highest score: {max_range_item.get('base_score', 0)}")
-            return max_range_item.get('base_score', 0)
-    
+        if range_key not in item:
+            continue
+        range_values = item[range_key]
+        if len(range_values) == 2 and range_values[0] <= value <= range_values[1]:
+            return item.get('base_score', 0)
+
+    # Handle out-of-range values based on range type
+    boundary_configs = {
+        'age_range': {'check': 'above_max', 'label': 'Age'},
+        'wbc_range': {'check': 'above_max', 'label': 'WBC'},
+        'hb_range': {'check': 'below_min', 'label': 'Hemoglobin'},
+        'ccr_range': {'check': 'below_min', 'label': 'Creatinine clearance'},
+    }
+
+    config = boundary_configs.get(range_key)
+    if not config:
+        return 0
+
+    if config['check'] == 'above_max':
+        boundary_item = max(
+            score_table,
+            key=lambda x: x[range_key][1] if range_key in x else 0
+        )
+        boundary_value = boundary_item[range_key][1]
+        is_out_of_range = value > boundary_value
+    else:
+        boundary_item = min(
+            score_table,
+            key=lambda x: x[range_key][0] if range_key in x else float('inf')
+        )
+        boundary_value = boundary_item[range_key][0]
+        is_out_of_range = value < boundary_value
+
+    if is_out_of_range:
+        score = boundary_item.get('base_score', 0)
+        logging.info(
+            f"{config['label']} {value} outside range {boundary_item[range_key]}, "
+            f"using score: {score}"
+        )
+        return score
+
     return 0
 
 def check_bleeding_history(conditions):
-    """
-    Legacy function - replaced by condition_checker.check_prior_bleeding()
-    
-    Checks for history of spontaneous bleeding in patient conditions.
-    """
+    """Legacy wrapper for condition_checker.check_prior_bleeding()."""
     return condition_checker.check_prior_bleeding(conditions)
+
 
 def check_oral_anticoagulation(medications):
-    """
-    Legacy function - replaced by condition_checker.check_oral_anticoagulation()
-    
-    Check for long-term oral anticoagulation therapy using codes from configuration.
-    """
+    """Legacy wrapper for condition_checker.check_oral_anticoagulation()."""
     return condition_checker.check_oral_anticoagulation(medications)
 
+
 def check_bleeding_diathesis_updated(conditions):
-    """Legacy function - replaced by condition_checker.check_bleeding_diathesis()"""
+    """Legacy wrapper for condition_checker.check_bleeding_diathesis()."""
     return condition_checker.check_bleeding_diathesis(conditions)
 
+
 def check_prior_bleeding_updated(conditions):
-    """Legacy function - replaced by condition_checker.check_prior_bleeding()"""
+    """Legacy wrapper for condition_checker.check_prior_bleeding()."""
     return condition_checker.check_prior_bleeding(conditions)
 
+
 def check_liver_cirrhosis_portal_hypertension_updated(conditions):
-    """Legacy function - replaced by condition_checker.check_liver_cirrhosis_with_portal_hypertension()"""
+    """Legacy wrapper for condition_checker.check_liver_cirrhosis_with_portal_hypertension()."""
     return condition_checker.check_liver_cirrhosis_with_portal_hypertension(conditions)
 
+
 def check_active_cancer_updated(conditions):
-    """Legacy function - replaced by condition_checker.check_active_cancer()"""
+    """Legacy wrapper for condition_checker.check_active_cancer()."""
     return condition_checker.check_active_cancer(conditions)
 
+
 def get_condition_text(condition):
-    """Legacy function - replaced by condition_checker.get_condition_text()"""
+    """Legacy wrapper for condition_checker.get_condition_text()."""
     return condition_checker.get_condition_text(condition)
 
 def check_arc_hbr_factors(raw_data, medications):
     """
-    Legacy function - checks for ARC-HBR risk factors.
-    Note: This returns a different format than check_arc_hbr_factors_detailed.
+    Check for ARC-HBR risk factors and return simplified format.
+
+    Returns a dict with 'has_factors' boolean and 'factors' list of descriptions.
+    For detailed breakdown, use check_arc_hbr_factors_detailed instead.
     """
     details = condition_checker.check_arc_hbr_factors_detailed(raw_data, medications)
-    
-    factors = []
-    if details['thrombocytopenia']:
-        factors.append("Thrombocytopenia (platelets < 100×10⁹/L)")
-    if details['bleeding_diathesis']:
-        factors.append("Chronic bleeding diathesis")
-    if details['active_malignancy']:
-        factors.append("Active malignancy")
-    if details['liver_cirrhosis']:
-        factors.append("Liver cirrhosis with portal hypertension")
-    if details['nsaids_corticosteroids']:
-                factors.append("Long-term NSAIDs or corticosteroids")
-    
-    return {
-        'has_factors': details['has_any_factor'],
-        'factors': factors
+
+    factor_descriptions = {
+        'thrombocytopenia': "Thrombocytopenia (platelets < 100x10^9/L)",
+        'bleeding_diathesis': "Chronic bleeding diathesis",
+        'active_malignancy': "Active malignancy",
+        'liver_cirrhosis': "Liver cirrhosis with portal hypertension",
+        'nsaids_corticosteroids': "Long-term NSAIDs or corticosteroids",
     }
 
+    factors = [
+        description
+        for key, description in factor_descriptions.items()
+        if details.get(key)
+    ]
+
+    return {
+        'has_factors': details['has_any_factor'],
+        'factors': factors,
+    }
+
+
 def check_arc_hbr_factors_detailed(raw_data, medications):
-    """Legacy function - replaced by condition_checker.check_arc_hbr_factors_detailed()"""
+    """Legacy wrapper for condition_checker.check_arc_hbr_factors_detailed()."""
     return condition_checker.check_arc_hbr_factors_detailed(raw_data, medications)
 
 def calculate_bleeding_risk_percentage(precise_hbr_score):
-    """Legacy function - replaced by risk_classifier.calculate_bleeding_risk_percentage()"""
+    """Legacy wrapper for risk_classifier.calculate_bleeding_risk_percentage()."""
     return risk_classifier.calculate_bleeding_risk_percentage(precise_hbr_score)
 
+
 def get_risk_category_info(precise_hbr_score):
-    """Legacy function - replaced by risk_classifier.get_risk_category_info()"""
+    """Legacy wrapper for risk_classifier.get_risk_category_info()."""
     return risk_classifier.get_risk_category_info(precise_hbr_score)
 
+
 def get_precise_hbr_display_info(precise_hbr_score):
-    """Legacy function - replaced by risk_classifier.get_precise_hbr_display_info()"""
+    """Legacy wrapper for risk_classifier.get_precise_hbr_display_info()."""
     return risk_classifier.get_precise_hbr_display_info(precise_hbr_score)
 
+
 def convert_hr_to_probability(total_hr_score, baseline_event_rate):
-    """Legacy function - replaced by tradeoff_calculator.convert_hr_to_probability()"""
+    """Legacy wrapper for tradeoff_calculator.convert_hr_to_probability()."""
     return tradeoff_calculator.convert_hr_to_probability(total_hr_score, baseline_event_rate)
 
 def get_active_medications(raw_data, demographics):
     """
-    Process medication data from FHIR resources to identify active medications.
+    Identify active medications from FHIR medication request resources.
+
     Used for CDS Hooks medication analysis.
-    
-    Returns: list of active medication resources
+
+    Returns:
+        list: Active medication resources
     """
+    active_statuses = {'active', 'on-hold', 'completed'}
     medications = raw_data.get('med_requests', [])
-    active_medications = []
-    
-    for med in medications:
-        status = med.get('status', '').lower()
-        if status in ['active', 'on-hold', 'completed']:
-            active_medications.append(med)
-    
+
+    active_medications = [
+        med for med in medications
+        if med.get('status', '').lower() in active_statuses
+    ]
+
     logging.info(f"Found {len(active_medications)} active medications")
     return active_medications
+
 
 def check_medication_interactions_bleeding_risk(medications):
     """
     Check for medication combinations that increase bleeding risk.
+
     Specifically looks for DAPT combinations and other high-risk medications.
-    
-    Returns: dict with interaction details
+    This function can be expanded for more sophisticated interaction checking.
+
+    Returns:
+        dict: Interaction details including DAPT detection and recommendations
     """
-    interactions = {
+    return {
         'dapt_detected': False,
         'high_risk_combinations': [],
         'bleeding_risk_medications': [],
-        'recommendations': []
+        'recommendations': [],
     }
-    
-    # This function can be expanded to include more sophisticated
-    # medication interaction checking beyond DAPT
-    
-    return interactions 
 
 # --- Module Exports ---
 __all__ = [
-    # Configuration
+    # Configuration constants
     'CDSS_CONFIG',
     'LOINC_CODES',
-    'TEXT_SEARCH_TERMS',
     'TARGET_UNITS',
-    
+    'TEXT_SEARCH_TERMS',
     # Service instances
-    'config_loader',
-    'unit_converter',
     'condition_checker',
-    'risk_classifier',
+    'config_loader',
     'precise_hbr_calculator',
+    'risk_classifier',
     'tradeoff_calculator',
-    'twcore_adapter',  # TW Core IG Adapter
-    
-    # FHIR Data Retrieval
+    'twcore_adapter',
+    'unit_converter',
+    # Service classes
+    'TWCoreAdapter',
+    # FHIR data retrieval
     'get_fhir_data',
     'get_tradeoff_model_data',
     'get_tradeoff_model_predictors',
-    
-    # Patient Demographics
+    # Patient demographics
     'get_patient_demographics',
-    
-    # Unit Conversion
-    'get_value_from_observation',
+    # Unit conversion
     'calculate_egfr',
-    
-    # Risk Calculation
+    'get_value_from_observation',
+    # Risk calculation
     'calculate_precise_hbr_score',
     'calculate_risk_components',
     'calculate_tradeoff_scores',
     'calculate_tradeoff_scores_interactive',
-    'detect_tradeoff_factors',
     'convert_hr_to_probability',
-    
-    # Risk Classification
+    'detect_tradeoff_factors',
+    # Risk classification
     'calculate_bleeding_risk_percentage',
-    'get_risk_category_info',
     'get_precise_hbr_display_info',
-    
-    # Condition Checking
-    'check_bleeding_history',
-    'check_oral_anticoagulation',
+    'get_risk_category_info',
+    # Condition checking
+    'check_active_cancer_updated',
     'check_arc_hbr_factors',
     'check_arc_hbr_factors_detailed',
     'check_bleeding_diathesis_updated',
-    'check_prior_bleeding_updated',
+    'check_bleeding_history',
     'check_liver_cirrhosis_portal_hypertension_updated',
-    'check_active_cancer_updated',
+    'check_oral_anticoagulation',
+    'check_prior_bleeding_updated',
     'get_condition_text',
-    
-    # Medication Analysis
-    'get_active_medications',
+    # Medication analysis
     'check_medication_interactions_bleeding_risk',
-    
-    # Helper Functions
+    'get_active_medications',
+    # Helper functions
     'get_score_from_table',
-    
-    # TW Core IG Classes
-    'TWCoreAdapter',
 ]
