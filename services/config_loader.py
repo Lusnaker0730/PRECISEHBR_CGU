@@ -98,8 +98,38 @@ class ConfigLoader:
         return self._config.get('medication_keywords', {})
     
     def get_bleeding_history_keywords(self):
-        """Get bleeding history keywords"""
-        return self._config.get('bleeding_history_keywords', [])
+        """Get bleeding history keywords from prior_bleeding config"""
+        prior_bleeding = self.get_snomed_codes('prior_bleeding')
+        return prior_bleeding.get('text_keywords', [])
+
+    def get_fhir_systems(self):
+        """Get FHIR system URIs configuration"""
+        return self._config.get('fhir_systems', {})
+
+    def get_fhir_system(self, system_name):
+        """
+        Get a specific FHIR system URI.
+
+        Args:
+            system_name: Key name (e.g., 'snomed_ct', 'condition_clinical')
+
+        Returns:
+            System URI string or None if not found
+        """
+        return self.get_fhir_systems().get(system_name)
+
+    def get_clinical_status_codes(self, status_type='active'):
+        """
+        Get clinical status codes.
+
+        Args:
+            status_type: 'active' or 'inactive'
+
+        Returns:
+            List of status codes
+        """
+        status_config = self._config.get('clinical_status', {})
+        return status_config.get(f'{status_type}_codes', [])
 
 
 # Global instance

@@ -11,14 +11,15 @@ Features:
 - Provides query and analysis capabilities
 """
 
-import os
-import json
-import hashlib
 import datetime
-from typing import Optional, Dict, Any
-from functools import wraps
-from flask import session, request
+import hashlib
+import json
 import logging
+import os
+from functools import wraps
+from typing import Any, Optional
+
+from flask import request, session
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -92,65 +93,61 @@ class AuditLogger:
     def _get_last_hash(self) -> Optional[str]:
         """
         Retrieve the hash of the last log entry for chain verification.
-        
+
         Returns:
-            The last entry hash, or None if log is empty
+            The last entry hash, or None if log is empty or unreadable
         """
         if not os.path.exists(self.audit_file_path):
             return None
-        
+
         try:
             with open(self.audit_file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-                if lines:
-                    last_entry = json.loads(lines[-1])
-                    return last_entry.get('entry_hash')
+            if not lines:
+                return None
+            last_entry = json.loads(lines[-1])
+            return last_entry.get('entry_hash')
         except (OSError, IOError) as e:
             logger.warning(f"Could not read audit log (possibly read-only filesystem): {e}")
-            return None
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing last hash entry: {e}")
         except Exception as e:
             logger.error(f"Error reading last hash: {e}")
-        
         return None
     
-    def _calculate_hash(self, entry_data: Dict[str, Any]) -> str:
+    def _calculate_hash(self, entry_data: dict[str, Any]) -> str:
         """
         Calculate SHA-256 hash of an audit entry.
-        
-        Creates a deterministic hash by:
-        1. Excluding the 'entry_hash' field itself
-        2. Sorting keys for consistency
-        3. Using compact JSON representation
-        
+
+        Creates a deterministic hash by excluding the 'entry_hash' field,
+        sorting keys for consistency, and using compact JSON representation.
+
         Args:
             entry_data: The audit entry dictionary
-            
+
         Returns:
             Hexadecimal hash string
         """
-        # Create a copy without the entry_hash field
         data_to_hash = {k: v for k, v in entry_data.items() if k != 'entry_hash'}
-        
-        # Convert to JSON string with sorted keys for consistency
         json_str = json.dumps(data_to_hash, sort_keys=True, ensure_ascii=False)
-        
-        # Calculate SHA-256 hash
         return hashlib.sha256(json_str.encode('utf-8')).hexdigest()
     
-    def log_event(self,
-                  event_type: str,
-                  action: str,
-                  patient_id: Optional[str] = None,
-                  user_id: Optional[str] = None,
-                  resource_type: Optional[str] = None,
-                  resource_ids: Optional[list] = None,
-                  outcome: str = 'success',
-                  details: Optional[Dict[str, Any]] = None,
-                  ip_address: Optional[str] = None,
-                  user_agent: Optional[str] = None) -> Dict[str, Any]:
+    def log_event(
+        self,
+        event_type: str,
+        action: str,
+        patient_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_ids: Optional[list] = None,
+        outcome: str = 'success',
+        details: Optional[dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Log an auditable event.
-        
+
         Args:
             event_type: Type of event (e.g., 'ePHI_ACCESS', 'DATA_EXPORT', 'LOGIN')
             action: Specific action performed (e.g., 'view_patient_data', 'calculate_risk')
@@ -162,11 +159,10 @@ class AuditLogger:
             details: Additional context information
             ip_address: Client IP address
             user_agent: Client user agent string
-            
+
         Returns:
             The logged audit entry
         """
-        # Create audit entry
         audit_entry = {
             'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
             'event_type': event_type,
@@ -181,77 +177,85 @@ class AuditLogger:
             'details': details or {},
             'previous_hash': self.last_hash
         }
-        
-        # Calculate hash for this entry (creates tamper-evident chain)
         audit_entry['entry_hash'] = self._calculate_hash(audit_entry)
-        
-        # Write to audit log
+
+        return self._write_audit_entry(audit_entry)
+
+    def _write_audit_entry(self, audit_entry: dict[str, Any]) -> dict[str, Any]:
+        """Write an audit entry to the log file and update chain state."""
+        event_type = audit_entry['event_type']
+        action = audit_entry['action']
+        user_id = audit_entry['user_id']
+        patient_id = audit_entry['patient_id']
+        outcome = audit_entry['outcome']
+
         try:
             with open(self.audit_file_path, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(audit_entry, ensure_ascii=False) + '\n')
-            
-            # Update last hash
             self.last_hash = audit_entry['entry_hash']
-            
-            # Also log to application logger (but without sensitive details)
             logger.info(f"AUDIT: {event_type} - {action} - User:{user_id} - Patient:{patient_id} - Outcome:{outcome}")
-            
             return audit_entry
-            
         except (OSError, IOError) as e:
-            # In App Engine or read-only filesystem, log to console/monitoring instead
             logger.warning(f"Could not write to audit log file (read-only filesystem): {e}")
-            logger.info(f"AUDIT_ENTRY: {json.dumps(audit_entry)}")  # Log to console for Cloud Logging
-            return audit_entry  # Continue operation
+            logger.info(f"AUDIT_ENTRY: {json.dumps(audit_entry)}")
+            return audit_entry
         except Exception as e:
             logger.error(f"CRITICAL: Failed to write audit log: {e}")
-            # In production, this should trigger an alert
             raise
     
     def verify_log_integrity(self) -> tuple[bool, Optional[str]]:
         """
         Verify the integrity of the entire audit log chain.
-        
+
         Returns:
-            Tuple of (is_valid, error_message)
-            - is_valid: True if the entire chain is valid
-            - error_message: Description of tampering if detected, None otherwise
+            Tuple of (is_valid, error_message) where error_message is None if valid
         """
         if not os.path.exists(self.audit_file_path):
             return False, "Audit log file does not exist"
-        
+
         try:
             with open(self.audit_file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            
-            if not lines:
-                return False, "Audit log is empty"
-            
-            previous_hash = None
-            
-            for line_num, line in enumerate(lines, 1):
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    return False, f"Invalid JSON at line {line_num}"
-                
-                # Verify the hash chain
-                if entry.get('previous_hash') != previous_hash:
-                    return False, f"Hash chain broken at line {line_num}: expected previous_hash={previous_hash}, got {entry.get('previous_hash')}"
-                
-                # Verify the entry's own hash
-                stored_hash = entry.get('entry_hash')
-                calculated_hash = self._calculate_hash(entry)
-                
-                if stored_hash != calculated_hash:
-                    return False, f"Entry hash mismatch at line {line_num}: stored={stored_hash}, calculated={calculated_hash}"
-                
-                previous_hash = stored_hash
-            
-            return True, None
-            
         except Exception as e:
-            return False, f"Error during verification: {str(e)}"
+            return False, f"Error reading audit log: {str(e)}"
+
+        if not lines:
+            return False, "Audit log is empty"
+
+        previous_hash = None
+        for line_num, line in enumerate(lines, 1):
+            error = self._verify_entry(line, line_num, previous_hash)
+            if error:
+                return False, error
+            entry = json.loads(line)
+            previous_hash = entry.get('entry_hash')
+
+        return True, None
+
+    def _verify_entry(
+        self, line: str, line_num: int, expected_previous_hash: Optional[str]
+    ) -> Optional[str]:
+        """Verify a single audit log entry. Returns error message or None if valid."""
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            return f"Invalid JSON at line {line_num}"
+
+        if entry.get('previous_hash') != expected_previous_hash:
+            return (
+                f"Hash chain broken at line {line_num}: "
+                f"expected previous_hash={expected_previous_hash}, got {entry.get('previous_hash')}"
+            )
+
+        stored_hash = entry.get('entry_hash')
+        calculated_hash = self._calculate_hash(entry)
+        if stored_hash != calculated_hash:
+            return (
+                f"Entry hash mismatch at line {line_num}: "
+                f"stored={stored_hash}, calculated={calculated_hash}"
+            )
+
+        return None
 
 
 # Global audit logger instance
@@ -266,19 +270,20 @@ def get_audit_logger() -> AuditLogger:
     return _audit_logger
 
 
-def audit_ephi_access(action: str, 
-                     resource_type: Optional[str] = None,
-                     details: Optional[Dict[str, Any]] = None):
+def audit_ephi_access(
+    action: str,
+    resource_type: Optional[str] = None,
+    details: Optional[dict[str, Any]] = None
+):
     """
     Decorator to automatically audit ePHI access in Flask routes.
-    
+
     Usage:
         @app.route('/patient/<patient_id>')
         @audit_ephi_access(action='view_patient_data', resource_type='Patient')
         def view_patient(patient_id):
-            # Your code here
             pass
-    
+
     Args:
         action: Description of the action being performed
         resource_type: Type of FHIR resource being accessed
@@ -288,23 +293,16 @@ def audit_ephi_access(action: str,
         @wraps(f)
         def wrapped(*args, **kwargs):
             audit_logger = get_audit_logger()
-            
-            # Extract context from Flask request and session
             patient_id = session.get('patient_id') or kwargs.get('patient_id')
             user_id = session.get('user_id') or session.get('session_id', 'unknown')
-            ip_address = request.remote_addr
-            user_agent = request.headers.get('User-Agent', 'unknown')
-            
-            # Prepare details
-            audit_details = details or {}
+            ip_address, user_agent = _get_request_context()
+
+            audit_details = dict(details) if details else {}
             audit_details['endpoint'] = request.endpoint
             audit_details['method'] = request.method
-            
+
             try:
-                # Execute the wrapped function
                 result = f(*args, **kwargs)
-                
-                # Log successful access
                 audit_logger.log_event(
                     event_type='ePHI_ACCESS',
                     action=action,
@@ -316,11 +314,8 @@ def audit_ephi_access(action: str,
                     ip_address=ip_address,
                     user_agent=user_agent
                 )
-                
                 return result
-                
             except Exception as e:
-                # Log failed access
                 audit_logger.log_event(
                     event_type='ePHI_ACCESS',
                     action=action,
@@ -332,74 +327,78 @@ def audit_ephi_access(action: str,
                     ip_address=ip_address,
                     user_agent=user_agent
                 )
-                
-                # Re-raise the exception
                 raise
-        
+
         return wrapped
     return decorator
 
 
-def log_user_authentication(user_id: str, outcome: str, details: Optional[Dict[str, Any]] = None):
+def _get_request_context() -> tuple[Optional[str], Optional[str]]:
+    """Extract IP address and user agent from Flask request context."""
+    if not request:
+        return None, None
+    return request.remote_addr, request.headers.get('User-Agent')
+
+
+def log_user_authentication(
+    user_id: str, outcome: str, details: Optional[dict[str, Any]] = None
+) -> None:
     """
     Log user authentication events.
-    
+
     Args:
         user_id: User identifier
         outcome: 'success' or 'failure'
         details: Additional context (e.g., authentication method)
     """
-    audit_logger = get_audit_logger()
-    
-    audit_logger.log_event(
+    ip_address, user_agent = _get_request_context()
+    get_audit_logger().log_event(
         event_type='AUTHENTICATION',
         action='user_login',
         user_id=user_id,
         outcome=outcome,
         details=details or {},
-        ip_address=request.remote_addr if request else None,
-        user_agent=request.headers.get('User-Agent') if request else None
+        ip_address=ip_address,
+        user_agent=user_agent
     )
 
 
-def log_privilege_change(user_id: str, action: str, details: Dict[str, Any]):
+def log_privilege_change(user_id: str, action: str, details: dict[str, Any]) -> None:
     """
     Log changes to user privileges.
-    
+
     Args:
         user_id: User identifier
         action: Description of privilege change
         details: Details of the change
     """
-    audit_logger = get_audit_logger()
-    
-    audit_logger.log_event(
+    ip_address, user_agent = _get_request_context()
+    get_audit_logger().log_event(
         event_type='PRIVILEGE_CHANGE',
         action=action,
         user_id=user_id,
         outcome='success',
         details=details,
-        ip_address=request.remote_addr if request else None,
-        user_agent=request.headers.get('User-Agent') if request else None
+        ip_address=ip_address,
+        user_agent=user_agent
     )
 
 
-def log_audit_status_change(action: str, details: Dict[str, Any]):
+def log_audit_status_change(action: str, details: dict[str, Any]) -> None:
     """
     Log changes to audit log status (e.g., manual review, backup).
-    
+
     Args:
         action: Description of the audit status change
         details: Details of the change
     """
-    audit_logger = get_audit_logger()
-    
-    audit_logger.log_event(
+    ip_address, user_agent = _get_request_context()
+    get_audit_logger().log_event(
         event_type='AUDIT_STATUS_CHANGE',
         action=action,
         outcome='success',
         details=details,
-        ip_address=request.remote_addr if request else None,
-        user_agent=request.headers.get('User-Agent') if request else None
+        ip_address=ip_address,
+        user_agent=user_agent
     )
 

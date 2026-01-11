@@ -76,7 +76,7 @@ class TestSnomedCodes:
         codes = config_loader.get_snomed_codes('bleeding_diathesis')
         assert codes is not None
         assert isinstance(codes, dict)
-        assert 'specific_codes' in codes or 'parent_code' in codes
+        assert 'snomed_codes' in codes
     
     def test_get_snomed_codes_prior_bleeding(self):
         """Test getting prior bleeding SNOMED codes"""

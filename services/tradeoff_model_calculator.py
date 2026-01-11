@@ -1,28 +1,63 @@
 """
 Tradeoff Model Calculator Service
 Handles bleeding-thrombosis tradeoff risk calculation
+
+All clinical codes and thresholds are loaded from cdss_config.json for maintainability.
 """
-import logging
 import json
-import os
+import logging
 import math
+import os
+
+from fhirclient.models import condition, medicationrequest, observation, procedure
+
 from services.config_loader import config_loader
-from services.unit_conversion_service import unit_converter
 from services.fhir_client_service import FHIRClientService
 from services.fhir_utils import get_observation_effective_date_from_model
-from fhirclient.models import observation, condition, procedure, medicationrequest
+from services.unit_conversion_service import unit_converter
 
 
 class TradeoffModelCalculator:
     """Calculator for bleeding-thrombosis tradeoff analysis"""
-    
+
+    # Default FHIR system URIs
+    DEFAULT_SNOMED_SYSTEM = 'http://snomed.info/sct'
+    DEFAULT_RXNORM_SYSTEM = 'http://www.nlm.nih.gov/research/umls/rxnorm'
+
+    # Mapping from config keys to tradeoff data keys for conditions
+    CONDITION_MAPPINGS = {
+        'diabetes': 'diabetes',
+        'myocardial_infarction': 'prior_mi',
+        'copd': 'copd',
+    }
+
+    # Conditions that map to nstemi_stemi (any match sets it True)
+    NSTEMI_STEMI_KEYS = ('nstemi', 'stemi')
+
+    # Mapping from config keys to tradeoff data keys for procedures
+    PROCEDURE_MAPPINGS = {
+        'complex_pci': 'complex_pci',
+        'bare_metal_stent': 'bms_used',
+    }
+
+    @classmethod
+    def _get_snomed_system(cls):
+        """Get SNOMED CT system URI from config"""
+        return config_loader.get_fhir_system('snomed_ct') or cls.DEFAULT_SNOMED_SYSTEM
+
+    @classmethod
+    def _get_rxnorm_system(cls):
+        """Get RxNorm system URI from config"""
+        return config_loader.get_fhir_system('rxnorm') or cls.DEFAULT_RXNORM_SYSTEM
+
     @staticmethod
     def _resource_has_code(resource, system, code):
         """Checks if a resource's coding matches the given system and code."""
-        for coding in resource.get('code', {}).get('coding', []):
-            if coding.get('system') == system and coding.get('code') == code:
-                return True
-        return False
+        codings = resource.get('code', {}).get('coding', [])
+        return any(
+            coding.get('system') == system and coding.get('code') == code
+            for coding in codings
+        )
     
     @classmethod
     def get_tradeoff_data(cls, fhir_server_url, access_token, client_id, patient_id):
@@ -49,111 +84,104 @@ class TradeoffModelCalculator:
         tradeoff_data = cls._get_empty_tradeoff_data()
         tradeoff_config = config_loader.get_tradeoff_config()
         snomed_codes = tradeoff_config.get('snomed_codes', {})
-        
+        query_limits = tradeoff_config.get('fhir_query_limits', {})
+        snomed_system = cls._get_snomed_system()
+
         # Fetch and check conditions
         try:
+            condition_limit = query_limits.get('conditions', 200)
             conditions = condition.Condition.where({
-                'patient': patient_id, 
-                '_count': '200'
+                'patient': patient_id,
+                '_count': str(condition_limit)
             }).perform(fhir_client.server)
-            
+
             if conditions.entry:
                 for entry in conditions.entry:
-                    c = entry.resource
-                    
-                    # Check for diabetes
-                    diabetes_code = snomed_codes.get('diabetes', '73211009')
-                    if cls._resource_has_code(c.as_json(), 'http://snomed.info/sct', diabetes_code):
-                        tradeoff_data["diabetes"] = True
-                    
-                    # Check for MI
-                    mi_code = snomed_codes.get('myocardial_infarction', '22298006')
-                    if cls._resource_has_code(c.as_json(), 'http://snomed.info/sct', mi_code):
-                        tradeoff_data["prior_mi"] = True
-                    
-                    # Check for NSTEMI/STEMI
-                    nstemi_code = snomed_codes.get('nstemi', '164868009')
-                    stemi_code = snomed_codes.get('stemi', '164869001')
-                    if cls._resource_has_code(c.as_json(), 'http://snomed.info/sct', nstemi_code) or \
-                       cls._resource_has_code(c.as_json(), 'http://snomed.info/sct', stemi_code):
-                        tradeoff_data["nstemi_stemi"] = True
-                    
-                    # Check for COPD
-                    copd_code = snomed_codes.get('copd', '13645005')
-                    if cls._resource_has_code(c.as_json(), 'http://snomed.info/sct', copd_code):
-                        tradeoff_data["copd"] = True
-        
+                    resource_json = entry.resource.as_json()
+
+                    # Check standard condition mappings
+                    for config_key, data_key in cls.CONDITION_MAPPINGS.items():
+                        code = snomed_codes.get(config_key)
+                        if code and cls._resource_has_code(resource_json, snomed_system, code):
+                            tradeoff_data[data_key] = True
+
+                    # Check for NSTEMI/STEMI (multiple codes map to same flag)
+                    for key in cls.NSTEMI_STEMI_KEYS:
+                        code = snomed_codes.get(key)
+                        if code and cls._resource_has_code(resource_json, snomed_system, code):
+                            tradeoff_data["nstemi_stemi"] = True
+                            break
+
         except Exception as e:
             logging.warning(f"Error fetching conditions for tradeoff model: {e}")
         
         # Check for smoking status
         try:
+            smoking_config = tradeoff_config.get('smoking_status', {})
+            smoking_loinc = smoking_config.get('loinc_code', '72166-2')
+            current_smoker_codes = smoking_config.get('current_smoker_codes', ['449868002', 'LA18978-9'])
+
             obs_search = observation.Observation.where({
-                'patient': patient_id, 
-                'code': '72166-2'  # Smoking status LOINC
+                'patient': patient_id,
+                'code': smoking_loinc
             }).perform(fhir_client.server)
-            
+
             if obs_search and obs_search.entry:
                 sorted_obs = []
                 for entry in obs_search.entry:
                     if entry.resource:
                         date_str = get_observation_effective_date_from_model(entry.resource)
                         sorted_obs.append((date_str, entry.resource))
-                
+
                 if sorted_obs:
                     sorted_obs.sort(key=lambda x: x[0], reverse=True)
                     latest_obs = sorted_obs[0][1]
                     if latest_obs.valueCodeableConcept and latest_obs.valueCodeableConcept.coding:
-                        if latest_obs.valueCodeableConcept.coding[0].code in ['449868002', 'LA18978-9']:
+                        if latest_obs.valueCodeableConcept.coding[0].code in current_smoker_codes:
                             tradeoff_data["smoker"] = True
-        
+
         except Exception as e:
             logging.warning(f"Error fetching smoking status: {e}")
         
         # Check for complex PCI and BMS from procedures
         try:
+            procedure_limit = query_limits.get('procedures', 50)
             procedures = procedure.Procedure.where({
-                'patient': patient_id, 
-                '_count': '50'
+                'patient': patient_id,
+                '_count': str(procedure_limit)
             }).perform(fhir_client.server)
-            
+
             if procedures.entry:
-                complex_pci_code = snomed_codes.get('complex_pci', '397682003')
-                bms_code = snomed_codes.get('bare_metal_stent', '427183000')
-                
                 for entry in procedures.entry:
-                    p = entry.resource
-                    if cls._resource_has_code(p.as_json(), 'http://snomed.info/sct', complex_pci_code):
-                        tradeoff_data["complex_pci"] = True
-                    if cls._resource_has_code(p.as_json(), 'http://snomed.info/sct', bms_code):
-                        tradeoff_data["bms_used"] = True
-        
+                    resource_json = entry.resource.as_json()
+                    for config_key, data_key in cls.PROCEDURE_MAPPINGS.items():
+                        code = snomed_codes.get(config_key)
+                        if code and cls._resource_has_code(resource_json, snomed_system, code):
+                            tradeoff_data[data_key] = True
+
         except Exception as e:
             logging.warning(f"Error fetching procedures for tradeoff model: {e}")
         
         # Check for OAC at discharge
         try:
-            rxnorm_codes = tradeoff_config.get('rxnorm_codes', {})
-            oac_codes = [
-                rxnorm_codes.get('warfarin', '11289'),
-                rxnorm_codes.get('rivaroxaban', '21821'),
-                rxnorm_codes.get('apixaban', '1364430'),
-                rxnorm_codes.get('dabigatran', '1037042'),
-                rxnorm_codes.get('edoxaban', '1537033')
-            ]
-            
+            # Get RxNorm codes from medication_keywords (consolidated location)
+            med_keywords = config_loader.get_medication_keywords()
+            oac_config = med_keywords.get('oral_anticoagulants', {})
+            oac_codes = oac_config.get('rxnorm_codes', ['11289', '1364430', '21821', '1037042', '1537033'])
+            rxnorm_system = cls._get_rxnorm_system()
+
             med_requests = medicationrequest.MedicationRequest.where({
-                'patient': patient_id, 
+                'patient': patient_id,
                 'category': 'outpatient'
             }).perform(fhir_client.server)
-            
+
             if med_requests.entry:
                 for entry in med_requests.entry:
                     mr = entry.resource
-                    if any(cls._resource_has_code(mr.as_json(), 'http://www.nlm.nih.gov/research/umls/rxnorm', code) 
+                    if any(cls._resource_has_code(mr.as_json(), rxnorm_system, code)
                            for code in oac_codes):
                         tradeoff_data["oac_discharge"] = True
-        
+
         except Exception as e:
             logging.warning(f"Error fetching medication requests for OAC: {e}")
         
@@ -297,24 +325,21 @@ class TradeoffModelCalculator:
         if not egfr_checked:
             missing_data.append('eGFR')
         
-        # Clinical factors
-        if tradeoff_data.get('diabetes'):
-            detected_factors['diabetes'] = True
-        if tradeoff_data.get('prior_mi'):
-            detected_factors['prior_mi'] = True
-        if tradeoff_data.get('smoker'):
-            detected_factors['smoker'] = True
-        if tradeoff_data.get('nstemi_stemi'):
-            detected_factors['nstemi_stemi'] = True
-        if tradeoff_data.get('complex_pci'):
-            detected_factors['complex_pci'] = True
-        if tradeoff_data.get('bms_used'):
-            detected_factors['bms'] = True
-        if tradeoff_data.get('copd'):
-            detected_factors['copd'] = True
-        if tradeoff_data.get('oac_discharge'):
-            detected_factors['oac_discharge'] = True
-        
+        # Clinical factors - map tradeoff_data keys to detected_factors keys
+        clinical_factor_mappings = {
+            'diabetes': 'diabetes',
+            'prior_mi': 'prior_mi',
+            'smoker': 'smoker',
+            'nstemi_stemi': 'nstemi_stemi',
+            'complex_pci': 'complex_pci',
+            'bms_used': 'bms',  # Note: key differs in detected_factors
+            'copd': 'copd',
+            'oac_discharge': 'oac_discharge',
+        }
+        for source_key, target_key in clinical_factor_mappings.items():
+            if tradeoff_data.get(source_key):
+                detected_factors[target_key] = True
+
         return detected_factors, missing_data
     
     @staticmethod
@@ -370,13 +395,8 @@ class TradeoffModelCalculator:
                 "bleeding_factors": [],
                 "thrombotic_factors": []
             }
-        
-        # Build HR lookup tables from the JSON model
-        bleeding_hr_map = {p['factor']: p for p in model['bleedingEvents']['predictors']}
-        thrombotic_hr_map = {p['factor']: p for p in model['thromboticEvents']['predictors']}
-        
+
         # Detect which factors are active based on patient data
-        # Now returns tuple (active_factors, missing_data)
         active_factors, missing_data = cls.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
         
         # Use the interactive calculation method with the detected factors
@@ -391,56 +411,61 @@ class TradeoffModelCalculator:
         return result
     
     @classmethod
+    def _calculate_event_score(cls, predictors, active_factors):
+        """
+        Calculates hazard ratio score and factor details for a set of predictors.
+
+        Args:
+            predictors: List of predictor dictionaries from the model
+            active_factors: Dictionary of active factor flags
+
+        Returns:
+            Tuple of (hazard_ratio_product, factor_details_list)
+        """
+        hr_product = 1.0
+        factor_details = []
+
+        for predictor in predictors:
+            factor_key = predictor['factor']
+            if active_factors.get(factor_key, False):
+                hr_product *= predictor['hazardRatio']
+                factor_details.append(
+                    f"{predictor['description']} (HR: {predictor['hazardRatio']})"
+                )
+
+        return hr_product, factor_details
+
+    @classmethod
     def calculate_tradeoff_scores_interactive(cls, model_predictors, active_factors):
         """
         Calculates bleeding and thrombotic scores for interactive mode.
-        
+
         Args:
             model_predictors: Model predictor data
             active_factors: Dictionary of active factor flags
-        
+
         Returns:
             Dictionary with scores and factor details
         """
-        # Get baseline rates from configuration
         tradeoff_config = config_loader.get_tradeoff_config()
         baseline_rates = tradeoff_config.get('baseline_event_rates', {})
         baseline_bleeding_rate = baseline_rates.get('bleeding_rate_percent', 2.5)
         baseline_thrombotic_rate = baseline_rates.get('thrombotic_rate_percent', 2.5)
-        
-        bleeding_score_hr = 1.0
-        thrombotic_score_hr = 1.0
-        
-        bleeding_factors_details = []
-        thrombotic_factors_details = []
-        
-        # Calculate bleeding score
-        for predictor in model_predictors['bleedingEvents']['predictors']:
-            factor_key = predictor['factor']
-            if active_factors.get(factor_key, False):
-                bleeding_score_hr *= predictor['hazardRatio']
-                bleeding_factors_details.append(
-                    f"{predictor['description']} (HR: {predictor['hazardRatio']})"
-                )
-        
-        # Calculate thrombotic score
-        for predictor in model_predictors['thromboticEvents']['predictors']:
-            factor_key = predictor['factor']
-            if active_factors.get(factor_key, False):
-                thrombotic_score_hr *= predictor['hazardRatio']
-                thrombotic_factors_details.append(
-                    f"{predictor['description']} (HR: {predictor['hazardRatio']})"
-                )
-        
-        # Convert to probabilities
-        bleeding_prob = cls.convert_hr_to_probability(bleeding_score_hr, baseline_bleeding_rate)
-        thrombotic_prob = cls.convert_hr_to_probability(thrombotic_score_hr, baseline_thrombotic_rate)
-        
+
+        bleeding_hr, bleeding_factors = cls._calculate_event_score(
+            model_predictors['bleedingEvents']['predictors'],
+            active_factors
+        )
+        thrombotic_hr, thrombotic_factors = cls._calculate_event_score(
+            model_predictors['thromboticEvents']['predictors'],
+            active_factors
+        )
+
         return {
-            "bleeding_score": bleeding_prob,
-            "thrombotic_score": thrombotic_prob,
-            "bleeding_factors": bleeding_factors_details,
-            "thrombotic_factors": thrombotic_factors_details
+            "bleeding_score": cls.convert_hr_to_probability(bleeding_hr, baseline_bleeding_rate),
+            "thrombotic_score": cls.convert_hr_to_probability(thrombotic_hr, baseline_thrombotic_rate),
+            "bleeding_factors": bleeding_factors,
+            "thrombotic_factors": thrombotic_factors
         }
 
 
