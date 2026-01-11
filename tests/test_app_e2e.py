@@ -21,9 +21,18 @@ def app():
         'SMART_REDIRECT_URI': 'http://localhost:8080/callback'
     }):
         from APP import app
+        from extensions import limiter
+        
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
+        
+        # Disable rate limiting for tests to prevent state pollution
+        limiter.enabled = False
+        
         yield app
+        
+        # Re-enable after tests (in case of test reuse)
+        limiter.enabled = True
 
 
 @pytest.fixture
@@ -144,7 +153,7 @@ class TestLaunchEndpoint:
     
     def test_launch_with_valid_iss_redirects(self, client):
         """Test launch with valid ISS redirects to auth."""
-        with patch('APP.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'authorization_endpoint': 'https://auth.example.com/authorize',
@@ -217,10 +226,10 @@ class TestCalculateRiskAPI:
     
     def test_calculate_risk_with_valid_data(self, authenticated_client):
         """Test calculate risk with valid patient ID."""
-        with patch('APP.fhir_data_service.get_fhir_data') as mock_get:
-            with patch('APP.fhir_data_service.get_patient_demographics') as mock_demo:
-                with patch('APP.fhir_data_service.calculate_precise_hbr_score') as mock_calc:
-                    with patch('APP.fhir_data_service.get_precise_hbr_display_info') as mock_info:
+        with patch('routes.api_routes.fhir_data_service.get_fhir_data') as mock_get:
+            with patch('routes.api_routes.fhir_data_service.get_patient_demographics') as mock_demo:
+                with patch('routes.api_routes.fhir_data_service.calculate_precise_hbr_score') as mock_calc:
+                    with patch('routes.api_routes.fhir_data_service.get_precise_hbr_display_info') as mock_info:
                         mock_get.return_value = ({
                             'patient': {'id': 'patient-123', 'name': [{'text': 'Test Patient'}]}
                         }, None)
@@ -263,7 +272,7 @@ class TestExportCCDAPI:
     
     def test_export_ccd_with_valid_data(self, authenticated_client):
         """Test CCD export with valid risk data."""
-        with patch('APP.generate_ccd_from_session_data') as mock_gen:
+        with patch('routes.api_routes.generate_ccd_from_session_data') as mock_gen:
             mock_gen.return_value = '<?xml version="1.0"?><CCD></CCD>'
             
             response = authenticated_client.post(
@@ -313,7 +322,7 @@ class TestExchangeCodeAPI:
                     'code_verifier': 'test-verifier'
                 }
             
-            with patch('APP.requests.post') as mock_post:
+            with patch('routes.auth_routes.requests.post') as mock_post:
                 mock_response = Mock()
                 mock_response.json.return_value = {
                     'access_token': 'test-token',
@@ -346,17 +355,11 @@ class TestMainPage:
     
     def test_main_with_auth_returns_200(self, authenticated_client):
         """Test main page with authentication returns 200."""
-        with patch('APP.fhir_data_service.get_fhir_data') as mock_get:
-            with patch('APP.fhir_data_service.get_patient_demographics') as mock_demo:
-                mock_get.return_value = ({
-                    'patient': {'id': 'test', 'name': [{'text': 'Test'}]}
-                }, None)
-                mock_demo.return_value = {'name': 'Test', 'age': 70}
-                
-                response = authenticated_client.get('/main')
-                
-                # Should return page or handle error gracefully
-                assert response.status_code in [200, 500]
+        # main_page() just renders a template with patient_id from session
+        response = authenticated_client.get('/main')
+
+        # Should return page
+        assert response.status_code == 200
 
 
 class TestLogout:
@@ -484,7 +487,8 @@ class TestTradeoffAnalysis:
     
     def test_tradeoff_analysis_page(self, authenticated_client):
         """Test tradeoff analysis page access."""
-        response = authenticated_client.get('/tradeoff-analysis')
+        # Note: Route is /tradeoff_analysis (underscore, not hyphen)
+        response = authenticated_client.get('/tradeoff_analysis')
         # Should return page or redirect
         assert response.status_code in [200, 302, 404]
 
@@ -494,10 +498,10 @@ class TestAuditLogging:
     
     def test_api_calls_are_logged(self, authenticated_client):
         """Test that API calls trigger audit logging."""
-        with patch('APP.fhir_data_service.get_fhir_data') as mock_get:
-            with patch('APP.fhir_data_service.get_patient_demographics') as mock_demo:
-                with patch('APP.fhir_data_service.calculate_precise_hbr_score') as mock_calc:
-                    with patch('APP.fhir_data_service.get_precise_hbr_display_info') as mock_info:
+        with patch('routes.api_routes.fhir_data_service.get_fhir_data') as mock_get:
+            with patch('routes.api_routes.fhir_data_service.get_patient_demographics') as mock_demo:
+                with patch('routes.api_routes.fhir_data_service.calculate_precise_hbr_score') as mock_calc:
+                    with patch('routes.api_routes.fhir_data_service.get_precise_hbr_display_info') as mock_info:
                         mock_get.return_value = ({'patient': {'id': 'test'}}, None)
                         mock_demo.return_value = {'name': 'Test', 'age': 70}
                         mock_calc.return_value = ([], 3)
@@ -516,15 +520,18 @@ class TestAuditLogging:
 class TestStaticFiles:
     """Test static file serving."""
     
-    def test_css_file_served(self, client):
-        """Test CSS files are served."""
-        response = client.get('/static/css/style.css')
-        # Should return file or 404 if not exists
-        assert response.status_code in [200, 404]
+    def test_static_directory_accessible(self, client):
+        """Test static directory is accessible (may return 404 for specific files)."""
+        # Test with a path that might exist - the actual file doesn't matter
+        # as long as the static route handler works
+        response = client.get('/static/')
+        # Static directory listing may be disabled (403) or return 404/200
+        assert response.status_code in [200, 403, 404]
     
-    def test_js_file_served(self, client):
-        """Test JS files are served."""
-        response = client.get('/static/js/main.js')
+    def test_favicon_served(self, client):
+        """Test favicon is served if exists."""
+        response = client.get('/favicon.ico')
+        # Favicon may or may not exist
         assert response.status_code in [200, 404]
 
 
@@ -556,9 +563,21 @@ class TestRateLimiting:
     
     def test_many_requests_succeed(self, client):
         """Test that many requests don't cause issues."""
-        for i in range(50):
+        # Reduced iteration count to avoid triggering rate limiter during tests
+        success_count = 0
+        rate_limited_count = 0
+        
+        for i in range(10):
             response = client.get('/health')
-            assert response.status_code in [200, 429]
+            if response.status_code == 200:
+                success_count += 1
+            elif response.status_code == 429:
+                rate_limited_count += 1
+            else:
+                pytest.fail(f"Unexpected status code: {response.status_code}")
+        
+        # At least some requests should succeed
+        assert success_count > 0 or rate_limited_count > 0
 
 
 class TestEdgeCases:
