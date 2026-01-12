@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import ccd_generator
+from services import ccd_generator
 
 
 def test_ccd_generator_exists():
@@ -32,7 +32,7 @@ def test_generate_ccd_from_session_data():
         }
     }
     
-    with patch('ccd_generator.generate_ccd_from_session_data') as mock_gen:
+    with patch('services.ccd_generator.generate_ccd_from_session_data') as mock_gen:
         mock_gen.return_value = '<ClinicalDocument>...</ClinicalDocument>'
         
         result = ccd_generator.generate_ccd_from_session_data(mock_session_data)
