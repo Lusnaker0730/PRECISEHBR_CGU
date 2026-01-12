@@ -65,7 +65,8 @@ def create_app():
         ]
     }
     # Disable force_https in testing/development to avoid 302 redirects
-    force_https = not app.config.get('TESTING', False) and not app.config.get('DEBUG', False)
+    is_testing = app.config.get('TESTING', False) or os.environ.get('TESTING', '').lower() == 'true'
+    force_https = not is_testing and not app.config.get('DEBUG', False)
     Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src'], force_https=force_https)
     
     # Register Blueprints

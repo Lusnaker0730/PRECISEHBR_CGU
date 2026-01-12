@@ -18,7 +18,8 @@ def app():
     with patch.dict(os.environ, {
         'FLASK_SECRET_KEY': 'test-secret-key-for-testing-only',
         'SMART_CLIENT_ID': 'test-client-id',
-        'SMART_REDIRECT_URI': 'http://localhost:8080/callback'
+        'SMART_REDIRECT_URI': 'http://localhost:8080/callback',
+        'TESTING': 'true'
     }):
         from APP import app
         from extensions import limiter
@@ -319,7 +320,8 @@ class TestExchangeCodeAPI:
                 sess['launch_params'] = {
                     'iss': 'https://fhir.example.com',
                     'token_url': 'https://auth.example.com/token',
-                    'code_verifier': 'test-verifier'
+                    'code_verifier': 'test-verifier',
+                    'state': 'test-state'
                 }
             
             with patch('routes.auth_routes.requests.post') as mock_post:
@@ -335,7 +337,7 @@ class TestExchangeCodeAPI:
                 
                 response = client.post(
                     '/api/exchange-code',
-                    json={'code': 'test-code'},
+                    json={'code': 'test-code', 'state': 'test-state'},
                     content_type='application/json'
                 )
                 
