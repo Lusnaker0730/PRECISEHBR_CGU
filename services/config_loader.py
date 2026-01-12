@@ -131,6 +131,10 @@ class ConfigLoader:
         status_config = self._config.get('clinical_status', {})
         return status_config.get(f'{status_type}_codes', [])
 
+    def get_precise_hbr_params(self):
+        """Get PRECISE-HBR parameters configuration including truncation limits and scoring coefficients"""
+        return self._config.get('precise_hbr_parameters', {})
+
 
 # Global instance
 config_loader = ConfigLoader()

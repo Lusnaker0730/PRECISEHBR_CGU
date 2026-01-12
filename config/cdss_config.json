@@ -30,48 +30,64 @@
         "interpretation": "≤22 = non-high risk (<4%), 23-26 = high risk (4-6%), ≥27 = very high risk (≥6%)"
     },
     "precise_hbr_parameters": {
+        "base_score": 2,
         "age": {
             "description": "Patient age in years",
             "calculation_type": "direct_value",
-            "min_value": 20,
-            "max_value": 100,
-            "score_contribution": "Age-based scoring (exact values need supplemental data)"
+            "truncation_min": 30,
+            "truncation_max": 80,
+            "threshold": 30,
+            "coefficient": 0.25,
+            "formula": "(effective_age - 30) × 0.25",
+            "score_contribution": "Age-based scoring: 0.25 points per year above 30"
         },
         "hemoglobin": {
             "description": "Hemoglobin level in g/dL",
             "calculation_type": "inverse_value",
-            "min_value": 8.0,
-            "max_value": 18.0,
+            "truncation_min": 5.0,
+            "truncation_max": 15.0,
+            "threshold": 15.0,
+            "coefficient": 2.5,
+            "formula": "(15 - effective_Hb) × 2.5",
             "score_contribution": "Lower Hb = higher bleeding risk"
         },
         "egfr": {
             "description": "Estimated glomerular filtration rate in mL/min/1.73m²",
             "calculation_type": "inverse_value",
-            "min_value": 15,
-            "max_value": 150,
+            "truncation_min": 5,
+            "truncation_max": 100,
+            "threshold": 100,
+            "coefficient": 0.05,
+            "formula": "(100 - effective_eGFR) × 0.05",
             "score_contribution": "Lower eGFR = higher bleeding risk"
         },
         "white_blood_cell_count": {
             "description": "White blood cell count in ×10⁹/L",
             "calculation_type": "direct_value",
-            "min_value": 2.0,
-            "max_value": 25.0,
+            "truncation_min": 3.0,
+            "truncation_max": 15.0,
+            "threshold": 3.0,
+            "coefficient": 0.8,
+            "formula": "(effective_WBC - 3.0) × 0.8",
             "enabled": true,
             "score_contribution": "Higher WBC = higher bleeding risk"
         },
         "previous_bleeding": {
             "description": "History of spontaneous bleeding",
             "calculation_type": "binary",
-            "score_contribution": "Yes = significant points added"
+            "score": 7,
+            "score_contribution": "Yes = +7 points"
         },
         "oral_anticoagulation": {
             "description": "Long-term oral anticoagulation therapy",
             "calculation_type": "binary",
-            "score_contribution": "Warfarin, DOACs, etc. increase bleeding risk"
+            "score": 5,
+            "score_contribution": "Warfarin, DOACs, etc. = +5 points"
         },
         "arc_hbr_factors": {
             "description": "ARC-HBR bleeding risk factors",
             "calculation_type": "binary",
+            "score": 3,
             "factors": [
                 "thrombocytopenia",
                 "chronic_bleeding_diathesis",
