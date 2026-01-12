@@ -9,7 +9,7 @@ import pytest
 import tempfile
 import shutil
 from unittest.mock import Mock, patch, mock_open
-from audit_logger import AuditLogger, audit_ephi_access
+from services.audit_logger import AuditLogger, audit_ephi_access
 
 
 class TestAuditLoggerInitialization:
