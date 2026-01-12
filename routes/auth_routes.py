@@ -10,6 +10,95 @@ from services.app_config import Config, get_secret
 from utils.web_utils import render_error_page
 from extensions import csrf
 
+
+# --- PKCE Helper Functions ---
+
+def generate_pkce_parameters():
+    """
+    Generate PKCE (Proof Key for Code Exchange) parameters.
+    
+    Returns:
+        Tuple of (code_verifier, code_challenge)
+    """
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b'=').decode('utf-8')
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).rstrip(b'=').decode('utf-8')
+    return code_verifier, code_challenge
+
+
+def validate_pkce_parameters(code_verifier, code_challenge):
+    """
+    Validate that code_challenge is derived from code_verifier using SHA256.
+    
+    Args:
+        code_verifier: The original code verifier
+        code_challenge: The code challenge to validate
+    
+    Returns:
+        True if valid, False otherwise
+    """
+    if not code_verifier or not code_challenge:
+        return False
+    
+    try:
+        expected_challenge = base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        ).rstrip(b'=').decode('utf-8')
+        return expected_challenge == code_challenge
+    except Exception:
+        return False
+
+
+def get_smart_config(iss):
+    """
+    Fetch SMART configuration from a FHIR server.
+    
+    Args:
+        iss: The FHIR server base URL
+    
+    Returns:
+        Dictionary with authorization_endpoint and token_endpoint, or None on error
+    """
+    try:
+        smart_config_url = f"{iss.rstrip('/')}/.well-known/smart-configuration"
+        response = requests.get(smart_config_url, headers={'Accept': 'application/json'}, timeout=10)
+        response.raise_for_status()
+        config = response.json()
+        
+        if 'authorization_endpoint' in config and 'token_endpoint' in config:
+            return config
+        return None
+    except requests.exceptions.RequestException:
+        # Try fallback to metadata endpoint
+        try:
+            metadata_url = f"{iss.rstrip('/')}/metadata"
+            response = requests.get(metadata_url, headers={'Accept': 'application/fhir+json'}, timeout=10)
+            response.raise_for_status()
+            metadata = response.json()
+            
+            # Extract OAuth URIs from CapabilityStatement
+            for rest in metadata.get('rest', []):
+                security = rest.get('security', {})
+                for ext in security.get('extension', []):
+                    if 'oauth-uris' in ext.get('url', ''):
+                        auth_url = None
+                        token_url = None
+                        for sub_ext in ext.get('extension', []):
+                            if sub_ext.get('url') == 'authorize':
+                                auth_url = sub_ext.get('valueUri')
+                            elif sub_ext.get('url') == 'token':
+                                token_url = sub_ext.get('valueUri')
+                        if auth_url and token_url:
+                            return {
+                                'authorization_endpoint': auth_url,
+                                'token_endpoint': token_url
+                            }
+            return None
+        except Exception:
+            return None
+
+
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/launch')

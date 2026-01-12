@@ -10,12 +10,13 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from flask import session
 
-from auth import (
+from routes.auth_routes import (
     generate_pkce_parameters,
     validate_pkce_parameters,
     get_smart_config,
-    render_error_page
+    auth_bp
 )
+from utils.web_utils import render_error_page
 
 
 class TestPKCESecurity:
@@ -103,7 +104,7 @@ class TestAuthRouteSecurity:
     def app(self):
         """Create a test Flask app."""
         from flask import Flask
-        from auth import auth_bp
+        from routes.auth_routes import auth_bp
         
         app = Flask(__name__)
         app.config['SECRET_KEY'] = 'test-secret-key-for-testing-only'
@@ -128,7 +129,7 @@ class TestAuthRouteSecurity:
     
     def test_launch_stores_parameters_in_session(self, client):
         """Test that launch properly stores parameters in session."""
-        with patch('auth.get_smart_config') as mock_config:
+        with patch('routes.auth_routes.get_smart_config') as mock_config:
             mock_config.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
                 'token_endpoint': 'https://example.com/token'
@@ -150,7 +151,7 @@ class TestAuthRouteSecurity:
     
     def test_launch_generates_state_parameter(self, client):
         """Test that launch generates and stores a state parameter."""
-        with patch('auth.get_smart_config') as mock_config:
+        with patch('routes.auth_routes.get_smart_config') as mock_config:
             mock_config.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
                 'token_endpoint': 'https://example.com/token'
@@ -166,7 +167,7 @@ class TestAuthRouteSecurity:
     
     def test_launch_generates_pkce_parameters(self, client):
         """Test that launch generates PKCE parameters."""
-        with patch('auth.get_smart_config') as mock_config:
+        with patch('routes.auth_routes.get_smart_config') as mock_config:
             mock_config.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
                 'token_endpoint': 'https://example.com/token'
@@ -185,7 +186,7 @@ class TestAuthRouteSecurity:
     
     def test_launch_includes_pkce_in_auth_url(self, client):
         """Test that launch includes PKCE challenge in authorization URL."""
-        with patch('auth.get_smart_config') as mock_config:
+        with patch('routes.auth_routes.get_smart_config') as mock_config:
             mock_config.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
                 'token_endpoint': 'https://example.com/token'
@@ -233,7 +234,7 @@ class TestTokenExchangeSecurity:
     def app(self):
         """Create a test Flask app."""
         from flask import Flask
-        from auth import auth_bp
+        from routes.auth_routes import auth_bp
         
         app = Flask(__name__)
         app.config['SECRET_KEY'] = 'test-secret-key-for-testing-only'
@@ -322,7 +323,7 @@ class TestTokenExchangeSecurity:
                 'iss': 'https://example.com/fhir'
             }
         
-        with patch('auth.requests.post') as mock_post:
+        with patch('routes.auth_routes.requests.post') as mock_post:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'access_token': 'test-access-token',
@@ -366,7 +367,7 @@ class TestTokenExchangeSecurity:
             sess['code_challenge'] = code_challenge
             sess['launch_params'] = {'iss': 'https://example.com/fhir'}
         
-        with patch('auth.requests.post') as mock_post:
+        with patch('routes.auth_routes.requests.post') as mock_post:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'access_token': 'test-token',
@@ -408,7 +409,7 @@ class TestTokenExchangeSecurity:
             sess['code_challenge'] = code_challenge
             sess['launch_params'] = {'iss': 'https://example.com/fhir'}
         
-        with patch('auth.requests.post') as mock_post:
+        with patch('routes.auth_routes.requests.post') as mock_post:
             mock_response = Mock()
             mock_response.status_code = 400
             mock_response.text = 'Invalid authorization code'
@@ -434,7 +435,7 @@ class TestSmartConfigSecurity:
 
     def test_get_smart_config_uses_https_preferred(self):
         """Test that SMART config discovery uses HTTPS endpoints."""
-        with patch('auth.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
@@ -451,7 +452,7 @@ class TestSmartConfigSecurity:
     
     def test_get_smart_config_handles_network_error(self):
         """Test that SMART config discovery handles network errors gracefully."""
-        with patch('auth.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             import requests
             mock_get.side_effect = requests.exceptions.RequestException('Network error')
             
@@ -461,7 +462,7 @@ class TestSmartConfigSecurity:
     
     def test_get_smart_config_validates_required_endpoints(self):
         """Test that SMART config validates presence of required endpoints."""
-        with patch('auth.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             # Return config missing required endpoints
             mock_response = Mock()
             mock_response.json.return_value = {
@@ -478,7 +479,7 @@ class TestSmartConfigSecurity:
     
     def test_get_smart_config_falls_back_to_metadata(self):
         """Test that SMART config falls back to metadata endpoint."""
-        with patch('auth.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             import requests
             def side_effect(url, *args, **kwargs):
                 if '.well-known' in url:
@@ -513,7 +514,7 @@ class TestSmartConfigSecurity:
     
     def test_get_smart_config_uses_timeout(self):
         """Test that SMART config discovery uses timeout to prevent hanging."""
-        with patch('auth.requests.get') as mock_get:
+        with patch('routes.auth_routes.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
@@ -538,7 +539,7 @@ class TestSessionSecurity:
     def app(self):
         """Create a test Flask app."""
         from flask import Flask
-        from auth import auth_bp
+        from routes.auth_routes import auth_bp
         
         app = Flask(__name__)
         app.config['SECRET_KEY'] = 'test-secret-key-for-testing-only'
@@ -565,7 +566,7 @@ class TestSessionSecurity:
             sess['code_challenge'] = code_challenge
             sess['launch_params'] = {'iss': 'https://example.com/fhir'}
         
-        with patch('auth.requests.post') as mock_post:
+        with patch('routes.auth_routes.requests.post') as mock_post:
             mock_response = Mock()
             mock_response.json.return_value = {
                 'access_token': 'test-token',
@@ -590,7 +591,7 @@ class TestSessionSecurity:
     
     def test_session_contains_no_sensitive_data_in_plain_text(self, client):
         """Test that session doesn't contain sensitive data in plain text."""
-        with patch('auth.get_smart_config') as mock_config:
+        with patch('routes.auth_routes.get_smart_config') as mock_config:
             mock_config.return_value = {
                 'authorization_endpoint': 'https://example.com/auth',
                 'token_endpoint': 'https://example.com/token'
@@ -664,7 +665,7 @@ class TestCernerSandboxSecurity:
     def app(self):
         """Create a test Flask app."""
         from flask import Flask
-        from auth import auth_bp
+        from routes.auth_routes import auth_bp
         
         app = Flask(__name__)
         app.config['SECRET_KEY'] = 'test-secret-key-for-testing-only'
