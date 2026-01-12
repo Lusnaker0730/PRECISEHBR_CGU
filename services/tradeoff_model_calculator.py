@@ -2,7 +2,7 @@
 Tradeoff Model Calculator Service
 Handles bleeding-thrombosis tradeoff risk calculation
 
-All clinical codes and thresholds are loaded from cdss_config.json for maintainability.
+All clinical codes, thresholds, and mappings are loaded from cdss_config.json for maintainability.
 """
 import json
 import logging
@@ -20,24 +20,34 @@ from services.unit_conversion_service import unit_converter
 class TradeoffModelCalculator:
     """Calculator for bleeding-thrombosis tradeoff analysis"""
 
-    # Default FHIR system URIs
+    # Default FHIR system URIs (fallback if config missing)
     DEFAULT_SNOMED_SYSTEM = 'http://snomed.info/sct'
     DEFAULT_RXNORM_SYSTEM = 'http://www.nlm.nih.gov/research/umls/rxnorm'
 
-    # Mapping from config keys to tradeoff data keys for conditions
-    CONDITION_MAPPINGS = {
+    # Default mappings (fallback if config missing)
+    DEFAULT_CONDITION_MAPPINGS = {
         'diabetes': 'diabetes',
         'myocardial_infarction': 'prior_mi',
         'copd': 'copd',
     }
-
-    # Conditions that map to nstemi_stemi (any match sets it True)
-    NSTEMI_STEMI_KEYS = ('nstemi', 'stemi')
-
-    # Mapping from config keys to tradeoff data keys for procedures
-    PROCEDURE_MAPPINGS = {
+    DEFAULT_NSTEMI_STEMI_KEYS = ('nstemi', 'stemi')
+    DEFAULT_PROCEDURE_MAPPINGS = {
         'complex_pci': 'complex_pci',
         'bare_metal_stent': 'bms_used',
+    }
+    DEFAULT_TRADEOFF_DATA_FIELDS = [
+        'diabetes', 'prior_mi', 'smoker', 'nstemi_stemi',
+        'complex_pci', 'bms_used', 'copd', 'oac_discharge'
+    ]
+    DEFAULT_CLINICAL_FACTOR_MAPPINGS = {
+        'diabetes': 'diabetes',
+        'prior_mi': 'prior_mi',
+        'smoker': 'smoker',
+        'nstemi_stemi': 'nstemi_stemi',
+        'complex_pci': 'complex_pci',
+        'bms_used': 'bms',
+        'copd': 'copd',
+        'oac_discharge': 'oac_discharge',
     }
 
     @classmethod
@@ -49,6 +59,37 @@ class TradeoffModelCalculator:
     def _get_rxnorm_system(cls):
         """Get RxNorm system URI from config"""
         return config_loader.get_fhir_system('rxnorm') or cls.DEFAULT_RXNORM_SYSTEM
+
+    @classmethod
+    def _get_condition_mappings(cls):
+        """Get condition mappings from config"""
+        tradeoff_config = config_loader.get_tradeoff_config()
+        return tradeoff_config.get('condition_mappings', cls.DEFAULT_CONDITION_MAPPINGS)
+
+    @classmethod
+    def _get_nstemi_stemi_keys(cls):
+        """Get NSTEMI/STEMI keys from config"""
+        tradeoff_config = config_loader.get_tradeoff_config()
+        keys = tradeoff_config.get('nstemi_stemi_keys', list(cls.DEFAULT_NSTEMI_STEMI_KEYS))
+        return tuple(keys) if isinstance(keys, list) else keys
+
+    @classmethod
+    def _get_procedure_mappings(cls):
+        """Get procedure mappings from config"""
+        tradeoff_config = config_loader.get_tradeoff_config()
+        return tradeoff_config.get('procedure_mappings', cls.DEFAULT_PROCEDURE_MAPPINGS)
+
+    @classmethod
+    def _get_tradeoff_data_fields(cls):
+        """Get tradeoff data field names from config"""
+        tradeoff_config = config_loader.get_tradeoff_config()
+        return tradeoff_config.get('tradeoff_data_fields', cls.DEFAULT_TRADEOFF_DATA_FIELDS)
+
+    @classmethod
+    def _get_clinical_factor_mappings(cls):
+        """Get clinical factor mappings from config"""
+        tradeoff_config = config_loader.get_tradeoff_config()
+        return tradeoff_config.get('clinical_factor_mappings', cls.DEFAULT_CLINICAL_FACTOR_MAPPINGS)
 
     @staticmethod
     def _resource_has_code(resource, system, code):
@@ -87,6 +128,11 @@ class TradeoffModelCalculator:
         query_limits = tradeoff_config.get('fhir_query_limits', {})
         snomed_system = cls._get_snomed_system()
 
+        # Get mappings from config
+        condition_mappings = cls._get_condition_mappings()
+        nstemi_stemi_keys = cls._get_nstemi_stemi_keys()
+        procedure_mappings = cls._get_procedure_mappings()
+
         # Fetch and check conditions
         try:
             condition_limit = query_limits.get('conditions', 200)
@@ -100,13 +146,13 @@ class TradeoffModelCalculator:
                     resource_json = entry.resource.as_json()
 
                     # Check standard condition mappings
-                    for config_key, data_key in cls.CONDITION_MAPPINGS.items():
+                    for config_key, data_key in condition_mappings.items():
                         code = snomed_codes.get(config_key)
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data[data_key] = True
 
                     # Check for NSTEMI/STEMI (multiple codes map to same flag)
-                    for key in cls.NSTEMI_STEMI_KEYS:
+                    for key in nstemi_stemi_keys:
                         code = snomed_codes.get(key)
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data["nstemi_stemi"] = True
@@ -154,7 +200,7 @@ class TradeoffModelCalculator:
             if procedures.entry:
                 for entry in procedures.entry:
                     resource_json = entry.resource.as_json()
-                    for config_key, data_key in cls.PROCEDURE_MAPPINGS.items():
+                    for config_key, data_key in procedure_mappings.items():
                         code = snomed_codes.get(config_key)
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data[data_key] = True
@@ -187,19 +233,11 @@ class TradeoffModelCalculator:
         
         return tradeoff_data
     
-    @staticmethod
-    def _get_empty_tradeoff_data():
-        """Returns empty tradeoff data structure"""
-        return {
-            "diabetes": False,
-            "prior_mi": False,
-            "smoker": False,
-            "nstemi_stemi": False,
-            "complex_pci": False,
-            "bms_used": False,
-            "copd": False,
-            "oac_discharge": False
-        }
+    @classmethod
+    def _get_empty_tradeoff_data(cls):
+        """Returns empty tradeoff data structure based on config"""
+        fields = cls._get_tradeoff_data_fields()
+        return {field: False for field in fields}
     
     @staticmethod
     def load_tradeoff_model():
@@ -236,8 +274,8 @@ class TradeoffModelCalculator:
             logging.error(f"Unexpected error loading tradeoff model: {e}")
             return None
     
-    @staticmethod
-    def detect_tradeoff_factors(raw_data, demographics, tradeoff_data):
+    @classmethod
+    def detect_tradeoff_factors(cls, raw_data, demographics, tradeoff_data):
         """
         Detects which tradeoff factors are present based on patient data.
         
@@ -247,7 +285,7 @@ class TradeoffModelCalculator:
             tradeoff_data: Dictionary with clinical factor flags
         
         Returns:
-            Dictionary of detected factor keys
+            Tuple of (detected_factors dict, missing_data list)
         """
         detected_factors = {}
         
@@ -325,17 +363,8 @@ class TradeoffModelCalculator:
         if not egfr_checked:
             missing_data.append('eGFR')
         
-        # Clinical factors - map tradeoff_data keys to detected_factors keys
-        clinical_factor_mappings = {
-            'diabetes': 'diabetes',
-            'prior_mi': 'prior_mi',
-            'smoker': 'smoker',
-            'nstemi_stemi': 'nstemi_stemi',
-            'complex_pci': 'complex_pci',
-            'bms_used': 'bms',  # Note: key differs in detected_factors
-            'copd': 'copd',
-            'oac_discharge': 'oac_discharge',
-        }
+        # Clinical factors - get mappings from config
+        clinical_factor_mappings = cls._get_clinical_factor_mappings()
         for source_key, target_key in clinical_factor_mappings.items():
             if tradeoff_data.get(source_key):
                 detected_factors[target_key] = True
@@ -498,4 +527,3 @@ def calculate_tradeoff_scores(raw_data, demographics, tradeoff_data):
 def calculate_tradeoff_scores_interactive(model_predictors, active_factors):
     """Legacy function - calls the new service"""
     return tradeoff_calculator.calculate_tradeoff_scores_interactive(model_predictors, active_factors)
-

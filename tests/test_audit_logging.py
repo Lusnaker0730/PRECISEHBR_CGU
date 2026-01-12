@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import audit_logger
+from services import audit_logger
 
 
 def test_audit_logger_initialization():
@@ -30,7 +30,7 @@ def test_audit_ephi_access(app):
     
     # Test that the decorator doesn't break the function
     with app.test_request_context('/test', method='GET'):
-        with patch('audit_logger.get_audit_logger') as mock_logger:
+        with patch('services.audit_logger.get_audit_logger') as mock_logger:
             mock_log = Mock()
             mock_logger.return_value = mock_log
             
@@ -51,7 +51,7 @@ def test_audit_ephi_access(app):
 
 def test_user_authentication_logging():
     """Test user authentication logging."""
-    with patch('audit_logger.get_audit_logger') as mock_logger:
+    with patch('services.audit_logger.get_audit_logger') as mock_logger:
         mock_log = Mock()
         mock_logger.return_value = mock_log
         
