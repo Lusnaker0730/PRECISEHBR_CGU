@@ -64,7 +64,9 @@ def create_app():
             'cdnjs.cloudflare.com'
         ]
     }
-    Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src'])
+    # Disable force_https in testing/development to avoid 302 redirects
+    force_https = not app.config.get('TESTING', False) and not app.config.get('DEBUG', False)
+    Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src'], force_https=force_https)
     
     # Register Blueprints
     app.register_blueprint(web_bp)
