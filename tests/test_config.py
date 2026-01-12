@@ -8,7 +8,7 @@ import pytest
 import tempfile
 import shutil
 from unittest.mock import patch, Mock
-from config import Config
+from services.app_config import Config
 
 
 class TestConfigBasics:
@@ -53,7 +53,7 @@ class TestEnvironmentVariables:
         with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test-secret-key'}):
             # Reload config
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             assert config.Config.SECRET_KEY == 'test-secret-key'
     
@@ -61,7 +61,7 @@ class TestEnvironmentVariables:
         """Test that CLIENT_ID is loaded from environment."""
         with patch.dict(os.environ, {'SMART_CLIENT_ID': 'test-client-id'}):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             assert config.Config.CLIENT_ID == 'test-client-id'
     
@@ -69,7 +69,7 @@ class TestEnvironmentVariables:
         """Test that REDIRECT_URI is loaded from environment."""
         with patch.dict(os.environ, {'SMART_REDIRECT_URI': 'https://example.com/callback'}):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             assert config.Config.REDIRECT_URI == 'https://example.com/callback'
     
@@ -87,7 +87,7 @@ class TestSessionDirectory:
         """Test session directory in local environment."""
         with patch.dict(os.environ, {}, clear=True):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             # Should use local instance directory
@@ -97,7 +97,7 @@ class TestSessionDirectory:
         """Test session directory in Google App Engine environment."""
         with patch.dict(os.environ, {'GAE_ENV': 'standard'}):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             # Should use temp directory
@@ -130,7 +130,7 @@ class TestInitApp:
             'SMART_REDIRECT_URI': 'https://example.com/callback'
         }):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             # Should not raise exception
@@ -170,7 +170,7 @@ class TestInitApp:
             'SMART_REDIRECT_URI': 'https://example.com/callback#fragment'
         }):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             config.Config.init_app(mock_app)
@@ -190,7 +190,7 @@ class TestInitApp:
                 'SMART_REDIRECT_URI': 'https://example.com/callback'
             }):
                 from importlib import reload
-                import config
+                import services.app_config as config
                 reload(config)
                 
                 # Override session directory
@@ -220,7 +220,7 @@ class TestInitApp:
                 'SMART_REDIRECT_URI': 'https://example.com/callback'
             }):
                 from importlib import reload
-                import config
+                import services.app_config as config
                 reload(config)
                 
                 config.Config.SESSION_FILE_DIR = test_session_dir
@@ -247,7 +247,7 @@ class TestInitApp:
                 'SMART_REDIRECT_URI': 'https://example.com/callback'
             }):
                 from importlib import reload
-                import config
+                import services.app_config as config
                 reload(config)
                 
                 config.Config.SESSION_FILE_DIR = test_session_dir
@@ -269,7 +269,7 @@ class TestInitApp:
             'SMART_REDIRECT_URI': 'https://example.com/callback'
         }):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             # Use a path that will cause permission error
@@ -413,7 +413,7 @@ class TestEdgeCases:
             'SMART_REDIRECT_URI': 'https://example.com/callback#fragment1#fragment2'
         }):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             config.Config.init_app(mock_app)
@@ -437,7 +437,7 @@ class TestEdgeCases:
             'SMART_REDIRECT_URI': 'https://example.com/callback#fragment   '
         }):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             config.Config.init_app(mock_app)
@@ -453,7 +453,7 @@ class TestEdgeCases:
             'SMART_REDIRECT_URI': ''
         }, clear=True):
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
             
             # Empty strings should be treated as missing
