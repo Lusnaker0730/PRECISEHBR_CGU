@@ -457,9 +457,9 @@ class TestAuditTrailSecurity:
     
     def test_authentication_attempts_logged(self, caplog):
         """Test that authentication attempts are logged"""
-        from audit_logger import log_user_authentication
+        from services.audit_logger import log_user_authentication
         
-        with patch('audit_logger.get_audit_logger') as mock_logger:
+        with patch('services.audit_logger.get_audit_logger') as mock_logger:
             mock_log = Mock()
             mock_logger.return_value = mock_log
             
@@ -475,7 +475,7 @@ class TestAuditTrailSecurity:
     def test_audit_log_includes_required_fields(self):
         """Test that audit logs include required fields"""
         # Required fields: timestamp, user, action, resource, outcome
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         # Check that AuditLogger has these capabilities
         assert hasattr(AuditLogger, 'log_event') or True
 
@@ -512,7 +512,7 @@ class TestComplianceRequirements:
     
     def test_user_access_logging(self):
         """Test user access logging for compliance"""
-        from audit_logger import get_audit_logger
+        from services.audit_logger import get_audit_logger
         logger = get_audit_logger()
         assert logger is not None
     

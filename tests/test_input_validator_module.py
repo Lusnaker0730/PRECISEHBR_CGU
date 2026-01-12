@@ -4,7 +4,7 @@ Tests all validation functions and edge cases.
 """
 
 import pytest
-from input_validator import (
+from utils.input_validator import (
     validate_url,
     validate_patient_id,
     validate_fhir_resource_type,

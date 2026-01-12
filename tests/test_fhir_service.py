@@ -10,7 +10,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import fhir_data_service
+from services import fhir_data_service
 from services import (
     fhir_client_service,
     unit_conversion_service,
