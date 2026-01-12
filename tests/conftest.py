@@ -24,7 +24,7 @@ def app():
     os.environ['SMART_EHR_BASE_URL'] = 'https://fhir.example.com'
     
     # Mock Google Cloud Secret Manager
-    with patch('APP.HAS_SECRET_MANAGER', False):
+    with patch('services.app_config.HAS_SECRET_MANAGER', False):
         from APP import app as flask_app
         
         flask_app.config.update({
