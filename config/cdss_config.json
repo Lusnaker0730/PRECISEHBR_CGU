@@ -37,9 +37,9 @@
             "truncation_min": 30,
             "truncation_max": 80,
             "threshold": 30,
-            "coefficient": 0.25,
-            "formula": "(effective_age - 30) × 0.25",
-            "score_contribution": "Age-based scoring: 0.25 points per year above 30"
+            "coefficient": 0.26,
+            "formula": "(effective_age - 30) × 0.26",
+            "score_contribution": "Age-based scoring: 0.26 points per year above 30"
         },
         "hemoglobin": {
             "description": "Hemoglobin level in g/dL",
