@@ -16,10 +16,12 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
+import threading
 from functools import wraps
 from typing import Any, Optional
 
-from flask import request, session
+from flask import request, session, has_request_context
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -28,44 +30,48 @@ logger = logging.getLogger(__name__)
 class AuditLogger:
     """
     Secure audit logging system for ePHI access tracking.
-    
+
     Implements tamper-resistance through cryptographic chain:
     Each log entry includes a hash of the previous entry, creating
     an immutable audit trail.
+
+    Thread-safe: Uses a lock to ensure atomic write operations.
     """
-    
+
     def __init__(self, audit_file_path=None):
         """
         Initialize the audit logger.
-        
+
         Args:
             audit_file_path: Path to the audit log file (auto-detected if None)
         """
+        # Thread lock for atomic operations
+        self._lock = threading.Lock()
+
         # Auto-detect appropriate path based on environment
         if audit_file_path is None:
             if os.environ.get('GAE_ENV', '').startswith('standard'):
                 # Running on Google App Engine - use secure temp directory
-                import tempfile
                 audit_file_path = os.path.join(tempfile.gettempdir(), 'audit', 'audit_log.jsonl')
             else:
                 # Running locally - use instance directory
                 audit_file_path = 'instance/audit/audit_log.jsonl'
-        
+
         self.audit_file_path = audit_file_path
         self.audit_dir = os.path.dirname(audit_file_path)
-        
+
         # Create audit directory if it doesn't exist
         try:
             os.makedirs(self.audit_dir, exist_ok=True)
         except OSError as e:
             logger.warning(f"Could not create audit directory {self.audit_dir}: {e}. Audit logging may be limited.")
-        
+
         # Initialize audit log file with header if it doesn't exist
         if not os.path.exists(self.audit_file_path):
             self._initialize_audit_log()
-        
+
         # Load the last hash for chain verification
-        self.last_hash = self._get_last_hash()
+        self._last_hash = self._get_last_hash()
     
     def _initialize_audit_log(self):
         """Initialize audit log file with metadata header"""
@@ -94,6 +100,9 @@ class AuditLogger:
         """
         Retrieve the hash of the last log entry for chain verification.
 
+        Uses efficient file seeking to read only the last line,
+        avoiding loading the entire file into memory.
+
         Returns:
             The last entry hash, or None if log is empty or unreadable
         """
@@ -101,18 +110,35 @@ class AuditLogger:
             return None
 
         try:
-            with open(self.audit_file_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            if not lines:
-                return None
-            last_entry = json.loads(lines[-1])
-            return last_entry.get('entry_hash')
+            with open(self.audit_file_path, 'rb') as f:
+                # Seek to end of file
+                f.seek(0, 2)
+                file_size = f.tell()
+                if file_size == 0:
+                    return None
+
+                # Read backwards to find the last newline
+                buffer_size = min(4096, file_size)
+                f.seek(-buffer_size, 2)
+                lines = f.read().decode('utf-8').splitlines()
+
+                if not lines:
+                    return None
+
+                # Get the last non-empty line
+                last_line = lines[-1] if lines[-1] else (lines[-2] if len(lines) > 1 else None)
+                if not last_line:
+                    return None
+
+                last_entry = json.loads(last_line)
+                return last_entry.get('entry_hash')
+
         except (OSError, IOError) as e:
             logger.warning(f"Could not read audit log (possibly read-only filesystem): {e}")
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing last hash entry: {e}")
-        except Exception as e:
-            logger.error(f"Error reading last hash: {e}")
+        except (UnicodeDecodeError, ValueError) as e:
+            logger.error(f"Error decoding audit log: {e}")
         return None
     
     def _calculate_hash(self, entry_data: dict[str, Any]) -> str:
@@ -163,26 +189,32 @@ class AuditLogger:
         Returns:
             The logged audit entry
         """
-        audit_entry = {
-            'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
-            'event_type': event_type,
-            'action': action,
-            'user_id': user_id,
-            'patient_id': patient_id,
-            'resource_type': resource_type,
-            'resource_ids': resource_ids or [],
-            'outcome': outcome,
-            'ip_address': ip_address,
-            'user_agent': user_agent,
-            'details': details or {},
-            'previous_hash': self.last_hash
-        }
-        audit_entry['entry_hash'] = self._calculate_hash(audit_entry)
+        # Use lock to ensure thread-safe hash chain
+        with self._lock:
+            audit_entry = {
+                'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
+                'event_type': event_type,
+                'action': action,
+                'user_id': user_id,
+                'patient_id': patient_id,
+                'resource_type': resource_type,
+                'resource_ids': resource_ids or [],
+                'outcome': outcome,
+                'ip_address': ip_address,
+                'user_agent': user_agent,
+                'details': details or {},
+                'previous_hash': self._last_hash
+            }
+            audit_entry['entry_hash'] = self._calculate_hash(audit_entry)
 
-        return self._write_audit_entry(audit_entry)
+            return self._write_audit_entry(audit_entry)
 
     def _write_audit_entry(self, audit_entry: dict[str, Any]) -> dict[str, Any]:
-        """Write an audit entry to the log file and update chain state."""
+        """
+        Write an audit entry to the log file and update chain state.
+
+        Note: This method should be called within the _lock context.
+        """
         event_type = audit_entry['event_type']
         action = audit_entry['action']
         user_id = audit_entry['user_id']
@@ -192,16 +224,15 @@ class AuditLogger:
         try:
             with open(self.audit_file_path, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(audit_entry, ensure_ascii=False) + '\n')
-            self.last_hash = audit_entry['entry_hash']
+            # Update hash chain state (atomic with write due to lock)
+            self._last_hash = audit_entry['entry_hash']
             logger.info(f"AUDIT: {event_type} - {action} - User:{user_id} - Patient:{patient_id} - Outcome:{outcome}")
             return audit_entry
         except (OSError, IOError) as e:
             logger.warning(f"Could not write to audit log file (read-only filesystem): {e}")
+            # Still log to application logger for traceability
             logger.info(f"AUDIT_ENTRY: {json.dumps(audit_entry)}")
             return audit_entry
-        except Exception as e:
-            logger.error(f"CRITICAL: Failed to write audit log: {e}")
-            raise
     
     def verify_log_integrity(self) -> tuple[bool, Optional[str]]:
         """
@@ -258,15 +289,23 @@ class AuditLogger:
         return None
 
 
-# Global audit logger instance
+# Global audit logger instance (thread-safe singleton)
 _audit_logger = None
+_audit_logger_lock = threading.Lock()
 
 
 def get_audit_logger() -> AuditLogger:
-    """Get the global audit logger instance (singleton pattern)"""
+    """
+    Get the global audit logger instance (thread-safe singleton pattern).
+
+    Uses double-checked locking for efficient thread-safe initialization.
+    """
     global _audit_logger
     if _audit_logger is None:
-        _audit_logger = AuditLogger()
+        with _audit_logger_lock:
+            # Double-check after acquiring lock
+            if _audit_logger is None:
+                _audit_logger = AuditLogger()
     return _audit_logger
 
 
@@ -334,8 +373,13 @@ def audit_ephi_access(
 
 
 def _get_request_context() -> tuple[Optional[str], Optional[str]]:
-    """Extract IP address and user agent from Flask request context."""
-    if not request:
+    """
+    Extract IP address and user agent from Flask request context.
+
+    Uses has_request_context() to safely check if we're in a request,
+    avoiding RuntimeError when called outside request context.
+    """
+    if not has_request_context():
         return None, None
     return request.remote_addr, request.headers.get('User-Agent')
 
