@@ -361,10 +361,20 @@
 
 {% block scripts %}
 <script nonce="{{ csp_nonce() }}">
-    // Global variables for feedback system
+    // ==========================================================================
+    // PRECISE-HBR Risk Calculator - Main Application Module
+    // Wrapped in IIFE to avoid global scope pollution
+    // ==========================================================================
+    (function() {
+    'use strict';
+
+    // Module-scoped variables
     let currentFeedbackType = null;
     let currentPatientData = null;
-    let scoreComponentData = []; // Store the component data globally
+    let scoreComponentData = [];
+    let unitSettings = {
+        hemoglobin: 'g/dL',  // or 'mmol/L'
+    };
 
     // === Security: HTML escape utility to prevent XSS ===
     function escapeHtml(text) {
@@ -373,12 +383,6 @@
         div.textContent = String(text);
         return div.innerHTML;
     }
-
-    // === NEW: Unit conversion tracking ===
-    let unitSettings = {
-        hemoglobin: 'g/dL',  // or 'mmol/L'
-        // Can add more units as needed
-    };
 
     // === NEW: Clinical tooltips data ===
     const clinicalTooltips = {
@@ -630,7 +634,6 @@
         window.initialMissingCriticalData = missingCriticalData;
 
         // Patient Info
-        console.log('Patient info data:', data.patient_info); // Debug log
         const patientId = data.patient_info.patient_id ||
             data.patient_info.id ||
             sessionStorage.getItem('current_patient_id') ||
@@ -1773,6 +1776,8 @@
 
         return factors;
     }
+
+    })(); // End of main application module
 
     // ==========================================================================
     // ONC COMPLIANCE: 45 CFR 170.315 (d)(5) - Automatic Access Time-out
