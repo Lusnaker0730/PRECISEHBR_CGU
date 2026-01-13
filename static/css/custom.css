@@ -417,3 +417,144 @@ h1, h2, h3, h4, h5, h6 {
         max-height: 400px;
     }
 }
+
+/* ==========================================================================
+   Trade-off Analysis Page Styles (moved from inline)
+   ========================================================================== */
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+/* Factor List */
+.factor-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    text-align: center;
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.content-hidden {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Trade-off Page Card Styling */
+.tradeoff-page .card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tradeoff-page .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.tradeoff-page .card img {
+    transition: transform 0.3s;
+    cursor: pointer;
+}
+
+.tradeoff-page .card img:hover {
+    transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+    .tradeoff-page .card img {
+        max-height: 250px !important;
+    }
+}
+
+/* Trade-off Alert Styling */
+.tradeoff-page .alert-secondary {
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+}
+
+.tradeoff-page .alert-info {
+    background-color: #e7f3ff;
+    border-left: 4px solid #0dcaf0;
+}
+
+/* Factor List Item Styling */
+.tradeoff-page .list-group-item {
+    font-size: 1.1rem;
+    padding: 1rem 1.25rem;
+}
+
+.tradeoff-page .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Factor Checkbox Styling */
+.tradeoff-page .form-check-input {
+    width: 1.5em;
+    height: 1.5em;
+    margin-top: 0.1em;
+}
+
+.tradeoff-page .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Trade-off Badge Styling */
+.tradeoff-page .badge {
+    font-size: 0.85rem;
+    padding: 0.35em 0.65em;
+    font-weight: 600;
+}
+
+/* Factor Label Styling */
+.tradeoff-page .form-check-label {
+    cursor: pointer;
+    padding-left: 0.5rem;
+    line-height: 1.6;
+}
+
+.tradeoff-page .form-check-label small {
+    font-size: 0.95rem;
+}
+
+/* Legend Box */
+.tradeoff-page .alert-light {
+    font-size: 1rem;
+}
+
+/* Recommendations Section */
+#recommendations-section .alert,
+#recommendations-section .card-body {
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+#recommendations-section ul li {
+    margin-bottom: 0.5rem;
+}
+
+#recommendations-section .card-header h5 {
+    font-size: 1.15rem;
+}
