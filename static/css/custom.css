@@ -165,3 +165,255 @@ h1, h2, h3, h4, h5, h6 {
     border-color: #1d4ed8;
     transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Main Page Styles (moved from inline)
+   ========================================================================== */
+
+/* Font Awesome Icon Preservation - CRITICAL for icon display */
+.fas,
+.far,
+.fab,
+.fa,
+.fal,
+.fad,
+[class^="fa-"],
+[class*=" fa-"] {
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 5 Free" !important;
+    font-weight: 900;
+}
+
+.far {
+    font-weight: 400 !important;
+}
+
+.fab {
+    font-family: "Font Awesome 6 Brands" !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body,
+    p,
+    td,
+    th,
+    label,
+    button,
+    input,
+    select,
+    textarea {
+        font-size: 14px !important;
+    }
+
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h3 { font-size: 1.25rem !important; }
+    h4 { font-size: 1.1rem !important; }
+    .display-3 { font-size: 3rem !important; }
+    .card { padding: 15px !important; }
+    .btn { padding: 10px 15px !important; font-size: 14px !important; }
+}
+
+@media (max-width: 480px) {
+    body,
+    p,
+    td,
+    th,
+    label,
+    button,
+    input,
+    select,
+    textarea {
+        font-size: 12px !important;
+    }
+
+    h1 { font-size: 1.5rem !important; }
+    h2 { font-size: 1.25rem !important; }
+    .display-3 { font-size: 2.5rem !important; }
+    .card { padding: 10px !important; }
+}
+
+/* Unit Conversion Button */
+.unit-toggle-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: background 0.2s;
+}
+
+.unit-toggle-btn:hover {
+    background: #5a6268;
+}
+
+/* Value Validation Styling */
+.value-warning {
+    border-color: #ffc107 !important;
+    background-color: #fff3cd !important;
+}
+
+.value-error {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+
+.value-normal {
+    border-color: #28a745 !important;
+}
+
+/* Clinical Tooltip Styling */
+.info-tooltip {
+    position: relative;
+    display: inline-block;
+    margin-left: 5px;
+    cursor: help;
+    color: #6c757d;
+}
+
+.info-tooltip:hover {
+    color: #007bff;
+}
+
+.tooltip-content {
+    visibility: hidden;
+    width: 300px;
+    background-color: #2d3748;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 12px;
+    position: absolute;
+    z-index: 1000;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -150px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #2d3748 transparent transparent transparent;
+}
+
+.info-tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .tooltip-content {
+        width: 250px;
+        margin-left: -125px;
+    }
+}
+
+/* Feedback Section Styling */
+.card-header.bg-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#thumbsUpBtn:hover,
+#thumbsDownBtn:hover {
+    transform: scale(1.05);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#thumbsUpBtn.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border-color: #1c7430;
+    animation: successPulse 0.6s ease-in-out;
+}
+
+#thumbsDownBtn.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-color: #bd2130;
+    animation: dangerPulse 0.6s ease-in-out;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes dangerPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.feedback-thank-you {
+    animation: fadeInUp 0.5s ease-in-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* HBR Recommendations Section */
+#hbr-recommendations-section {
+    animation: fadeInUp 0.6s ease-in-out;
+}
+
+#hbr-recommendations-section .alert,
+#hbr-recommendations-section .card-body {
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+#hbr-recommendations-section ul li {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+#hbr-recommendations-section .card-header h5 {
+    font-size: 1.15rem;
+}
+
+#hbr-recommendations-section img {
+    transition: transform 0.3s ease;
+    max-height: 600px;
+    object-fit: contain;
+}
+
+#hbr-recommendations-section img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    #hbr-recommendations-section h4 {
+        font-size: 1.25rem;
+    }
+
+    #hbr-recommendations-section ul li {
+        font-size: 0.95rem;
+    }
+
+    #hbr-recommendations-section img {
+        max-height: 400px;
+    }
+}
