@@ -140,17 +140,11 @@
             normalRange: 'No history of bleeding',
             riskFactors: 'Significant risk increase for those with history (+7 points)'
         },
-        'Long-term OAC': {
-            title: 'Long-term Oral Anticoagulation',
-            content: 'Long-term use of oral anticoagulants (e.g., Warfarin, DOACs) significantly increases bleeding risk, especially when combined with antiplatelet therapy.',
-            normalRange: 'Not used',
-            riskFactors: 'Doubles the bleeding risk (+5 points)'
-        },
         'Long-term oral anticoagulation': {
             title: 'Long-term Oral Anticoagulation',
             content: 'Long-term use of oral anticoagulants (e.g., Warfarin, DOACs) significantly increases bleeding risk. Bleeding risk is further elevated when used with dual or triple antiplatelet therapy.',
             normalRange: 'Not used',
-            riskFactors: 'ARC-HBR Major Criterion'
+            riskFactors: 'ARC-HBR Major Criterion (+5 points)'
         },
         'Platelet count': {
             title: 'Platelet Count',
@@ -436,17 +430,24 @@
         recalculateAndRefreshUI();
     }
 
-    // === ENHANCED: Value Validation Functions with Clinical Bounds ===
-    // Clinical validation ranges based on physiologically plausible values
-    // Clinical validation ranges - simplified to two levels:
+    // === Clinical Validation Ranges ===
     // min/max: Hard bounds that block calculation (clinically impossible values)
-    // warnMin/warnMax: Soft bounds that show warnings but allow calculation
+    // warnMax: Soft upper bound that shows warning but allows calculation
+    // Note: Age uses 75 as elderly threshold (hardcoded in validateValue)
     const VALIDATION_RANGES = {
-        Age: { min: 18, max: 120, warnMin: 18, warnMax: 100 },
+        Age: { min: 18, max: 120, warnMax: 100 },
         Hemoglobin: { min: 3, max: 22, warnMin: 7, warnMax: 18 },  // g/dL
-        eGFR: { min: 0, max: 200, warnMin: 15, warnMax: 150 },     // mL/min/1.73m²
+        eGFR: { min: 0, max: 200, warnMax: 150 },                   // mL/min/1.73m²
         WBC: { min: 0.1, max: 50, warnMin: 4, warnMax: 20 },       // 10⁹/L
         Platelet: { min: 5, max: 1000, warnMin: 100, warnMax: 450 } // 10⁹/L
+    };
+
+    // === Risk Score Thresholds ===
+    // PRECISE-HBR score thresholds for bleeding risk categorization
+    const RISK_THRESHOLDS = {
+        NOT_HIGH: 22,  // Score <= 22: Not high bleeding risk
+        HBR: 23,       // Score 23-26: High Bleeding Risk
+        VERY_HBR: 27   // Score >= 27: Very High Bleeding Risk
     };
 
     function validateValue(parameterName, value) {
@@ -1041,23 +1042,22 @@
         let recommendation = "";
         let riskPercent = 0;
 
-        // Determine risk level and colors
-        // Replicate bleeding risk percentage and category logic from backend
-        if (score <= 22) {
-            riskPercent = 0.5 + (score / 22) * 3.0;
-            riskCategory = `Not high bleeding risk (score ?22)`;
+        // Determine risk level and colors using RISK_THRESHOLDS constants
+        if (score <= RISK_THRESHOLDS.NOT_HIGH) {
+            riskPercent = 0.5 + (score / RISK_THRESHOLDS.NOT_HIGH) * 3.0;
+            riskCategory = `Not high bleeding risk (score ≤${RISK_THRESHOLDS.NOT_HIGH})`;
             colorClass = 'text-success';
             scoreColor = '#28a745'; // green
-        } else if (score <= 26) {
-            riskPercent = 3.5 + ((score - 22) / 4) * 2.0;
-            riskCategory = `HBR (score 23-26)`;
+        } else if (score < RISK_THRESHOLDS.VERY_HBR) {
+            riskPercent = 3.5 + ((score - RISK_THRESHOLDS.NOT_HIGH) / 4) * 2.0;
+            riskCategory = `HBR (score ${RISK_THRESHOLDS.HBR}-${RISK_THRESHOLDS.VERY_HBR - 1})`;
             colorClass = 'text-warning';
             scoreColor = '#fd7e14'; // orange
-        } else { // score >= 27
-            riskPercent = 5.5 + ((score - 26) / 4) * 2.5;
+        } else { // score >= VERY_HBR
+            riskPercent = 5.5 + ((score - (RISK_THRESHOLDS.VERY_HBR - 1)) / 4) * 2.5;
             if (score > 30) riskPercent = 8.0 + ((score - 30) / 5) * 4.0;
             if (score > 35) riskPercent = 12.0 + ((score - 35) / 10) * 3.0;
-            riskCategory = `Very HBR (score ?27)`;
+            riskCategory = `Very HBR (score ≥${RISK_THRESHOLDS.VERY_HBR})`;
             colorClass = 'text-danger';
             scoreColor = '#dc3545'; // red
         }
@@ -1088,13 +1088,13 @@
             existingLink.remove();
         }
 
-        // Add the link only if the score is 23 or higher (HBR threshold)
-        if (score >= 23) {
+        // Add the link only if score meets HBR threshold
+        if (score >= RISK_THRESHOLDS.HBR) {
             const tradeoffDiv = document.createElement('div');
-            tradeoffDiv.id = 'tradeoff-link-container'; // Add an ID for easy removal
+            tradeoffDiv.id = 'tradeoff-link-container';
             tradeoffDiv.className = 'alert alert-info mt-3';
             tradeoffDiv.innerHTML = `
-                <strong>High Bleeding Risk Detected (PRECISE-HBR ?23).</strong>
+                <strong>High Bleeding Risk Detected (PRECISE-HBR ≥${RISK_THRESHOLDS.HBR}).</strong>
                 <br><br>
                 <a href="/tradeoff_analysis" class="btn btn-info btn-sm mt-2" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-chart-line"></i> View Bleeding vs. Thrombosis Trade-off Analysis
@@ -1102,9 +1102,9 @@
             totalScoreCard.appendChild(tradeoffDiv);
         }
 
-        // --- NEW: Show/Hide HBR Recommendations Section ---
+        // Show/Hide HBR Recommendations Section
         const hbrRecommendationsSection = document.getElementById('hbr-recommendations-section');
-        if (score >= 23) {
+        if (score >= RISK_THRESHOLDS.HBR) {
             // Show HBR recommendations with smooth animation
             hbrRecommendationsSection.classList.remove('d-none');
             // Smooth scroll to recommendations after a brief delay
@@ -1182,13 +1182,14 @@
         }
     }
 
-    function submitComment() {
+    async function submitComment() {
         if (!currentPatientData) {
             console.error('No patient data available for feedback');
             return;
         }
 
         const comment = document.getElementById('feedbackComment').value;
+        const submitBtn = document.getElementById('submitCommentBtn');
 
         // Get patient ID from various sources
         const patientId = currentPatientData.patient_info?.patient_id ||
@@ -1206,58 +1207,54 @@
         };
 
         // Show loading state
-        document.getElementById('submitCommentBtn').disabled = true;
-        document.getElementById('submitCommentBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Submitting...';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Submitting...';
 
-        // Submit feedback via AJAX
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        fetch('/api/feedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(feedbackData)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Show success message
-                    document.getElementById('feedbackMessage').textContent = data.message;
-                    document.getElementById('feedbackSuccess').classList.remove('d-none');
-                    document.getElementById('feedbackError').classList.add('d-none');
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(feedbackData)
+            });
 
-                    // Hide comment section and buttons
-                    document.getElementById('commentSection').classList.add('d-none');
-                    document.getElementById('thumbsUpBtn').classList.add('d-none');
-                    document.getElementById('thumbsDownBtn').classList.add('d-none');
+            const data = await response.json();
 
-                    // Show a thank you message
-                    setTimeout(() => {
-                        document.getElementById('feedbackSection').innerHTML = `
+            if (data.status === 'success') {
+                document.getElementById('feedbackMessage').textContent = data.message;
+                document.getElementById('feedbackSuccess').classList.remove('d-none');
+                document.getElementById('feedbackError').classList.add('d-none');
+
+                // Hide comment section and buttons
+                document.getElementById('commentSection').classList.add('d-none');
+                document.getElementById('thumbsUpBtn').classList.add('d-none');
+                document.getElementById('thumbsDownBtn').classList.add('d-none');
+
+                // Show thank you message after delay
+                setTimeout(() => {
+                    document.getElementById('feedbackSection').innerHTML = `
                         <div class="text-center py-3 feedback-thank-you">
                             <i class="fas fa-heart text-danger fa-2x mb-2"></i>
                             <h5 class="text-success">Thank you for your valuable feedback!</h5>
                             <p class="text-muted mb-0">Your feedback helps us improve the accuracy of our calculations.</p>
                         </div>
                     `;
-                    }, 2000);
-                } else {
-                    // Show error message
-                    document.getElementById('feedbackError').classList.remove('d-none');
-                    document.getElementById('feedbackSuccess').classList.add('d-none');
-                }
-            })
-            .catch(error => {
-                console.error('Error submitting feedback:', error);
+                }, 2000);
+            } else {
                 document.getElementById('feedbackError').classList.remove('d-none');
                 document.getElementById('feedbackSuccess').classList.add('d-none');
-            })
-            .finally(() => {
-                // Reset button state
-                document.getElementById('submitCommentBtn').disabled = false;
-                document.getElementById('submitCommentBtn').innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Submit Feedback';
-            });
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            document.getElementById('feedbackError').classList.remove('d-none');
+            document.getElementById('feedbackSuccess').classList.add('d-none');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Submit Feedback';
+        }
     }
 
     function cancelFeedback() {
@@ -1366,85 +1363,6 @@
         }
     }
 
-    // Helper function to calculate approximate birth date from age
-    function calculateBirthDate(age) {
-        if (!age || age === 'N/A') {
-            return '1970-01-01';
-        }
-        const currentYear = new Date().getFullYear();
-        const birthYear = currentYear - parseInt(age);
-        return `${birthYear}-01-01`;
-    }
-
-    // Helper function to extract bleeding risk percentage from recommendation text
-    function extractBleedingRiskPercent(recommendation) {
-        if (!recommendation) return 'N/A';
-        const match = recommendation.match(/(\d+\.?\d*)%/);
-        return match ? match[1] : 'N/A';
-    }
-
-    // Helper function to get parameter value from current data
-    function getParameterValue(parameterName) {
-        if (!currentPatientData || !currentPatientData.score_components) {
-            return 'Not available';
-        }
-
-        const component = currentPatientData.score_components.find(c =>
-            c.parameter.includes(parameterName)
-        );
-
-        if (!component) {
-            return 'Not available';
-        }
-
-        // For CCD export, return only the numeric raw_value (CCD generator adds units)
-        if (component.raw_value !== null && component.raw_value !== undefined) {
-            return component.raw_value;
-        }
-
-        // For boolean values, return the is_present status
-        if (component.is_present !== null && component.is_present !== undefined) {
-            return component.is_present ? 'Present' : 'Absent';
-        }
-
-        return component.value || 'Not available';
-    }
-
-    // Helper function to extract ARC-HBR factors
-    function getARCHBRFactors() {
-        const factors = [];
-
-        if (!currentPatientData || !currentPatientData.score_components) {
-            return factors;
-        }
-
-        // Check for prior bleeding
-        const priorBleeding = currentPatientData.score_components.find(c =>
-            c.parameter.includes('Prior Bleeding')
-        );
-        if (priorBleeding && priorBleeding.value === true) {
-            factors.push('Prior spontaneous bleeding requiring hospitalization or transfusion');
-        }
-
-        // Check for oral anticoagulation
-        const oralAnticoag = currentPatientData.score_components.find(c =>
-            c.parameter.includes('Oral Anticoagulation')
-        );
-        if (oralAnticoag && oralAnticoag.value === true) {
-            factors.push('Long-term oral anticoagulation therapy');
-        }
-
-        // Check for other ARC-HBR factors
-        const arcHBR = currentPatientData.score_components.find(c =>
-            c.parameter.includes('ARC-HBR')
-        );
-        if (arcHBR && arcHBR.value === true) {
-            factors.push('One or more ARC-HBR major or minor criteria');
-        }
-
-        return factors;
-    }
-
 })(); // End of main application module
 
 // ==========================================================================
@@ -1538,20 +1456,19 @@
             // Attach event handlers
             document.getElementById('stay-logged-in-btn').addEventListener('click', function () {
                 closeWarningModal();
-                resetInactivityTimer(); // Reset the timer as if user was active
+                resetInactivityTimer();
             });
 
             document.getElementById('logout-now-btn').addEventListener('click', function () {
                 performLogout();
             });
-        } else {
-            warningModal.style.display = 'block';
         }
     }
 
     function closeWarningModal() {
         if (warningModal) {
-            warningModal.style.display = 'none';
+            warningModal.remove();
+            warningModal = null;
         }
     }
 
