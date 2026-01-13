@@ -1,4 +1,4 @@
-Ôªø{% extends "layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}PRECISE-HBR Bleeding Risk Calculator{% endblock %}
 
@@ -13,11 +13,11 @@
                 high bleeding risk assessment in PCI patients.
             </div>
             <div>
-                <a href="/landing" target="_blank" class="btn btn-sm btn-outline-primary me-2"
+                <a href="/landing" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary me-2"
                     aria-label="Learn more about PRECISE-HBR (opens in new window)">
                     <i class="fas fa-external-link-alt" aria-hidden="true"></i> Learn More
                 </a>
-                <a href="/docs" target="_blank" class="btn btn-sm btn-outline-secondary"
+                <a href="/docs" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary"
                     aria-label="View documentation (opens in new window)">
                     <i class="fas fa-book" aria-hidden="true"></i> Documentation
                 </a>
@@ -115,14 +115,14 @@
                         <strong>High Bleeding Risk (HBR) Detected</strong>
                     </h4>
                     <p class="mb-3">
-                        Based on the PRECISE-HBR score (‚â•23), this patient has been identified as having <strong>high
+                        Based on the PRECISE-HBR score (?23), this patient has been identified as having <strong>high
                             bleeding risk</strong>.
                         Consider the following antiplatelet strategies to reduce bleeding risk:
                     </p>
 
                     <div class="card mb-3">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">üíä Recommended Antiplatelet Strategies (Post-ACS)</h5>
+                            <h5 class="mb-0">?? Recommended Antiplatelet Strategies (Post-ACS)</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -132,13 +132,13 @@
                                         <li><strong>HBR patients only:</strong>
                                             <ul>
                                                 <li>1 month DAPT (dual antiplatelet therapy)</li>
-                                                <li>Then switch to P2Y‚ÇÅ‚ÇÇ inhibitor or aspirin monotherapy</li>
+                                                <li>Then switch to P2Y?? inhibitor or aspirin monotherapy</li>
                                             </ul>
                                         </li>
                                         <li><strong>HBR and non-HBR patients:</strong>
                                             <ul>
                                                 <li>3-6 months DAPT</li>
-                                                <li>Then switch to P2Y‚ÇÅ‚ÇÇ inhibitor or aspirin monotherapy</li>
+                                                <li>Then switch to P2Y?? inhibitor or aspirin monotherapy</li>
                                             </ul>
                                         </li>
                                     </ul>
@@ -154,7 +154,7 @@
                                         </li>
                                         <li><strong>At 3 months:</strong>
                                             <ul>
-                                                <li>De-escalate: Change from potent P2Y‚ÇÅ‚ÇÇ inhibitor to clopidogrel</li>
+                                                <li>De-escalate: Change from potent P2Y?? inhibitor to clopidogrel</li>
                                                 <li>Continue: Aspirin + Clopidogrel</li>
                                             </ul>
                                         </li>
@@ -203,7 +203,7 @@
                 <i class="fas fa-exclamation-triangle me-3 mt-1 font-size-1-5rem" aria-hidden="true"></i>
                 <div class="flex-grow-1">
                     <h5 class="alert-heading mb-2">
-                        <strong>‚ö†Ô∏è Missing Data Detected - Risk May Be Underestimated</strong>
+                        <strong>?? Missing Data Detected - Risk May Be Underestimated</strong>
                     </h5>
                     <p class="mb-2">
                         The following important risk factors have missing data. The calculated bleeding risk score may
@@ -336,12 +336,12 @@
                     <p class="mb-1"><strong>Article Type:</strong> Journal Article</p>
                     <p class="mb-1"><strong>Title:</strong> Derivation and Validation of the PRECISE-HBR Score to
                         Predict Bleeding After Percutaneous Coronary Intervention</p>
-                    <p class="mb-1"><strong>Authors:</strong> Gragnano, Felice; van Klaveren, David; Heg, Dik; R√§ber,
-                        Lorenz; Krucoff, Mitchell W.; Raposeiras-Roub√≠n, Sergio; ten Berg, Jurri√´n M.; Leonardi, Sergio;
-                        Kimura, Takeshi; Corpataux, No√©; Spirito, Alessandro; Hermiller, James B.; Abu-Assi, Emad; Chan
-                        Pin Yin, Dean; Azzahhafi, Jaouad; Montalto, Claudio; Galazzi, Marco; B√§r, Sarah; Kavaliauskaite,
+                    <p class="mb-1"><strong>Authors:</strong> Gragnano, Felice; van Klaveren, David; Heg, Dik; Raber,
+                        Lorenz; Krucoff, Mitchell W.; Raposeiras-Roubin, Sergio; ten Berg, Jurrien M.; Leonardi, Sergio;
+                        Kimura, Takeshi; Corpataux, Noe; Spirito, Alessandro; Hermiller, James B.; Abu-Assi, Emad; Chan
+                        Pin Yin, Dean; Azzahhafi, Jaouad; Montalto, Claudio; Galazzi, Marco; Bar, Sarah; Kavaliauskaite,
                         Raminta; D'Ascenzo, Fabrizio; De Ferrari, Gaetano M.; Watanabe, Hirotoshi; Steg, Philippe
-                        Gabriel; Bhatt, Deepak L.; Calabr√≤, Paolo; Mehran, Roxana; Urban, Philip; Pocock, Stuart;
+                        Gabriel; Bhatt, Deepak L.; Calabro, Paolo; Mehran, Roxana; Urban, Philip; Pocock, Stuart;
                         Windecker, Stephan; Valgimigli, Marco</p>
                     <p class="mb-1"><strong>Journal:</strong> Circulation</p>
                     <p class="mb-1"><strong>Year:</strong> 2025</p>
@@ -437,26 +437,26 @@
             if (clinicalTooltips['Age']) {
                 clinicalTooltips['Age'].riskFactors =
                     `Score Weight: +${c.age.coefficient} points per year increase<br>` +
-                    `Example: 65 years = (65-${c.age.threshold}) √ó ${c.age.coefficient} = ${((65 - c.age.threshold) * c.age.coefficient).toFixed(2)} points`;
+                    `Example: 65 years = (65-${c.age.threshold}) °— ${c.age.coefficient} = ${((65 - c.age.threshold) * c.age.coefficient).toFixed(2)} points`;
                 clinicalTooltips['Age'].normalRange =
                     `Calculation Range: ${c.age.truncation_min}-${c.age.truncation_max} years`;
             }
             if (clinicalTooltips['Hemoglobin']) {
                 clinicalTooltips['Hemoglobin'].riskFactors =
                     `Score Weight: +${c.hemoglobin.coefficient} points per 1 g/dL decrease<br>` +
-                    `Example: 12 g/dL = (${c.hemoglobin.threshold}-12) √ó ${c.hemoglobin.coefficient} = ${((c.hemoglobin.threshold - 12) * c.hemoglobin.coefficient).toFixed(1)} points`;
+                    `Example: 12 g/dL = (${c.hemoglobin.threshold}-12) °— ${c.hemoglobin.coefficient} = ${((c.hemoglobin.threshold - 12) * c.hemoglobin.coefficient).toFixed(1)} points`;
                 clinicalTooltips['Hemoglobin'].normalRange =
                     `Calculation Range: ${c.hemoglobin.truncation_min}-${c.hemoglobin.truncation_max} g/dL`;
             }
             if (clinicalTooltips['eGFR']) {
                 clinicalTooltips['eGFR'].riskFactors =
                     `Score Weight: +${c.egfr.coefficient} points per 1 mL/min decrease<br>` +
-                    `Example: 60 mL/min = (${c.egfr.threshold}-60) √ó ${c.egfr.coefficient} = ${((c.egfr.threshold - 60) * c.egfr.coefficient).toFixed(1)} points`;
+                    `Example: 60 mL/min = (${c.egfr.threshold}-60) °— ${c.egfr.coefficient} = ${((c.egfr.threshold - 60) * c.egfr.coefficient).toFixed(1)} points`;
             }
             if (clinicalTooltips['White Blood Cell Count']) {
                 clinicalTooltips['White Blood Cell Count'].riskFactors =
-                    `Score Weight: +${c.wbc.coefficient} points per 1 √ó10‚Åπ/L increase<br>` +
-                    `Example: 10 √ó10‚Åπ/L = (10-${c.wbc.threshold}) √ó ${c.wbc.coefficient} = ${((10 - c.wbc.threshold) * c.wbc.coefficient).toFixed(1)} points`;
+                    `Score Weight: +${c.wbc.coefficient} points per 1 °—10?/L increase<br>` +
+                    `Example: 10 °—10?/L = (10-${c.wbc.threshold}) °— ${c.wbc.coefficient} = ${((10 - c.wbc.threshold) * c.wbc.coefficient).toFixed(1)} points`;
             }
         }
 
@@ -474,25 +474,25 @@
                 title: 'Age',
                 content: 'Age is a continuous variable in the PRECISE-HBR model. It is truncated to the 30-80 years range during calculation; older age increases the score.',
                 normalRange: 'Calculation Range: 30-80 years',
-                riskFactors: 'Score Weight: +0.25 points per year increase<br>Example: 65 years = (65-30) √ó 0.25 = 8.75 points'
+                riskFactors: 'Score Weight: +0.25 points per year increase<br>Example: 65 years = (65-30) °— 0.25 = 8.75 points'
             },
             'Hemoglobin': {
                 title: 'Hemoglobin',
                 content: 'Hemoglobin is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-15 g/dL range during calculation; lower hemoglobin increases the score.',
                 normalRange: 'Calculation Range: 5-15 g/dL',
-                riskFactors: 'Score Weight: +2.5 points per 1 g/dL decrease<br>Example: 12 g/dL = (15-12) √ó 2.5 = 7.5 points'
+                riskFactors: 'Score Weight: +2.5 points per 1 g/dL decrease<br>Example: 12 g/dL = (15-12) °— 2.5 = 7.5 points'
             },
             'eGFR': {
                 title: 'eGFR (Estimated Glomerular Filtration Rate)',
                 content: 'eGFR is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-100 mL/min range; lower kidney function increases the score.',
-                normalRange: 'Calculation Range: 5-100 mL/min/1.73m¬≤',
-                riskFactors: 'Score Weight: +0.05 points per 1 mL/min decrease<br>Example: 60 mL/min = (100-60) √ó 0.05 = 2.0 points'
+                normalRange: 'Calculation Range: 5-100 mL/min/1.73m2',
+                riskFactors: 'Score Weight: +0.05 points per 1 mL/min decrease<br>Example: 60 mL/min = (100-60) °— 0.05 = 2.0 points'
             },
             'White Blood Cell Count': {
                 title: 'White Blood Cell Count',
-                content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 √ó10‚Åπ/L; higher WBC increases the score.',
-                normalRange: 'Calculation Range: 3-15 √ó10‚Åπ/L',
-                riskFactors: 'Score Weight: +0.8 points per 1 √ó10‚Åπ/L increase<br>Example: 10 √ó10‚Åπ/L = (10-3) √ó 0.8 = 5.6 points'
+                content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 °—10?/L; higher WBC increases the score.',
+                normalRange: 'Calculation Range: 3-15 °—10?/L',
+                riskFactors: 'Score Weight: +0.8 points per 1 °—10?/L increase<br>Example: 10 °—10?/L = (10-3) °— 0.8 = 5.6 points'
             },
             'Previous bleeding': {
                 title: 'Previous Bleeding',
@@ -514,15 +514,15 @@
             },
             'Platelet count': {
                 title: 'Platelet Count',
-                content: 'Platelets are key for coagulation. Low platelet count (<100√ó10‚Åπ/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding. Can be caused by marrow disease, hypersplenism, or medications.',
-                normalRange: '150-400 √ó10‚Åπ/L',
-                riskFactors: '<100 √ó10‚Åπ/L is an ARC-HBR Major Criterion<br><50 √ó10‚Åπ/L is severe thrombocytopenia'
+                content: 'Platelets are key for coagulation. Low platelet count (<100°—10?/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding. Can be caused by marrow disease, hypersplenism, or medications.',
+                normalRange: '150-400 °—10?/L',
+                riskFactors: '<100 °—10?/L is an ARC-HBR Major Criterion<br><50 °—10?/L is severe thrombocytopenia'
             },
             'Platelet count <100': {
-                title: 'Platelet Count <100 √ó10‚Åπ/L (Thrombocytopenia)',
-                content: 'Platelets are key for coagulation. Low platelet count (<100√ó10‚Åπ/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding.',
-                normalRange: '150-400 √ó10‚Åπ/L',
-                riskFactors: '<100 √ó10‚Åπ/L is an ARC-HBR Major Criterion'
+                title: 'Platelet Count <100 °—10?/L (Thrombocytopenia)',
+                content: 'Platelets are key for coagulation. Low platelet count (<100°—10?/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding.',
+                normalRange: '150-400 °—10?/L',
+                riskFactors: '<100 °—10?/L is an ARC-HBR Major Criterion'
             },
             'Chronic bleeding diathesis': {
                 title: 'Chronic Bleeding Diathesis',
@@ -551,20 +551,20 @@
             'Anemia': {
                 title: 'Anemia',
                 content: 'Anemia (Hb <11 g/dL) may indicate chronic bleeding and reduces tolerance to bleeding complications. Anemic patients are more prone to hemodynamic instability if bleeding occurs.',
-                normalRange: 'Hb ‚â•13 g/dL (Male), ‚â•12 g/dL (Female)',
+                normalRange: 'Hb ?13 g/dL (Male), ?12 g/dL (Female)',
                 riskFactors: 'Hb <11 g/dL is an ARC-HBR Minor Criterion'
             },
             'Chronic kidney disease': {
                 title: 'Chronic Kidney Disease',
                 content: 'CKD (eGFR <60 mL/min) affects platelet function and coagulation factor metabolism. Also, many antithrombotics are renally cleared; impairment leads to accumulation and bleeding.',
-                normalRange: 'eGFR ‚â•60 mL/min/1.73m¬≤',
+                normalRange: 'eGFR ?60 mL/min/1.73m2',
                 riskFactors: 'eGFR <60 is an ARC-HBR Minor Criterion<br>eGFR <30 is a Major Criterion'
             },
             'Thrombocytopenia': {
                 title: 'Thrombocytopenia',
-                content: 'Low platelet count affects primary hemostasis. Moderate thrombocytopenia (<100√ó10‚Åπ/L) may increase bleeding risk, especially during invasive procedures or antithrombotic therapy.',
-                normalRange: '150-400 √ó10‚Åπ/L',
-                riskFactors: '<100 √ó10‚Åπ/L is an ARC-HBR Major Criterion'
+                content: 'Low platelet count affects primary hemostasis. Moderate thrombocytopenia (<100°—10?/L) may increase bleeding risk, especially during invasive procedures or antithrombotic therapy.',
+                normalRange: '150-400 °—10?/L',
+                riskFactors: '<100 °—10?/L is an ARC-HBR Major Criterion'
             }
         };
 
@@ -751,14 +751,14 @@
             if (parameterName.includes("Hemoglobin")) {
                 return unitSettings.hemoglobin || "g/dL";
             }
-            if (parameterName.includes("eGFR")) return "mL/min/1.73m¬≤";
-            if (parameterName.includes("White Blood Cell")) return "√ó10‚Åπ/L";
+            if (parameterName.includes("eGFR")) return "mL/min/1.73m2";
+            if (parameterName.includes("White Blood Cell")) return "°—10?/L";
             return "";
         }
 
         // === NEW: Unit Conversion Functions ===
         function convertHemoglobin(value, fromUnit, toUnit) {
-            // Hemoglobin conversion: g/dL ‚áÑ mmol/L
+            // Hemoglobin conversion: g/dL ? mmol/L
             // 1 g/dL = 0.6206 mmol/L
             if (fromUnit === toUnit) return value;
 
@@ -818,14 +818,14 @@
                     result.blockCalculation = true;
                 } else if (numValue < range.warningMin) {
                     result.level = 'error';
-                    result.message = 'Age must be ‚â• 18 for adult risk calculation';
+                    result.message = 'Age must be ? 18 for adult risk calculation';
                     result.blockCalculation = true;
                 } else if (numValue > range.warningMax) {
                     result.level = 'warning';
                     result.message = 'Age exceeds typical range (>100 years)';
                 } else if (numValue >= 75) {
                     result.level = 'warning';
-                    result.message = 'Elderly patient (‚â•75 years) - increased bleeding risk';
+                    result.message = 'Elderly patient (?75 years) - increased bleeding risk';
                 }
             } else if (parameterName.includes("Hemoglobin")) {
                 const range = VALIDATION_RANGES.Hemoglobin;
@@ -899,7 +899,7 @@
                     result.blockCalculation = true;
                 } else if (numValue > range.absoluteMax) {
                     result.level = 'error';
-                    result.message = `WBC exceeds maximum plausible value (>${range.absoluteMax} √ó10‚Åπ/L)`;
+                    result.message = `WBC exceeds maximum plausible value (>${range.absoluteMax} °—10?/L)`;
                     result.blockCalculation = true;
                 } else if (numValue < range.errorMin) {
                     result.level = 'error';
@@ -911,10 +911,10 @@
                     result.blockCalculation = true;
                 } else if (numValue < range.warningMin) {
                     result.level = 'warning';
-                    result.message = 'Low WBC (<4 √ó10‚Åπ/L) - Leukopenia';
+                    result.message = 'Low WBC (<4 °—10?/L) - Leukopenia';
                 } else if (numValue > range.warningMax) {
                     result.level = 'warning';
-                    result.message = 'Elevated WBC (>20 √ó10‚Åπ/L) - Leukocytosis';
+                    result.message = 'Elevated WBC (>20 °—10?/L) - Leukocytosis';
                 }
             } else if (parameterName.includes("Platelet")) {
                 const range = VALIDATION_RANGES.Platelet;
@@ -924,7 +924,7 @@
                     result.blockCalculation = true;
                 } else if (numValue > range.absoluteMax) {
                     result.level = 'error';
-                    result.message = `Platelet count exceeds maximum (>${range.absoluteMax} √ó10‚Åπ/L)`;
+                    result.message = `Platelet count exceeds maximum (>${range.absoluteMax} °—10?/L)`;
                     result.blockCalculation = true;
                 } else if (numValue < range.errorMin) {
                     result.level = 'error';
@@ -936,10 +936,10 @@
                     result.blockCalculation = true;
                 } else if (numValue < range.warningMin) {
                     result.level = 'warning';
-                    result.message = 'Thrombocytopenia (<100 √ó10‚Åπ/L) - High bleeding risk';
+                    result.message = 'Thrombocytopenia (<100 °—10?/L) - High bleeding risk';
                 } else if (numValue > range.warningMax) {
                     result.level = 'warning';
-                    result.message = 'Thrombocytosis (>450 √ó10‚Åπ/L)';
+                    result.message = 'Thrombocytosis (>450 °—10?/L)';
                 }
             }
 
@@ -1022,8 +1022,8 @@
             if (typeof value === 'number') {
                 if (unit === "years") return Math.round(value);
                 if (unit === "g/dL" || unit === "mmol/L") return value.toFixed(2);
-                if (unit === "mL/min/1.73m¬≤") return Math.round(value);
-                if (unit === "√ó10‚Åπ/L") return value.toFixed(2);
+                if (unit === "mL/min/1.73m2") return Math.round(value);
+                if (unit === "°—10?/L") return value.toFixed(2);
                 return value.toFixed(2);
             }
             return value;
@@ -1075,7 +1075,7 @@
 
                         // Add unit toggle button for Hemoglobin
                         const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                            `<button type="button" class="unit-toggle-btn" title="Toggle Unit">‚áÑ</button>` : '';
+                            `<button type="button" class="unit-toggle-btn" title="Toggle Unit">?</button>` : '';
 
                         valueControl = `
                         <div class="input-group input-group-lg-text">
@@ -1114,7 +1114,7 @@
 
                         // Add unit toggle button for Hemoglobin
                         const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                            `<button type="button" class="unit-toggle-btn" title="Toggle Unit">‚áÑ</button>` : '';
+                            `<button type="button" class="unit-toggle-btn" title="Toggle Unit">?</button>` : '';
 
                         valueControl = `
                         <div class="input-group input-group-lg-text">
@@ -1139,7 +1139,7 @@
                     let scoreBadgeHtml = '';
                     if (item.is_arc_hbr_element === true) {
                         // Don't show score for ARC-HBR elements
-                        scoreBadgeHtml = '<span class="text-muted arc-badge-placeholder">‚Äî</span>';
+                        scoreBadgeHtml = '<span class="text-muted arc-badge-placeholder">°X</span>';
                     } else {
                         scoreBadgeHtml = `<span class="badge bg-primary score-badge" id="score-${safeParameter}">${escapeHtml(item.score)}</span>`;
                     }
@@ -1451,7 +1451,7 @@
             // Replicate bleeding risk percentage and category logic from backend
             if (score <= 22) {
                 riskPercent = 0.5 + (score / 22) * 3.0;
-                riskCategory = `Not high bleeding risk (score ‚â§22)`;
+                riskCategory = `Not high bleeding risk (score ?22)`;
                 colorClass = 'text-success';
                 scoreColor = '#28a745'; // green
             } else if (score <= 26) {
@@ -1463,7 +1463,7 @@
                 riskPercent = 5.5 + ((score - 26) / 4) * 2.5;
                 if (score > 30) riskPercent = 8.0 + ((score - 30) / 5) * 4.0;
                 if (score > 35) riskPercent = 12.0 + ((score - 35) / 10) * 3.0;
-                riskCategory = `Very HBR (score ‚â•27)`;
+                riskCategory = `Very HBR (score ?27)`;
                 colorClass = 'text-danger';
                 scoreColor = '#dc3545'; // red
             }
@@ -1500,9 +1500,9 @@
                 tradeoffDiv.id = 'tradeoff-link-container'; // Add an ID for easy removal
                 tradeoffDiv.className = 'alert alert-info mt-3';
                 tradeoffDiv.innerHTML = `
-                <strong>High Bleeding Risk Detected (PRECISE-HBR ‚â•23).</strong>
+                <strong>High Bleeding Risk Detected (PRECISE-HBR ?23).</strong>
                 <br><br>
-                <a href="/tradeoff_analysis" class="btn btn-info btn-sm mt-2" target="_blank">
+                <a href="/tradeoff_analysis" class="btn btn-info btn-sm mt-2" target="_blank" rel="noopener noreferrer">
                     <i class="fas fa-chart-line"></i> View Bleeding vs. Thrombosis Trade-off Analysis
                 </a>`;
                 totalScoreCard.appendChild(tradeoffDiv);
@@ -1553,15 +1553,15 @@
                 'PRECISE-HBR - Age': 'Age (truncated 30-80 years)',
                 'PRECISE-HBR - Hemoglobin': 'Hemoglobin (truncated 5-15 g/dL)',
                 'PRECISE-HBR - eGFR': 'eGFR (truncated above 100)',
-                'PRECISE-HBR - White Blood Cell Count': 'White Blood Cell Count (truncated above 15√ó10¬≥)',
+                'PRECISE-HBR - White Blood Cell Count': 'White Blood Cell Count (truncated above 15°—103)',
                 'PRECISE-HBR - Prior Bleeding': 'Previous bleeding',
                 'PRECISE-HBR - Oral Anticoagulation': 'Long-term oral anticoagulation',
-                'PRECISE-HBR - Platelet Count': 'Platelet count <100 √ó10‚Åπ/L',
+                'PRECISE-HBR - Platelet Count': 'Platelet count <100 °—10?/L',
                 'PRECISE-HBR - Chronic Bleeding Diathesis': 'Chronic bleeding diathesis',
                 'PRECISE-HBR - Liver Cirrhosis': 'Liver cirrhosis with portal hypertension',
                 'PRECISE-HBR - Active Malignancy': 'Active malignancy',
                 'PRECISE-HBR - NSAIDs/Corticosteroids': 'Chronic use of nsaids or corticosteroids',
-                'PRECISE-HBR - ARC-HBR Summary': 'ARC-HBR Elements ‚â•1'
+                'PRECISE-HBR - ARC-HBR Summary': 'ARC-HBR Elements ?1'
             };
 
             return translations[parameterName] || parameterName;

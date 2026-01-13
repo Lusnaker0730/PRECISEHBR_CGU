@@ -295,7 +295,7 @@
                             After Coronary Stent Implantation: The ARC-High Bleeding Risk Trade-off Model.
                             <em>JAMA Cardiology.</em> 2021;6(4):410-419.
                             <a href="https://jamanetwork.com/journals/jamacardiology/fullarticle/2774812"
-                                target="_blank" class="text-primary">
+                                target="_blank" rel="noopener noreferrer" class="text-primary">
                                 doi:10.1001/jamacardio.2020.6602
                             </a>
                         </li>
@@ -312,251 +312,251 @@
     </div>
 
     <script nonce="{{ csp_nonce() }}">
-    // ==========================================================================
-    // Trade-off Analysis Module - Wrapped in IIFE to avoid global scope pollution
-    // ==========================================================================
-    (function() {
-        'use strict';
+        // ==========================================================================
+        // Trade-off Analysis Module - Wrapped in IIFE to avoid global scope pollution
+        // ==========================================================================
+        (function () {
+            'use strict';
 
-        // Module-scoped variables
-        let tradeoffChart = null;
-        let modelData = null;
+            // Module-scoped variables
+            let tradeoffChart = null;
+            let modelData = null;
 
-        // === Configuration Constants ===
-        // Based on JAMA Cardiology paper: mortality ratio is 1.9x higher after MI/ST vs bleeding
-        const MORTALITY_RATIO = 1.9; // From paper: MI/ST mortality vs bleeding mortality ratio
-        const HBR_THRESHOLD = 4.0;   // High Bleeding Risk threshold (4% per year, ARC-HBR criteria)
-        const MIN_LOG_VALUE = 0.1;   // Minimum value for logarithmic scale
+            // === Configuration Constants ===
+            // Based on JAMA Cardiology paper: mortality ratio is 1.9x higher after MI/ST vs bleeding
+            const MORTALITY_RATIO = 1.9; // From paper: MI/ST mortality vs bleeding mortality ratio
+            const HBR_THRESHOLD = 4.0;   // High Bleeding Risk threshold (4% per year, ARC-HBR criteria)
+            const MIN_LOG_VALUE = 0.1;   // Minimum value for logarithmic scale
 
-        // === Security: HTML escape utility to prevent XSS ===
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            const div = document.createElement('div');
-            div.textContent = String(text);
-            return div.innerHTML;
-        }
-
-        const backgroundPlugin = {
-            id: 'customCanvasBackgroundColor',
-            beforeDraw: (chart) => {
-                const { ctx, chartArea, scales } = chart;
-                if (!chartArea) return;
-                const { left, right, top, bottom } = chartArea;
-                const { x, y } = scales;
-
-                // Define the lines based on JAMA paper
-                // Upper line: Equal trade-off (y = x, or thrombotic = bleeding)
-                const equalTradeoff = (val) => y.getPixelForValue(x.getValueForPixel(val));
-                // Lower line: Mortality-weighted (y = x/1.9, accounting for higher MI/ST mortality)
-                const mortalityWeighted = (val) => y.getPixelForValue(x.getValueForPixel(val) / MORTALITY_RATIO);
-
-                ctx.save();
-
-                // Teal/Cyan area (above equal trade-off line): Thrombotic risk dominates
-                ctx.beginPath();
-                ctx.moveTo(left, top);
-                ctx.lineTo(right, top);
-                ctx.lineTo(right, equalTradeoff(right));
-                ctx.lineTo(left, equalTradeoff(left));
-                ctx.closePath();
-                ctx.fillStyle = 'rgba(135, 206, 220, 0.5)'; // Teal/cyan like paper
-                ctx.fill();
-
-                // Gray area (between lines): Risks are approximately equivalent when mortality is considered
-                ctx.beginPath();
-                ctx.moveTo(left, equalTradeoff(left));
-                ctx.lineTo(right, equalTradeoff(right));
-                ctx.lineTo(right, mortalityWeighted(right));
-                ctx.lineTo(left, mortalityWeighted(left));
-                ctx.closePath();
-                ctx.fillStyle = 'rgba(200, 200, 200, 0.4)'; // Gray area
-                ctx.fill();
-
-                // Orange/Peach area (below mortality-weighted line): Bleeding risk dominates
-                ctx.beginPath();
-                ctx.moveTo(left, mortalityWeighted(left));
-                ctx.lineTo(right, mortalityWeighted(right));
-                ctx.lineTo(right, bottom);
-                ctx.lineTo(left, bottom);
-                ctx.closePath();
-                ctx.fillStyle = 'rgba(255, 200, 150, 0.5)'; // Orange/peach like paper
-                ctx.fill();
-
-                // Draw the trade-off lines
-                ctx.setLineDash([5, 5]);
-
-                // Equal trade-off line (darker)
-                ctx.beginPath();
-                ctx.moveTo(left, equalTradeoff(left));
-                ctx.lineTo(right, equalTradeoff(right));
-                ctx.strokeStyle = 'rgba(0, 100, 100, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                // Mortality-weighted line (orange)
-                ctx.beginPath();
-                ctx.moveTo(left, mortalityWeighted(left));
-                ctx.lineTo(right, mortalityWeighted(right));
-                ctx.strokeStyle = 'rgba(255, 140, 0, 0.9)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.restore();
+            // === Security: HTML escape utility to prevent XSS ===
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                const div = document.createElement('div');
+                div.textContent = String(text);
+                return div.innerHTML;
             }
-        };
 
-        Chart.register(backgroundPlugin);
+            const backgroundPlugin = {
+                id: 'customCanvasBackgroundColor',
+                beforeDraw: (chart) => {
+                    const { ctx, chartArea, scales } = chart;
+                    if (!chartArea) return;
+                    const { left, right, top, bottom } = chartArea;
+                    const { x, y } = scales;
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Show loading overlay
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('main-content').classList.add('content-hidden');
+                    // Define the lines based on JAMA paper
+                    // Upper line: Equal trade-off (y = x, or thrombotic = bleeding)
+                    const equalTradeoff = (val) => y.getPixelForValue(x.getValueForPixel(val));
+                    // Lower line: Mortality-weighted (y = x/1.9, accounting for higher MI/ST mortality)
+                    const mortalityWeighted = (val) => y.getPixelForValue(x.getValueForPixel(val) / MORTALITY_RATIO);
 
-                const patientId = "{{ patient_id }}";
-                if (!patientId || patientId === "N/A") {
-                    throw new Error("Patient ID is not available.");
+                    ctx.save();
+
+                    // Teal/Cyan area (above equal trade-off line): Thrombotic risk dominates
+                    ctx.beginPath();
+                    ctx.moveTo(left, top);
+                    ctx.lineTo(right, top);
+                    ctx.lineTo(right, equalTradeoff(right));
+                    ctx.lineTo(left, equalTradeoff(left));
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(135, 206, 220, 0.5)'; // Teal/cyan like paper
+                    ctx.fill();
+
+                    // Gray area (between lines): Risks are approximately equivalent when mortality is considered
+                    ctx.beginPath();
+                    ctx.moveTo(left, equalTradeoff(left));
+                    ctx.lineTo(right, equalTradeoff(right));
+                    ctx.lineTo(right, mortalityWeighted(right));
+                    ctx.lineTo(left, mortalityWeighted(left));
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(200, 200, 200, 0.4)'; // Gray area
+                    ctx.fill();
+
+                    // Orange/Peach area (below mortality-weighted line): Bleeding risk dominates
+                    ctx.beginPath();
+                    ctx.moveTo(left, mortalityWeighted(left));
+                    ctx.lineTo(right, mortalityWeighted(right));
+                    ctx.lineTo(right, bottom);
+                    ctx.lineTo(left, bottom);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(255, 200, 150, 0.5)'; // Orange/peach like paper
+                    ctx.fill();
+
+                    // Draw the trade-off lines
+                    ctx.setLineDash([5, 5]);
+
+                    // Equal trade-off line (darker)
+                    ctx.beginPath();
+                    ctx.moveTo(left, equalTradeoff(left));
+                    ctx.lineTo(right, equalTradeoff(right));
+                    ctx.strokeStyle = 'rgba(0, 100, 100, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Mortality-weighted line (orange)
+                    ctx.beginPath();
+                    ctx.moveTo(left, mortalityWeighted(left));
+                    ctx.lineTo(right, mortalityWeighted(right));
+                    ctx.strokeStyle = 'rgba(255, 140, 0, 0.9)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.restore();
                 }
+            };
 
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            Chart.register(backgroundPlugin);
 
-                const response = await fetch('/api/calculate_tradeoff', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ patientId: patientId }),
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    // Show loading overlay
+                    document.getElementById('loading-overlay').style.display = 'flex';
+                    document.getElementById('main-content').classList.add('content-hidden');
+
+                    const patientId = "{{ patient_id }}";
+                    if (!patientId || patientId === "N/A") {
+                        throw new Error("Patient ID is not available.");
+                    }
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    const response = await fetch('/api/calculate_tradeoff', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ patientId: patientId }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `Server responded with status ${response.status}`);
+                    }
+
+                    modelData = await response.json();
+
+                    if (modelData.error) {
+                        alert('Error loading tradeoff model: ' + modelData.error);
+                        return;
+                    }
+
+                    populateFactorLists();
+
+                    // Use initial scores to display the chart immediately
+                    if (modelData.initial_scores) {
+                        updateChart(modelData.initial_scores);
+                    }
+
+                    // Hide loading overlay after a short delay to ensure smooth transition
+                    setTimeout(() => {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        document.getElementById('main-content').classList.remove('content-hidden');
+                        document.getElementById('content-row').style.visibility = 'visible';
+                    }, 300);
+
+                    // Event delegation for factor checkboxes
+                    const allFactorsList = document.getElementById('all-factors');
+                    if (allFactorsList) {
+                        allFactorsList.addEventListener('change', (e) => {
+                            if (e.target && e.target.matches('.form-check-input')) {
+                                recalculateScores();
+                            }
+                        });
+                    }
+
+                    // Event listener for guideline image
+                    const guidelineImg = document.getElementById('hbr-guideline-image');
+                    if (guidelineImg) {
+                        guidelineImg.addEventListener('click', function () {
+                            window.open(this.src, '_blank');
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error loading tradeoff analysis:', error);
+                    alert('Error loading tradeoff analysis. Please try again.');
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }
+            });
+
+            function populateFactorLists() {
+                const allFactorsList = document.getElementById('all-factors');
+
+                // Create a map to combine factors that appear in both lists
+                const factorMap = new Map();
+
+                // Process bleeding factors
+                modelData.model.bleedingEvents.predictors.forEach(p => {
+                    if (!factorMap.has(p.factor)) {
+                        factorMap.set(p.factor, {
+                            factor: p.factor,
+                            description: p.description,
+                            bleeding: { hr: p.hazardRatio, ci: p.confidenceInterval },
+                            thrombotic: null
+                        });
+                    } else {
+                        const existing = factorMap.get(p.factor);
+                        existing.bleeding = { hr: p.hazardRatio, ci: p.confidenceInterval };
+                    }
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `Server responded with status ${response.status}`);
-                }
+                // Process thrombotic factors
+                modelData.model.thromboticEvents.predictors.forEach(p => {
+                    if (!factorMap.has(p.factor)) {
+                        factorMap.set(p.factor, {
+                            factor: p.factor,
+                            description: p.description,
+                            bleeding: null,
+                            thrombotic: { hr: p.hazardRatio, ci: p.confidenceInterval }
+                        });
+                    } else {
+                        const existing = factorMap.get(p.factor);
+                        existing.thrombotic = { hr: p.hazardRatio, ci: p.confidenceInterval };
+                    }
+                });
 
-                modelData = await response.json();
+                // Sort factors: first show factors affecting both risks, then single risk factors
+                const sortedFactors = Array.from(factorMap.values()).sort((a, b) => {
+                    const aBoth = (a.bleeding && a.thrombotic) ? 1 : 0;
+                    const bBoth = (b.bleeding && b.thrombotic) ? 1 : 0;
+                    if (aBoth !== bBoth) return bBoth - aBoth; // Both risks first
+                    return a.description.localeCompare(b.description); // Then alphabetically
+                });
 
-                if (modelData.error) {
-                    alert('Error loading tradeoff model: ' + modelData.error);
-                    return;
-                }
-
-                populateFactorLists();
-
-                // Use initial scores to display the chart immediately
-                if (modelData.initial_scores) {
-                    updateChart(modelData.initial_scores);
-                }
-
-                // Hide loading overlay after a short delay to ensure smooth transition
-                setTimeout(() => {
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    document.getElementById('main-content').classList.remove('content-hidden');
-                    document.getElementById('content-row').style.visibility = 'visible';
-                }, 300);
-
-                // Event delegation for factor checkboxes
-                const allFactorsList = document.getElementById('all-factors');
-                if (allFactorsList) {
-                    allFactorsList.addEventListener('change', (e) => {
-                        if (e.target && e.target.matches('.form-check-input')) {
-                            recalculateScores();
-                        }
-                    });
-                }
-
-                // Event listener for guideline image
-                const guidelineImg = document.getElementById('hbr-guideline-image');
-                if (guidelineImg) {
-                    guidelineImg.addEventListener('click', function () {
-                        window.open(this.src, '_blank');
-                    });
-                }
-
-            } catch (error) {
-                console.error('Error loading tradeoff analysis:', error);
-                alert('Error loading tradeoff analysis. Please try again.');
-                document.getElementById('loading-overlay').style.display = 'none';
+                // Create checkboxes for all factors
+                sortedFactors.forEach(factorData => {
+                    allFactorsList.appendChild(createFactorCheckbox(factorData));
+                });
             }
-        });
 
-        function populateFactorLists() {
-            const allFactorsList = document.getElementById('all-factors');
+            function createFactorCheckbox(factorData) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                const isChecked = modelData.detected_factors[factorData.factor] ? 'checked' : '';
 
-            // Create a map to combine factors that appear in both lists
-            const factorMap = new Map();
+                // Escape user-controllable data for XSS prevention
+                const safeFactor = escapeHtml(factorData.factor);
+                const safeDescription = escapeHtml(factorData.description);
 
-            // Process bleeding factors
-            modelData.model.bleedingEvents.predictors.forEach(p => {
-                if (!factorMap.has(p.factor)) {
-                    factorMap.set(p.factor, {
-                        factor: p.factor,
-                        description: p.description,
-                        bleeding: { hr: p.hazardRatio, ci: p.confidenceInterval },
-                        thrombotic: null
-                    });
-                } else {
-                    const existing = factorMap.get(p.factor);
-                    existing.bleeding = { hr: p.hazardRatio, ci: p.confidenceInterval };
-                }
-            });
+                // Create badges based on which risks are affected
+                let badges = '';
+                let hrInfo = '';
 
-            // Process thrombotic factors
-            modelData.model.thromboticEvents.predictors.forEach(p => {
-                if (!factorMap.has(p.factor)) {
-                    factorMap.set(p.factor, {
-                        factor: p.factor,
-                        description: p.description,
-                        bleeding: null,
-                        thrombotic: { hr: p.hazardRatio, ci: p.confidenceInterval }
-                    });
-                } else {
-                    const existing = factorMap.get(p.factor);
-                    existing.thrombotic = { hr: p.hazardRatio, ci: p.confidenceInterval };
-                }
-            });
-
-            // Sort factors: first show factors affecting both risks, then single risk factors
-            const sortedFactors = Array.from(factorMap.values()).sort((a, b) => {
-                const aBoth = (a.bleeding && a.thrombotic) ? 1 : 0;
-                const bBoth = (b.bleeding && b.thrombotic) ? 1 : 0;
-                if (aBoth !== bBoth) return bBoth - aBoth; // Both risks first
-                return a.description.localeCompare(b.description); // Then alphabetically
-            });
-
-            // Create checkboxes for all factors
-            sortedFactors.forEach(factorData => {
-                allFactorsList.appendChild(createFactorCheckbox(factorData));
-            });
-        }
-
-        function createFactorCheckbox(factorData) {
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
-            const isChecked = modelData.detected_factors[factorData.factor] ? 'checked' : '';
-
-            // Escape user-controllable data for XSS prevention
-            const safeFactor = escapeHtml(factorData.factor);
-            const safeDescription = escapeHtml(factorData.description);
-
-            // Create badges based on which risks are affected
-            let badges = '';
-            let hrInfo = '';
-
-            if (factorData.bleeding && factorData.thrombotic) {
-                badges = '<span class="badge bg-danger me-1">Bleeding</span><span class="badge bg-primary">Thrombotic</span>';
-                hrInfo = `<small class="d-block mt-1 text-muted">
+                if (factorData.bleeding && factorData.thrombotic) {
+                    badges = '<span class="badge bg-danger me-1">Bleeding</span><span class="badge bg-primary">Thrombotic</span>';
+                    hrInfo = `<small class="d-block mt-1 text-muted">
                     Bleeding HR: ${escapeHtml(factorData.bleeding.hr)} | Thrombotic HR: ${escapeHtml(factorData.thrombotic.hr)}
                 </small>`;
-            } else if (factorData.bleeding) {
-                badges = '<span class="badge bg-danger">Bleeding</span>';
-                hrInfo = `<small class="d-block mt-1 text-muted">HR: ${escapeHtml(factorData.bleeding.hr)}</small>`;
-            } else if (factorData.thrombotic) {
-                badges = '<span class="badge bg-primary">Thrombotic</span>';
-                hrInfo = `<small class="d-block mt-1 text-muted">HR: ${escapeHtml(factorData.thrombotic.hr)}</small>`;
-            }
+                } else if (factorData.bleeding) {
+                    badges = '<span class="badge bg-danger">Bleeding</span>';
+                    hrInfo = `<small class="d-block mt-1 text-muted">HR: ${escapeHtml(factorData.bleeding.hr)}</small>`;
+                } else if (factorData.thrombotic) {
+                    badges = '<span class="badge bg-primary">Thrombotic</span>';
+                    hrInfo = `<small class="d-block mt-1 text-muted">HR: ${escapeHtml(factorData.thrombotic.hr)}</small>`;
+                }
 
-            li.innerHTML = `
+                li.innerHTML = `
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" value="${safeFactor}"
                            id="check-${safeFactor}" ${isChecked}>
@@ -568,122 +568,122 @@
                         ${hrInfo}
                     </label>
                 </div>`;
-            return li;
-        }
+                return li;
+            }
 
-        async function recalculateScores() {
-            const activeFactors = {};
-            document.querySelectorAll('.form-check-input').forEach(input => {
-                if (input.checked) activeFactors[input.value] = true;
-            });
-
-            try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                const response = await fetch('/api/calculate_tradeoff', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ active_factors: activeFactors })
+            async function recalculateScores() {
+                const activeFactors = {};
+                document.querySelectorAll('.form-check-input').forEach(input => {
+                    if (input.checked) activeFactors[input.value] = true;
                 });
 
-                if (!response.ok) {
-                    let errorMessage = `Server error: ${response.status}`;
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error || errorMessage;
-                    } catch (e) {
-                        // Response wasn't JSON
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    const response = await fetch('/api/calculate_tradeoff', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ active_factors: activeFactors })
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Server error: ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.error || errorMessage;
+                        } catch (e) {
+                            // Response wasn't JSON
+                        }
+                        throw new Error(errorMessage);
                     }
-                    throw new Error(errorMessage);
+
+                    const scores = await response.json();
+                    updateChart(scores);
+                } catch (error) {
+                    console.error('Error recalculating scores:', error.message);
+                    // Optionally show user feedback
+                }
+            }
+
+            function updateChart(scores) {
+                // Validate scores
+                if (!scores || typeof scores.bleeding_score !== 'number' || typeof scores.thrombotic_score !== 'number') {
+                    return;
                 }
 
-                const scores = await response.json();
-                updateChart(scores);
-            } catch (error) {
-                console.error('Error recalculating scores:', error.message);
-                // Optionally show user feedback
-            }
-        }
+                // Check for High Bleeding Risk (HBR) using configured threshold
+                const isHBR = scores.bleeding_score >= HBR_THRESHOLD;
+                const recommendationsSection = document.getElementById('recommendations-section');
+                recommendationsSection.style.display = isHBR ? 'block' : 'none';
 
-        function updateChart(scores) {
-            // Validate scores
-            if (!scores || typeof scores.bleeding_score !== 'number' || typeof scores.thrombotic_score !== 'number') {
-                return;
-            }
+                // Handle zero values for logarithmic scale (log(0) is undefined)
+                const bleeding_score = Math.max(scores.bleeding_score, MIN_LOG_VALUE);
+                const thrombotic_score = Math.max(scores.thrombotic_score, MIN_LOG_VALUE);
 
-            // Check for High Bleeding Risk (HBR) using configured threshold
-            const isHBR = scores.bleeding_score >= HBR_THRESHOLD;
-            const recommendationsSection = document.getElementById('recommendations-section');
-            recommendationsSection.style.display = isHBR ? 'block' : 'none';
+                const chartData = {
+                    datasets: [{
+                        label: 'Patient Risk Profile',
+                        data: [{
+                            x: bleeding_score,
+                            y: thrombotic_score
+                        }],
+                        backgroundColor: 'rgba(255, 0, 0, 0.7)',
+                        pointRadius: 8,
+                        pointHoverRadius: 10,
+                        pointStyle: 'circle'
+                    }]
+                };
 
-            // Handle zero values for logarithmic scale (log(0) is undefined)
-            const bleeding_score = Math.max(scores.bleeding_score, MIN_LOG_VALUE);
-            const thrombotic_score = Math.max(scores.thrombotic_score, MIN_LOG_VALUE);
-
-            const chartData = {
-                datasets: [{
-                    label: 'Patient Risk Profile',
-                    data: [{
-                        x: bleeding_score,
-                        y: thrombotic_score
-                    }],
-                    backgroundColor: 'rgba(255, 0, 0, 0.7)',
-                    pointRadius: 8,
-                    pointHoverRadius: 10,
-                    pointStyle: 'circle'
-                }]
-            };
-
-            if (tradeoffChart) {
-                tradeoffChart.data = chartData;
-                tradeoffChart.update();
-            } else {
-                const ctx = document.getElementById('tradeoffChart').getContext('2d');
-                tradeoffChart = new Chart(ctx, {
-                    type: 'scatter',
-                    data: chartData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                type: 'logarithmic',
-                                title: { display: true, text: 'Estimated 1-Year Bleeding Risk (BARC 3-5, %)' },
-                                min: 0.1, max: 50,
-                                ticks: {
-                                    callback: function (value, index, values) { return Number(value.toString()); }
+                if (tradeoffChart) {
+                    tradeoffChart.data = chartData;
+                    tradeoffChart.update();
+                } else {
+                    const ctx = document.getElementById('tradeoffChart').getContext('2d');
+                    tradeoffChart = new Chart(ctx, {
+                        type: 'scatter',
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    type: 'logarithmic',
+                                    title: { display: true, text: 'Estimated 1-Year Bleeding Risk (BARC 3-5, %)' },
+                                    min: 0.1, max: 50,
+                                    ticks: {
+                                        callback: function (value, index, values) { return Number(value.toString()); }
+                                    }
+                                },
+                                y: {
+                                    type: 'logarithmic',
+                                    title: { display: true, text: 'Estimated 1-Year Ischemic Risk (MI/ST, %)' },
+                                    min: 0.1, max: 50,
+                                    ticks: {
+                                        callback: function (value, index, values) { return Number(value.toString()); }
+                                    }
                                 }
                             },
-                            y: {
-                                type: 'logarithmic',
-                                title: { display: true, text: 'Estimated 1-Year Ischemic Risk (MI/ST, %)' },
-                                min: 0.1, max: 50,
-                                ticks: {
-                                    callback: function (value, index, values) { return Number(value.toString()); }
-                                }
+                            plugins: {
+                                legend: { display: false }
                             }
-                        },
-                        plugins: {
-                            legend: { display: false }
                         }
-                    }
-                });
+                    });
+                }
             }
-        }
 
-        // Setup click handlers for research images (replacing inline onclick)
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.research-image').forEach(function(img) {
-                img.addEventListener('click', function() {
-                    window.open(this.src, '_blank');
+            // Setup click handlers for research images (replacing inline onclick)
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.research-image').forEach(function (img) {
+                    img.addEventListener('click', function () {
+                        window.open(this.src, '_blank');
+                    });
                 });
             });
-        });
 
-    })(); // End of Trade-off Analysis module
+        })(); // End of Trade-off Analysis module
     </script>
 </body>
 
