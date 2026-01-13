@@ -133,11 +133,35 @@ def export_ccd_api():
             # Recalculate effective values
             # Dynamic import to avoid circular dependencies if any, though regular import is fine here if path is correct
             from services.precise_hbr_calculator import precise_hbr_calculator
+            from services.config_loader import config_loader
             
-            if calc_inputs['age']: calc_inputs['metadata']['age_effective'] = max(30, min(80, calc_inputs['age']))
-            if calc_inputs['hb']: calc_inputs['metadata']['hb_effective'] = max(5.0, min(15.0, calc_inputs['hb']))
-            if calc_inputs['egfr']: calc_inputs['metadata']['egfr_effective'] = max(5, min(100, calc_inputs['egfr']))
-            if calc_inputs['wbc']: calc_inputs['metadata']['wbc_effective'] = min(15.0, calc_inputs['wbc'])
+            # Use dynamic truncation limits from config for consistency
+            params = config_loader.get_precise_hbr_params() or {}
+            age_cfg = params.get('age', {})
+            hb_cfg = params.get('hemoglobin', {})
+            egfr_cfg = params.get('egfr', {})
+            wbc_cfg = params.get('white_blood_cell_count', {})
+            
+            if calc_inputs['age']: 
+                calc_inputs['metadata']['age_effective'] = max(
+                    age_cfg.get('truncation_min', 30), 
+                    min(age_cfg.get('truncation_max', 80), calc_inputs['age'])
+                )
+            if calc_inputs['hb']: 
+                calc_inputs['metadata']['hb_effective'] = max(
+                    hb_cfg.get('truncation_min', 5.0), 
+                    min(hb_cfg.get('truncation_max', 15.0), calc_inputs['hb'])
+                )
+            if calc_inputs['egfr']: 
+                calc_inputs['metadata']['egfr_effective'] = max(
+                    egfr_cfg.get('truncation_min', 5), 
+                    min(egfr_cfg.get('truncation_max', 100), calc_inputs['egfr'])
+                )
+            if calc_inputs['wbc']: 
+                calc_inputs['metadata']['wbc_effective'] = max(
+                    wbc_cfg.get('truncation_min', 3.0),
+                    min(wbc_cfg.get('truncation_max', 15.0), calc_inputs['wbc'])
+                )
             
             arc_factors = risk_data.get('arc_hbr_factors', [])
             count_factors = 0
@@ -194,3 +218,64 @@ def export_ccd_api():
     except Exception as e:
         current_app.logger.error(f"Error generating CCD: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to generate CCD document.', 'details': str(e)}), 500
+
+
+@api_bp.route('/api/config/scoring', methods=['GET'])
+def get_scoring_config():
+    """
+    API endpoint to expose PRECISE-HBR scoring configuration to frontend.
+    
+    This enables dynamic coefficient loading, eliminating the need for
+    hardcoded values in JavaScript and ensuring frontend/backend consistency.
+    
+    Returns:
+        JSON object with coefficients, thresholds, truncation limits, and binary scores
+    """
+    from services.config_loader import config_loader
+    
+    try:
+        params = config_loader.get_precise_hbr_params()
+        
+        if not params:
+            return jsonify({'error': 'Configuration not available'}), 500
+        
+        config_response = {
+            'base_score': params.get('base_score', 2),
+            'coefficients': {
+                'age': {
+                    'threshold': params.get('age', {}).get('threshold', 30),
+                    'coefficient': params.get('age', {}).get('coefficient', 0.25),
+                    'truncation_min': params.get('age', {}).get('truncation_min', 30),
+                    'truncation_max': params.get('age', {}).get('truncation_max', 80)
+                },
+                'hemoglobin': {
+                    'threshold': params.get('hemoglobin', {}).get('threshold', 15.0),
+                    'coefficient': params.get('hemoglobin', {}).get('coefficient', 2.5),
+                    'truncation_min': params.get('hemoglobin', {}).get('truncation_min', 5.0),
+                    'truncation_max': params.get('hemoglobin', {}).get('truncation_max', 15.0)
+                },
+                'egfr': {
+                    'threshold': params.get('egfr', {}).get('threshold', 100),
+                    'coefficient': params.get('egfr', {}).get('coefficient', 0.05),
+                    'truncation_min': params.get('egfr', {}).get('truncation_min', 5),
+                    'truncation_max': params.get('egfr', {}).get('truncation_max', 100)
+                },
+                'wbc': {
+                    'threshold': params.get('white_blood_cell_count', {}).get('threshold', 3.0),
+                    'coefficient': params.get('white_blood_cell_count', {}).get('coefficient', 0.8),
+                    'truncation_min': params.get('white_blood_cell_count', {}).get('truncation_min', 3.0),
+                    'truncation_max': params.get('white_blood_cell_count', {}).get('truncation_max', 15.0)
+                }
+            },
+            'binary_scores': {
+                'prior_bleeding': params.get('previous_bleeding', {}).get('score', 7),
+                'oral_anticoagulation': params.get('oral_anticoagulation', {}).get('score', 5),
+                'arc_hbr': params.get('arc_hbr_factors', {}).get('score', 3)
+            }
+        }
+        
+        return jsonify(config_response)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error loading scoring config: {str(e)}")
+        return jsonify({'error': 'Failed to load configuration'}), 500

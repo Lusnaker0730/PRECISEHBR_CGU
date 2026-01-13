@@ -54,6 +54,42 @@ class ConditionCheckerService:
         return ' '.join(text_parts)
 
     @staticmethod
+    def _extract_medication_text(med: dict) -> str:
+        """
+        Extract all searchable text from a medication resource.
+        
+        Args:
+            med: FHIR MedicationRequest or Medication resource
+            
+        Returns:
+            Lowercased string containing all medication text for matching
+        """
+        texts = []
+        med_concept = med.get('medicationCodeableConcept', {})
+        
+        # Get main text
+        if med_concept.get('text'):
+            texts.append(med_concept['text'])
+        
+        # Get display from all codings
+        for coding in med_concept.get('coding', []):
+            if coding.get('display'):
+                texts.append(coding['display'])
+        
+        # Also check medicationReference if present
+        if 'contained' in med:
+            for contained in med['contained']:
+                if contained.get('resourceType') == 'Medication':
+                    code_element = contained.get('code', {})
+                    if code_element.get('text'):
+                        texts.append(code_element['text'])
+                    for coding in code_element.get('coding', []):
+                        if coding.get('display'):
+                            texts.append(coding['display'])
+        
+        return ' '.join(texts).lower()
+
+    @staticmethod
     def _matches_icd10_code(code: str, target_codes: list) -> bool:
         """
         Check if an ICD-10 code matches any target code.
@@ -119,9 +155,9 @@ class ConditionCheckerService:
             Tuple of (has_condition, condition_info)
         """
         snomed_config = config_loader.get_snomed_codes('bleeding_diathesis')
-        snomed_codes = snomed_config.get('snomed_codes', ['64779008'])
-        icd10_codes = snomed_config.get('icd10cm_codes', [])
-        text_keywords = snomed_config.get('text_keywords', [])
+        snomed_codes = snomed_config.get('snomed_codes', ['64779008'])  # Coagulation disorder
+        icd10_codes = snomed_config.get('icd10cm_codes', ['D65', 'D66', 'D67', 'D68', 'D69'])  # Coagulation defects
+        text_keywords = snomed_config.get('text_keywords', ['bleeding disorder', 'coagulation disorder'])
 
         # Check SNOMED codes
         for condition in conditions:
@@ -274,6 +310,9 @@ class ConditionCheckerService:
                 if coding.get('system') == status_system:
                     return coding.get('code', 'active')
 
+        # Log when assuming active status due to missing data
+        condition_id = condition.get('id', 'unknown')
+        logging.debug(f"Condition {condition_id} missing clinicalStatus, assuming 'active'")
         return 'active'
 
     @classmethod
@@ -357,10 +396,14 @@ class ConditionCheckerService:
                     logging.info(f"Found {log_label} via NHI code: {code}")
                     return True
 
-            # Check text/keywords
-            med_text = str(med.get('medicationCodeableConcept', {})).lower()
-            if any(keyword in med_text for keyword in keywords):
-                return True
+            # Extract medication text properly (not using str() on dict)
+            med_text = cls._extract_medication_text(med)
+            
+            # Check keywords with logging
+            for keyword in keywords:
+                if keyword.lower() in med_text:
+                    logging.info(f"Found {log_label} via keyword '{keyword}' in: {med_text[:80]}")
+                    return True
 
         return False
 
