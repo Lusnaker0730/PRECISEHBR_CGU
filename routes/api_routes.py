@@ -1,11 +1,10 @@
-from flask import Blueprint, request, jsonify, session, Response, current_app
+from flask import Blueprint, request, jsonify, session, current_app
 from extensions import limiter
 from utils.web_utils import login_required
-from services.audit_logger import audit_ephi_access
+from services.audit_logger import audit_ephi_access, get_audit_logger
+from services.config_loader import config_loader
 import utils.input_validator as input_validator
 from services import fhir_data_service
-import re
-import datetime
 
 api_bp = Blueprint('api', __name__)
 
@@ -17,21 +16,24 @@ def calculate_risk_api():
     """API endpoint for risk score calculation."""
     try:
         data = request.get_json()
-        if not data or 'patientId' not in data:
-            return jsonify({'error': 'Patient ID is required.'}), 400
-        
-        patient_id = data['patientId']
-        
-        # Check for null/empty patient ID
+        patient_id = data.get('patientId') if data else None
+
+        # Check for missing/empty patient ID
         if not patient_id:
-            return jsonify({'error': 'Patient ID is required.'}), 400
-        
-        # Validate patient ID
+            return jsonify({
+                'error': 'Patient ID is required.',
+                'error_type': 'validation_error'
+            }), 400
+
+        # Validate patient ID format
         is_valid, error_msg = input_validator.validate_patient_id(patient_id)
         if not is_valid:
             patient_id_preview = str(patient_id)[:50] if patient_id else 'None'
             current_app.logger.warning(f"Invalid patient ID rejected: {patient_id_preview}")
-            return jsonify({'error': f'Invalid patient ID: {error_msg}'}), 400
+            return jsonify({
+                'error': f'Invalid patient ID: {error_msg}',
+                'error_type': 'validation_error'
+            }), 400
         
         fhir_session_data = session['fhir_data']
         raw_data, error = fhir_data_service.get_fhir_data(
@@ -90,27 +92,36 @@ def calculate_risk_api():
     except Exception as e:
         current_app.logger.error(f"Error in calculate_risk_api: {str(e)}", exc_info=True)
         if "FHIR server is down" in str(e):
-            return jsonify({'error': 'FHIR data service is unavailable.', 'details': str(e)}), 503
-        return jsonify({'error': 'An internal server error occurred.'}), 500
+            return jsonify({
+                'error': 'FHIR data service is unavailable.',
+                'error_type': 'service_unavailable',
+                'details': str(e)
+            }), 503
+        return jsonify({
+            'error': 'An internal server error occurred.',
+            'error_type': 'internal_error'
+        }), 500
 
 @api_bp.route('/api/config/scoring', methods=['GET'])
+@limiter.limit("30 per minute")
 def get_scoring_config():
     """
     API endpoint to expose PRECISE-HBR scoring configuration to frontend.
-    
+
     This enables dynamic coefficient loading, eliminating the need for
     hardcoded values in JavaScript and ensuring frontend/backend consistency.
-    
+
     Returns:
         JSON object with coefficients, thresholds, truncation limits, and binary scores
     """
-    from services.config_loader import config_loader
-    
     try:
         params = config_loader.get_precise_hbr_params()
         
         if not params:
-            return jsonify({'error': 'Configuration not available'}), 500
+            return jsonify({
+                'error': 'Configuration not available',
+                'error_type': 'config_error'
+            }), 500
         
         config_response = {
             'base_score': params.get('base_score', 2),
@@ -151,4 +162,62 @@ def get_scoring_config():
         
     except Exception as e:
         current_app.logger.error(f"Error loading scoring config: {str(e)}")
-        return jsonify({'error': 'Failed to load configuration'}), 500
+        return jsonify({
+            'error': 'Failed to load configuration',
+            'error_type': 'config_error'
+        }), 500
+
+@api_bp.route('/api/feedback', methods=['POST'])
+@login_required
+@limiter.limit("5 per minute")
+def submit_feedback():
+    """API endpoint for user feedback submission."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'error': 'No data provided',
+                'error_type': 'validation_error'
+            }), 400
+
+        patient_id = data.get('patient_id', 'unknown')
+        feedback_type = data.get('feedback_type', 'unknown')
+        comment = data.get('comment', '')
+        score = data.get('score')
+        risk_level = data.get('risk_level')
+
+        # Log feedback for analysis
+        current_app.logger.info(
+            f"User feedback received - Type: {feedback_type}, "
+            f"Patient: {patient_id}, Score: {score}, Risk: {risk_level}"
+        )
+
+        # Store feedback in audit log
+        audit_logger = get_audit_logger()
+        audit_logger.log_event(
+            event_type='USER_FEEDBACK',
+            action='submit_feedback',
+            patient_id=patient_id,
+            user_id=session.get('session_id', 'unknown'),
+            outcome='success',
+            details={
+                'feedback_type': feedback_type,
+                'comment': comment[:200] if comment else '',  # Limit comment length in log
+                'score': score,
+                'risk_level': risk_level
+            },
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Thank you for your feedback!'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in submit_feedback: {str(e)}", exc_info=True)
+        return jsonify({
+            'error': 'An internal server error occurred.',
+            'error_type': 'internal_error'
+        }), 500
