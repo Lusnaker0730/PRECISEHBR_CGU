@@ -366,6 +366,14 @@
     let currentPatientData = null;
     let scoreComponentData = []; // Store the component data globally
 
+    // === Security: HTML escape utility to prevent XSS ===
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+
     // === NEW: Unit conversion tracking ===
     let unitSettings = {
         hemoglobin: 'g/dL',  // or 'mmol/L'
@@ -927,10 +935,11 @@
 
     function renderInteractiveTable() {
         const componentsBody = document.getElementById('score-components');
-        componentsBody.innerHTML = ''; // Clear previous content
 
         // Track missing data for warning display
         let missingDataItems = [];
+        // Build HTML string first to avoid repeated DOM reparsing (memory leak fix)
+        let tableHtml = '';
 
         if (scoreComponentData && scoreComponentData.length > 0) {
             scoreComponentData.forEach(item => {
@@ -940,8 +949,12 @@
                 }
 
                 const cleanParameterName = translateParameterName(item.parameter || 'Unnamed Criterion');
+                // Escape values for XSS prevention
+                const safeParameterName = escapeHtml(cleanParameterName);
+                const safeParameter = escapeHtml(item.parameter);
                 let valueControl = '';
                 const unit = getUnitForParameter(item.parameter);
+                const safeUnit = escapeHtml(unit);
 
                 // Check if this is missing data
                 const isMissingData = (item.value === 'Not available' || item.value === 'N/A' ||
@@ -958,12 +971,12 @@
 
                     valueControl = `
                         <div class="input-group input-group-lg-text">
-                            <input type="number" 
-                                   class="form-control input-number-lg" 
-                                   id="input-${item.parameter}" 
-                                   value="${formattedValue}" 
+                            <input type="number"
+                                   class="form-control input-number-lg"
+                                   id="input-${safeParameter}"
+                                   value="${escapeHtml(formattedValue)}"
                                    step="${step}">
-                            ${unit ? `<span class="input-group-text input-unit-lg">${unit}</span>` : ''}
+                            ${safeUnit ? `<span class="input-group-text input-unit-lg">${safeUnit}</span>` : ''}
                             ${unitToggleBtn}
                         </div>
                     `;
@@ -971,16 +984,17 @@
                     const checked = item.is_present ? 'checked' : '';
                     // Check if this is an ARC-HBR element (should not have editable score)
                     const isArcElement = item.is_arc_hbr_element === true;
+                    const safeValue = escapeHtml(item.value);
                     valueControl = `
                         <div class="form-check form-switch">
-                            <input class="form-check-input form-switch-lg" 
-                                   type="checkbox" 
-                                   id="input-${item.parameter}" 
-                                   ${checked} 
+                            <input class="form-check-input form-switch-lg"
+                                   type="checkbox"
+                                   id="input-${safeParameter}"
+                                   ${checked}
                                    data-is-arc-element="${isArcElement}">
-                            <label class="form-check-label form-check-label-lg" 
-                                   for="input-${item.parameter}">
-                                ${item.value}
+                            <label class="form-check-label form-check-label-lg"
+                                   for="input-${safeParameter}">
+                                ${safeValue}
                             </label>
                         </div>
                     `;
@@ -988,7 +1002,7 @@
                     // Missing data - provide manual input option
                     missingDataItems.push(cleanParameterName);
                     const step = unit === "years" ? "1" : "0.01";
-                    const placeholder = unit ? `Enter value in ${unit}` : "Enter value";
+                    const placeholder = unit ? `Enter value in ${safeUnit}` : "Enter value";
 
                     // Add unit toggle button for Hemoglobin
                     const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
@@ -996,13 +1010,13 @@
 
                     valueControl = `
                         <div class="input-group input-group-lg-text">
-                            <input type="number" 
-                                   class="form-control input-missing" 
-                                   id="input-${item.parameter}" 
-                                   placeholder="${placeholder}" 
+                            <input type="number"
+                                   class="form-control input-missing"
+                                   id="input-${safeParameter}"
+                                   placeholder="${escapeHtml(placeholder)}"
                                    step="${step}"
                                    data-missing="true">
-                            ${unit ? `<span class="input-group-text unit-missing">${unit}</span>` : ''}
+                            ${safeUnit ? `<span class="input-group-text unit-missing">${safeUnit}</span>` : ''}
                             <span class="input-group-text icon-missing">
                                 <i class="fas fa-exclamation-triangle text-warning" title="Missing data - please enter manually if available"></i>
                             </span>
@@ -1010,7 +1024,7 @@
                         </div>
                     `;
                 } else {
-                    valueControl = `<span class="font-weight-500 font-lg">${item.value}</span>`; // Fallback for base score or others
+                    valueControl = `<span class="font-weight-500 font-lg">${escapeHtml(item.value)}</span>`; // Fallback for base score or others
                 }
 
                 // Generate score badge cell - hide for ARC-HBR elements
@@ -1019,35 +1033,37 @@
                     // Don't show score for ARC-HBR elements
                     scoreBadgeHtml = '<span class="text-muted arc-badge-placeholder">—</span>';
                 } else {
-                    scoreBadgeHtml = `<span class="badge bg-primary score-badge" id="score-${item.parameter}">${item.score}</span>`;
+                    scoreBadgeHtml = `<span class="badge bg-primary score-badge" id="score-${safeParameter}">${escapeHtml(item.score)}</span>`;
                 }
 
                 // Generate tooltip for clinical information
                 const tooltipKey = cleanParameterName.split('(')[0].trim();
                 const tooltipHtml = generateTooltip(tooltipKey);
 
-                const row = `
+                const safeDate = escapeHtml(item.date || 'N/A');
+                tableHtml += `
                     <tr>
                         <td class="table-cell-lg">
-                            ${cleanParameterName}
+                            ${safeParameterName}
                             ${tooltipHtml}
                         </td>
                         <td>${valueControl}</td>
                         <td>${scoreBadgeHtml}</td>
                         <td class="table-cell-lg ${item.is_outdated ? 'text-danger' : ''}">
-                            ${item.date || 'N/A'}
+                            ${safeDate}
                             ${item.is_outdated ? '<br><small><i class="fas fa-exclamation-circle"></i> Please Retest</small>' : ''}
                         </td>
                     </tr>
                 `;
-                componentsBody.innerHTML += row;
             });
+
+            // Assign all HTML at once (prevents repeated DOM reparsing)
+            componentsBody.innerHTML = tableHtml;
 
             // Display missing data warning if any
             displayMissingDataWarning(missingDataItems);
         } else {
-            const row = `<tr><td colspan="4" class="text-center">No risk components available for editing.</td></tr>`;
-            componentsBody.innerHTML = row;
+            componentsBody.innerHTML = '<tr><td colspan="4" class="text-center">No risk components available for editing.</td></tr>';
         }
     }
 
@@ -1113,7 +1129,7 @@
                 if (param === 'Hemoglobin') displayName = 'Hemoglobin';
                 if (param === 'eGFR') displayName = 'eGFR (Glomerular Filtration Rate)';
                 if (param === 'White Blood Cell') displayName = 'White Blood Cell Count';
-                return `<li><strong>${displayName}</strong></li>`;
+                return `<li><strong>${escapeHtml(displayName)}</strong></li>`;
             }).join('')}
                     </ul>
                     <p class="mb-0 mt-2"><small>Once complete data is entered, the risk score will be calculated automatically.</small></p>
@@ -1142,7 +1158,7 @@
                     <ul class="mb-0 mt-2">
                         ${validationErrors.map(err => {
                 const cleanParam = err.parameter.replace('PRECISE-HBR - ', '');
-                return `<li><strong>${cleanParam}:</strong> ${err.message}</li>`;
+                return `<li><strong>${escapeHtml(cleanParam)}:</strong> ${escapeHtml(err.message)}</li>`;
             }).join('')}
                     </ul>
                     <p class="mb-0 mt-2"><small>Please enter clinically valid values to calculate the risk score.</small></p>
