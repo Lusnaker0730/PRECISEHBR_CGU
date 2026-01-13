@@ -478,82 +478,7 @@
         }
     };
 
-    // R-04 Risk Mitigation: Session timeout functionality
-    let sessionTimeoutMinutes = 5; // 5 minutes timeout
-    let sessionTimer = sessionTimeoutMinutes * 60; // Convert to seconds
-    let sessionInterval;
-
-    function startSessionTimer() {
-        sessionInterval = setInterval(function () {
-            sessionTimer--;
-
-            // Update display
-            const minutes = Math.floor(sessionTimer / 60);
-            const seconds = sessionTimer % 60;
-            document.getElementById('session-timer').textContent =
-                `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-            // Warning at 1 minute
-            if (sessionTimer === 60) {
-                showSessionWarning();
-            }
-
-            // Auto logout at 0
-            if (sessionTimer <= 0) {
-                autoLogout();
-            }
-        }, 1000);
-    }
-
-    function showSessionWarning() {
-        const warningDiv = document.createElement('div');
-        warningDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed session-warning-popup';
-        warningDiv.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>Session Warning:</strong> Your session will expire in 1 minute due to inactivity. 
-            <button onclick="extendSession()" class="btn btn-sm btn-light ms-2">Extend Session</button>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.body.appendChild(warningDiv);
-
-        // Auto-remove after 10 seconds if not dismissed
-        setTimeout(() => {
-            if (warningDiv.parentNode) {
-                warningDiv.remove();
-            }
-        }, 10000);
-    }
-
-    function extendSession() {
-        sessionTimer = sessionTimeoutMinutes * 60; // Reset timer
-        document.querySelectorAll('.alert-danger').forEach(alert => {
-            if (alert.textContent.includes('Session Warning')) {
-                alert.remove();
-            }
-        });
-    }
-
-    function autoLogout() {
-        clearInterval(sessionInterval);
-        alert('Your session has expired for security reasons. You will be logged out.');
-        window.location.href = '/logout';
-    }
-
-    // Reset timer on user activity
-    function resetSessionTimer() {
-        if (sessionTimer > 0) {
-            sessionTimer = sessionTimeoutMinutes * 60;
-        }
-    }
-
-    // Listen for user activity
-    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(event => {
-        document.addEventListener(event, resetSessionTimer, { passive: true });
-    });
-
     document.addEventListener("DOMContentLoaded", function () {
-        // Start session timer
-        startSessionTimer();
 
         // Setup all event listeners (CSP compliance)
         setupEventListeners();
@@ -1845,27 +1770,52 @@
 
     (function () {
         // Configuration
-        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
-        const WARNING_BEFORE_TIMEOUT = 60 * 1000;  // Show warning 1 minute before timeout
+        const INACTIVITY_TIMEOUT_SECONDS = 5 * 60; // 5 minutes in seconds
+        const WARNING_BEFORE_TIMEOUT = 60;  // Show warning 60 seconds before timeout
 
-        let inactivityTimer = null;
-        let warningTimer = null;
+        let remainingSeconds = INACTIVITY_TIMEOUT_SECONDS;
+        let countdownInterval = null;
         let warningModal = null;
 
         // Events that indicate user activity
         const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
 
+        function updateTimerDisplay() {
+            const timerElement = document.getElementById('session-timer');
+            if (timerElement) {
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function startCountdown() {
+            // Clear any existing interval
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownInterval = setInterval(function () {
+                remainingSeconds--;
+                updateTimerDisplay();
+
+                // Show warning at 1 minute remaining
+                if (remainingSeconds === WARNING_BEFORE_TIMEOUT) {
+                    showTimeoutWarning();
+                }
+
+                // Perform logout at 0
+                if (remainingSeconds <= 0) {
+                    performLogout();
+                }
+            }, 1000);
+        }
+
         function resetInactivityTimer() {
-            // Clear existing timers
-            if (inactivityTimer) clearTimeout(inactivityTimer);
-            if (warningTimer) clearTimeout(warningTimer);
+            // Reset countdown
+            remainingSeconds = INACTIVITY_TIMEOUT_SECONDS;
+            updateTimerDisplay();
+
+            // Close warning modal if open
             if (warningModal) closeWarningModal();
-
-            // Set warning timer (fires 1 minute before actual timeout)
-            warningTimer = setTimeout(showTimeoutWarning, INACTIVITY_TIMEOUT - WARNING_BEFORE_TIMEOUT);
-
-            // Set actual timeout timer
-            inactivityTimer = setTimeout(performLogout, INACTIVITY_TIMEOUT);
         }
 
         function showTimeoutWarning() {
@@ -1922,13 +1872,12 @@
         }
 
         function performLogout() {
-            // Clear all timers
-            if (inactivityTimer) clearTimeout(inactivityTimer);
-            if (warningTimer) clearTimeout(warningTimer);
+            // Clear countdown interval
+            if (countdownInterval) clearInterval(countdownInterval);
 
             // Remove event listeners to prevent further activity tracking
             activityEvents.forEach(function (eventName) {
-                document.removeEventListener(eventName, resetInactivityTimer, true);
+                document.removeEventListener(eventName, resetInactivityTimer);
             });
 
             // Display logout message
@@ -1972,13 +1921,11 @@
 
         // Attach activity listeners
         activityEvents.forEach(function (eventName) {
-            document.addEventListener(eventName, resetInactivityTimer, true);
+            document.addEventListener(eventName, resetInactivityTimer, { passive: true });
         });
 
-        // Start the timer on page load
-        resetInactivityTimer();
-
-        console.log('ONC Compliance: Automatic session timeout enabled (5 minutes inactivity)');
+        // Start the countdown on page load
+        startCountdown();
     })();
 </script>
 
