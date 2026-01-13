@@ -8,7 +8,6 @@ Run with: locust -f tests/locustfile.py --host http://localhost:8080
 from locust import HttpUser, task, between, tag
 import json
 
-
 class HealthCheckUser(HttpUser):
     """User that only performs health checks."""
     
@@ -54,7 +53,6 @@ class HealthCheckUser(HttpUser):
     def load_standalone(self):
         """Load the standalone page."""
         self.client.get("/standalone", name="Standalone Page")
-
 
 class CDSHooksUser(HttpUser):
     """User that simulates CDS Hooks requests."""
@@ -109,7 +107,6 @@ class CDSHooksUser(HttpUser):
             else:
                 response.failure(f"Unexpected status: {response.status_code}")
 
-
 class APIUser(HttpUser):
     """User that simulates API requests (without full authentication)."""
     
@@ -144,7 +141,6 @@ class APIUser(HttpUser):
     def api_export_ccd_unauthenticated(self):
         """Test CCD export API without auth (should fail gracefully)."""
         with self.client.post(
-            "/api/export-ccd",
             json={"risk_data": {"total_score": 3}},
             headers=self.headers,
             catch_response=True
@@ -164,7 +160,6 @@ class APIUser(HttpUser):
                 response.success()
             else:
                 response.failure(f"Unexpected status: {response.status_code}")
-
 
 class StaticContentUser(HttpUser):
     """User that loads static content."""
@@ -189,7 +184,6 @@ class StaticContentUser(HttpUser):
     def load_favicon(self):
         """Load favicon."""
         self.client.get("/static/favicon.ico", name="Favicon")
-
 
 class MixedUser(HttpUser):
     """User that performs a mix of all operations."""
@@ -243,7 +237,6 @@ class MixedUser(HttpUser):
             else:
                 response.failure(f"Expected 404, got {response.status_code}")
 
-
 # Custom event handlers for reporting
 from locust import events
 import time
@@ -254,7 +247,6 @@ def on_request(request_type, name, response_time, response_length, exception, **
     if response_time > 1000:  # More than 1 second
         print(f"SLOW REQUEST: {request_type} {name} took {response_time}ms")
 
-
 @events.test_start.add_listener
 def on_test_start(environment, **kwargs):
     """Called when test starts."""
@@ -262,7 +254,6 @@ def on_test_start(environment, **kwargs):
     print("PRECISE-HBR Load Test Starting")
     print(f"Target Host: {environment.host}")
     print("=" * 60)
-
 
 @events.test_stop.add_listener
 def on_test_stop(environment, **kwargs):

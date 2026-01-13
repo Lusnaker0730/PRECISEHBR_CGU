@@ -11,7 +11,6 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
 class TestePHIAccessControl:
     """Test ePHI access control mechanisms"""
     
@@ -38,7 +37,6 @@ class TestePHIAccessControl:
             assert '*' not in scopes
             # Should specify individual resources
             assert 'Patient' in scopes or scopes == ''
-
 
 class TestePHITransmission:
     """Test ePHI transmission security"""
@@ -67,7 +65,6 @@ class TestePHITransmission:
         # Should require auth but accept POST
         assert response.status_code in [302, 401, 403]
 
-
 class TestePHIStorage:
     """Test ePHI storage security"""
     
@@ -95,7 +92,6 @@ class TestePHIStorage:
         """Test that session data is encrypted"""
         # Flask-Session should encrypt session data
         assert app.config.get('SESSION_TYPE') or app.config.get('TESTING')
-
 
 class TestePHILogging:
     """Test ePHI logging and audit trail"""
@@ -135,7 +131,6 @@ class TestePHILogging:
         # Only audit logs should contain PHI
         assert True  # Logging filter should handle this
 
-
 class TestePHIDisclosure:
     """Test ePHI disclosure prevention"""
     
@@ -166,7 +161,6 @@ class TestePHIDisclosure:
         if not app.config.get('TESTING'):
             assert 'Referrer-Policy' in response.headers or True
 
-
 class TestDataRetention:
     """Test data retention policies"""
     
@@ -190,7 +184,6 @@ class TestDataRetention:
         # This is typically a configuration check
         assert os.path.exists('audit_logger.py')
 
-
 class TestBreachNotification:
     """Test breach notification readiness"""
     
@@ -209,7 +202,6 @@ class TestBreachNotification:
         
         # Failed attempts should be logged
         assert True
-
 
 class TestPatientPrivacy:
     """Test patient privacy protections"""
@@ -233,11 +225,10 @@ class TestPatientPrivacy:
     
     def test_right_to_access(self, client):
         """Test patient right to access their data"""
-        # CCD export provides patient access
-        with patch('flask.session', {'user_id': 'test', 'patient_id': 'test'}):
-            response = client.post('/api/export-ccd', json={})
+        # Copy Result feature provides patient access to their risk assessment
+        with patch('flask.session', {'user_id': 'test', 'patient_id': 'test', 'fhir_data': {'server': 'test'}}):
+            response = client.get('/main')
         assert response.status_code in [200, 302, 401, 403]
-
 
 class TestSecurityMonitoring:
     """Test security monitoring capabilities"""
@@ -261,7 +252,6 @@ class TestSecurityMonitoring:
         logger = get_audit_logger()
         assert logger is not None
 
-
 class TestThirdPartyIntegration:
     """Test third-party integration security"""
     
@@ -281,7 +271,6 @@ class TestThirdPartyIntegration:
         import requests
         # requests should use timeout parameter
         assert True
-
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '-m', 'security'])

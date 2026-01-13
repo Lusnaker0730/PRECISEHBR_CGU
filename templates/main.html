@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+﻿{% extends "layout.html" %}
 
 {% block title %}PRECISE-HBR Bleeding Risk Calculator{% endblock %}
 
@@ -91,10 +91,10 @@
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-calculator"></i> Total Risk Score</h5>
-                        <!-- ONC Compliance: CCD Export Button -->
-                        <button id="exportCcdBtn" class="btn btn-sm btn-outline-primary d-none"
-                            title="Export results as C-CDA Continuity of Care Document">
-                            <i class="fas fa-download"></i> Export CCD
+                        <!-- Copy Result Button -->
+                        <button id="copyResultBtn" class="btn btn-sm btn-outline-primary d-none"
+                            title="Copy risk assessment result to clipboard">
+                            <i class="fas fa-copy"></i> Copy Result
                         </button>
                     </div>
                     <div class="card-body text-center">

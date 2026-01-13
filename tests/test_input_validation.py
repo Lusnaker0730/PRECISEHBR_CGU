@@ -11,7 +11,6 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
 class TestXSSPrevention:
     """Test Cross-Site Scripting (XSS) prevention"""
     
@@ -75,7 +74,6 @@ class TestXSSPrevention:
                     # Should be used safely
                     assert True
 
-
 class TestSQLInjectionPrevention:
     """Test SQL injection prevention"""
     
@@ -107,7 +105,6 @@ class TestSQLInjectionPrevention:
         # But if SQL is used, should use parameterized queries
         assert True  # FHIR API handles this
 
-
 class TestCommandInjectionPrevention:
     """Test command injection prevention"""
     
@@ -133,7 +130,6 @@ class TestCommandInjectionPrevention:
         # This is a code review item
         assert True
 
-
 class TestPathTraversalPrevention:
     """Test path traversal attack prevention"""
     
@@ -158,7 +154,6 @@ class TestPathTraversalPrevention:
         response = client.get('/static/../../../etc/passwd')
         # Should not allow traversal
         assert response.status_code in [404, 403]
-
 
 class TestXMLInjectionPrevention:
     """Test XML injection prevention"""
@@ -192,7 +187,6 @@ class TestXMLInjectionPrevention:
         
         assert response.status_code in [400, 401, 403, 415]
 
-
 class TestJSONInjectionPrevention:
     """Test JSON injection prevention"""
     
@@ -221,7 +215,6 @@ class TestJSONInjectionPrevention:
         # Should handle safely
         assert response.status_code in [302, 400, 401, 403]
 
-
 class TestHeaderInjection:
     """Test HTTP header injection prevention"""
     
@@ -245,7 +238,6 @@ class TestHeaderInjection:
         # Should not split response
         assert response.status_code in [200, 302, 400, 404]
 
-
 class TestLDAPInjectionPrevention:
     """Test LDAP injection prevention"""
     
@@ -262,7 +254,6 @@ class TestLDAPInjectionPrevention:
             response = client.get(f'/launch?iss={payload}')
             # Should sanitize LDAP special characters
             assert response.status_code in [200, 302, 400, 404]
-
 
 class TestInputSizeValidation:
     """Test input size validation"""
@@ -303,7 +294,6 @@ class TestInputSizeValidation:
         
         assert response.status_code in [400, 401, 403]
 
-
 class TestDataTypeValidation:
     """Test data type validation"""
     
@@ -330,7 +320,6 @@ class TestDataTypeValidation:
         # Should handle null bytes safely
         assert response.status_code in [302, 400, 401, 403]
 
-
 class TestEncodingValidation:
     """Test character encoding validation"""
     
@@ -352,7 +341,6 @@ class TestEncodingValidation:
         
         # Should handle unicode safely
         assert response.status_code in [302, 400, 401, 403]
-
 
 class TestBusinessLogicValidation:
     """Test business logic validation"""
@@ -399,7 +387,6 @@ class TestBusinessLogicValidation:
             # Should handle invalid dates gracefully
             assert result is not None
 
-
 class TestRateLimitingAndDoS:
     """Test rate limiting and DoS prevention"""
     
@@ -430,7 +417,6 @@ class TestRateLimitingAndDoS:
         
         # Should reject large payload
         assert response.status_code in [400, 401, 403, 413]
-
 
 class TestRegexValidation:
     """Test regex-based validation"""
@@ -481,7 +467,6 @@ class TestRegexValidation:
         for pid in invalid_ids:
             assert not re.match(id_pattern, pid)
 
-
 class TestContentTypeValidation:
     """Test content type validation"""
     
@@ -513,7 +498,6 @@ class TestContentTypeValidation:
         
         # Should handle appropriately
         assert response.status_code in [400, 401, 403, 415]
-
 
 class TestSpecialCharacterHandling:
     """Test special character handling"""
@@ -553,7 +537,6 @@ class TestSpecialCharacterHandling:
         
         assert response.status_code in [200, 302, 400, 404]
 
-
 class TestWhitelistValidation:
     """Test whitelist-based validation"""
     
@@ -592,7 +575,6 @@ class TestWhitelistValidation:
             
             assert response.status_code in [expected_status, 401, 403]
 
-
 class TestOutputEncoding:
     """Test output encoding"""
     
@@ -613,15 +595,14 @@ class TestOutputEncoding:
             data = json.loads(response.data)
             assert isinstance(data, dict)
     
-    def test_xml_output_encoded(self, client):
-        """Test XML output is properly encoded"""
-        # If XML is generated (like CCD)
-        with patch('flask.session', {'user_id': 'test', 'patient_id': 'test'}):
-            response = client.post('/api/export-ccd', json={})
+    def test_api_output_encoded(self, client):
+        """Test API output is properly encoded"""
+        # API endpoints should return properly encoded JSON
+        with patch('flask.session', {'user_id': 'test', 'patient_id': 'test', 'fhir_data': {'server': 'test'}}):
+            response = client.post('/api/calculate_risk', json={'patientId': 'test'})
         
-        # Should be valid XML or require auth
-        assert response.status_code in [200, 302, 401, 403]
-
+        # Should return JSON or require auth
+        assert response.status_code in [200, 302, 400, 401, 403]
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

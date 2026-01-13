@@ -10,7 +10,6 @@ from unittest.mock import Mock, patch, MagicMock
 from flask import session
 import os
 
-
 @pytest.fixture
 def app():
     """Create a test Flask app."""
@@ -35,12 +34,10 @@ def app():
         # Re-enable after tests (in case of test reuse)
         limiter.enabled = True
 
-
 @pytest.fixture
 def client(app):
     """Create a test client."""
     return app.test_client()
-
 
 @pytest.fixture
 def authenticated_client(app):
@@ -55,7 +52,6 @@ def authenticated_client(app):
             }
             sess['patient_id'] = 'patient-123'
         yield client
-
 
 class TestHealthEndpoint:
     """Test /health endpoint."""
@@ -90,7 +86,6 @@ class TestHealthEndpoint:
         assert 'service' in data
         assert 'version' in data
 
-
 class TestCDSServicesEndpoint:
     """Test /cds-services endpoint."""
     
@@ -111,7 +106,6 @@ class TestCDSServicesEndpoint:
         assert 'services' in data
         assert isinstance(data['services'], list)
 
-
 class TestIndexPage:
     """Test index/home page."""
     
@@ -127,7 +121,6 @@ class TestIndexPage:
         if response.status_code == 200:
             assert 'text/html' in response.content_type
 
-
 class TestStandalonePage:
     """Test standalone mode page."""
     
@@ -141,7 +134,6 @@ class TestStandalonePage:
         response = client.get('/standalone')
         if response.status_code == 200:
             assert 'text/html' in response.content_type
-
 
 class TestLaunchEndpoint:
     """Test SMART launch endpoint."""
@@ -176,7 +168,6 @@ class TestLaunchEndpoint:
         # Should reject malicious URLs
         assert response.status_code in [200, 400, 500]
 
-
 class TestCallbackEndpoint:
     """Test OAuth callback endpoint."""
     
@@ -195,7 +186,6 @@ class TestCallbackEndpoint:
         """Test callback with code returns callback page."""
         response = client.get('/callback?code=test-code&state=test-state')
         assert response.status_code == 200
-
 
 class TestCalculateRiskAPI:
     """Test /api/calculate_risk endpoint."""
@@ -252,46 +242,6 @@ class TestCalculateRiskAPI:
                         assert 'total_score' in data
 
 
-class TestExportCCDAPI:
-    """Test /api/export-ccd endpoint."""
-    
-    def test_export_ccd_requires_auth(self, client):
-        """Test CCD export requires authentication."""
-        response = client.post('/api/export-ccd', json={})
-        assert response.status_code in [302, 401]
-    
-    def test_export_ccd_requires_risk_data(self, authenticated_client):
-        """Test CCD export requires risk data."""
-        response = authenticated_client.post(
-            '/api/export-ccd',
-            json={},
-            content_type='application/json'
-        )
-        assert response.status_code == 400
-        data = response.get_json()
-        assert 'error' in data
-    
-    def test_export_ccd_with_valid_data(self, authenticated_client):
-        """Test CCD export with valid risk data."""
-        with patch('routes.api_routes.generate_ccd_from_session_data') as mock_gen:
-            mock_gen.return_value = '<?xml version="1.0"?><CCD></CCD>'
-            
-            response = authenticated_client.post(
-                '/api/export-ccd',
-                json={
-                    'risk_data': {
-                        'total_score': 3,
-                        'risk_category': 'HBR'
-                    }
-                },
-                content_type='application/json'
-            )
-            
-            assert response.status_code == 200
-            # Content-Type may include charset
-            assert 'application/xml' in response.content_type
-
-
 class TestExchangeCodeAPI:
     """Test /api/exchange-code endpoint."""
     
@@ -345,7 +295,6 @@ class TestExchangeCodeAPI:
                 data = response.get_json()
                 assert data['status'] == 'ok'
 
-
 class TestMainPage:
     """Test main application page."""
     
@@ -363,7 +312,6 @@ class TestMainPage:
         # Should return page
         assert response.status_code == 200
 
-
 class TestLogout:
     """Test logout functionality."""
     
@@ -377,7 +325,6 @@ class TestLogout:
         # Session should be cleared
         with authenticated_client.session_transaction() as sess:
             assert 'fhir_data' not in sess or sess.get('fhir_data') is None
-
 
 class TestErrorHandling:
     """Test error handling."""
@@ -402,7 +349,6 @@ class TestErrorHandling:
         )
         assert response.status_code in [400, 500]
 
-
 class TestSecurityHeaders:
     """Test security headers."""
     
@@ -417,7 +363,6 @@ class TestSecurityHeaders:
         # Should not expose detailed server info
         if 'Server' in response.headers:
             assert 'Python' not in response.headers['Server'] or True  # Flexible check
-
 
 class TestSessionManagement:
     """Test session management."""
@@ -437,7 +382,6 @@ class TestSessionManagement:
         # Second request should still have session
         with authenticated_client.session_transaction() as sess:
             assert 'fhir_data' in sess
-
 
 class TestInputValidation:
     """Test input validation across endpoints."""
@@ -468,7 +412,6 @@ class TestInputValidation:
         )
         assert response.status_code == 400
 
-
 class TestCORSConfiguration:
     """Test CORS configuration."""
     
@@ -483,7 +426,6 @@ class TestCORSConfiguration:
         # At least check the request succeeds
         assert response.status_code == 200
 
-
 class TestTradeoffAnalysis:
     """Test tradeoff analysis endpoints."""
     
@@ -493,7 +435,6 @@ class TestTradeoffAnalysis:
         response = authenticated_client.get('/tradeoff_analysis')
         # Should return page or redirect
         assert response.status_code in [200, 302, 404]
-
 
 class TestAuditLogging:
     """Test audit logging functionality."""
@@ -518,7 +459,6 @@ class TestAuditLogging:
                         # Request should complete successfully
                         assert response.status_code in [200, 400, 500]
 
-
 class TestStaticFiles:
     """Test static file serving."""
     
@@ -535,7 +475,6 @@ class TestStaticFiles:
         response = client.get('/favicon.ico')
         # Favicon may or may not exist
         assert response.status_code in [200, 404]
-
 
 class TestContentNegotiation:
     """Test content negotiation."""
@@ -559,7 +498,6 @@ class TestContentNegotiation:
         # Should return JSON even on error
         assert 'application/json' in response.content_type
 
-
 class TestRateLimiting:
     """Test rate limiting behavior."""
     
@@ -580,7 +518,6 @@ class TestRateLimiting:
         
         # At least some requests should succeed
         assert success_count > 0 or rate_limited_count > 0
-
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
@@ -622,7 +559,6 @@ class TestEdgeCases:
         )
         # Should reject non-ASCII or handle gracefully
         assert response.status_code in [200, 400]
-
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
