@@ -77,7 +77,17 @@ def calculate_risk_api():
             }), 404
 
         demographics = fhir_data_service.get_patient_demographics(raw_data.get('patient'))
-        score_components, total_score = fhir_data_service.calculate_precise_hbr_score(raw_data, demographics)
+        
+        # calculate_precise_hbr_score now returns (components, score, data_warnings)
+        result = fhir_data_service.calculate_precise_hbr_score(raw_data, demographics)
+        
+        # Handle both legacy (2-tuple) and new (3-tuple) return formats
+        if len(result) == 3:
+            score_components, total_score, data_warnings = result
+        else:
+            score_components, total_score = result
+            data_warnings = []
+        
         display_info = fhir_data_service.get_precise_hbr_display_info(total_score)
         
         final_response = {
@@ -85,7 +95,8 @@ def calculate_risk_api():
             "total_score": total_score,
             "risk_level": display_info.get('full_label'),
             "recommendation": display_info.get('recommendation'),
-            "score_components": score_components
+            "score_components": score_components,
+            "data_warnings": data_warnings  # Include warnings about missing FHIR resources
         }
         return jsonify(final_response)
     

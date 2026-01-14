@@ -126,6 +126,7 @@ class PreciseHBRCalculator:
             'oral_anticoag': False,
             'arc_hbr_count': 0,
             'missing_fields': [],
+            'empty_fhir_resources': [],  # Track empty FHIR resource types
             'metadata': {}
         }
         
@@ -196,12 +197,30 @@ class PreciseHBRCalculator:
 
         # 5. Prior Bleeding
         conditions = raw_data.get('conditions', [])
+        
+        # Track if conditions list is empty (important for risk assessment)
+        if not conditions:
+            inputs['empty_fhir_resources'].append('Condition')
+            inputs['metadata']['conditions_empty'] = True
+        else:
+            inputs['metadata']['conditions_empty'] = False
+            inputs['metadata']['conditions_count'] = len(conditions)
+        
         has_bleeding, evidence = condition_checker.check_prior_bleeding(conditions)
         inputs['prior_bleeding'] = has_bleeding
         inputs['metadata']['bleeding_evidence'] = evidence
 
         # 6. Oral Anticoagulation
         medications = raw_data.get('med_requests', [])
+        
+        # Track if medications list is empty (important for risk assessment)
+        if not medications:
+            inputs['empty_fhir_resources'].append('Medication')
+            inputs['metadata']['medications_empty'] = True
+        else:
+            inputs['metadata']['medications_empty'] = False
+            inputs['metadata']['medications_count'] = len(medications)
+        
         has_anticoag = condition_checker.check_oral_anticoagulation(medications)
         inputs['oral_anticoag'] = has_anticoag
 
@@ -490,9 +509,31 @@ class PreciseHBRCalculator:
             "description": f"ARC-HBR: {breakdown['arc_hbr']}"
         })
 
-        logging.info(f"PRECISE-HBR calculation complete: {total_score}")
+        # Build data warnings for missing FHIR resources
+        data_warnings = []
+        empty_resources = inputs.get('empty_fhir_resources', [])
         
-        return components, total_score
+        if 'Condition' in empty_resources:
+            data_warnings.append({
+                'type': 'missing_fhir_resource',
+                'resource': 'Condition',
+                'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy) may be missed.',
+                'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy']
+            })
+        
+        if 'Medication' in empty_resources:
+            data_warnings.append({
+                'type': 'missing_fhir_resource',
+                'resource': 'Medication',
+                'message': 'No Medication records found - Oral Anticoagulation status and NSAID/Corticosteroid use may be inaccurate.',
+                'affected_factors': ['Oral Anticoagulation', 'NSAIDs/Corticosteroids']
+            })
+
+        logging.info(f"PRECISE-HBR calculation complete: {total_score}")
+        if data_warnings:
+            logging.warning(f"Data warnings: {[w['resource'] for w in data_warnings]} resources empty")
+        
+        return components, total_score, data_warnings
 
 
 # Global instance

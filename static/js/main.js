@@ -327,6 +327,9 @@
         currentPatientData = data;
         scoreComponentData = data.score_components; // Store for recalculation
 
+        // Store data warnings from backend (missing FHIR resources)
+        window.dataWarnings = data.data_warnings || [];
+
         // Check for required data completeness
         const requiredParameters = ['Age', 'Hemoglobin', 'eGFR', 'White Blood Cell'];
         const missingCriticalData = [];
@@ -774,15 +777,33 @@
         const warningDiv = document.getElementById('missing-data-warning');
         const missingList = document.getElementById('missing-data-list');
 
-        if (missingItems && missingItems.length > 0) {
-            // Build the list of missing items
+        // Get FHIR resource warnings from backend
+        const dataWarnings = window.dataWarnings || [];
+        const hasFhirWarnings = dataWarnings.length > 0;
+        const hasMissingLabData = missingItems && missingItems.length > 0;
+
+        if (hasMissingLabData || hasFhirWarnings) {
             missingList.innerHTML = '';
-            missingItems.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                li.className = 'missing-list-item';
-                missingList.appendChild(li);
-            });
+
+            // Add FHIR resource warnings first (more critical)
+            if (hasFhirWarnings) {
+                dataWarnings.forEach(warning => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${escapeHtml(warning.resource)} Records:</strong> ${escapeHtml(warning.message)}`;
+                    li.className = 'missing-list-item fhir-warning-item';
+                    missingList.appendChild(li);
+                });
+            }
+
+            // Add missing lab data items
+            if (hasMissingLabData) {
+                missingItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = `${item}: No data available from FHIR server`;
+                    li.className = 'missing-list-item lab-warning-item';
+                    missingList.appendChild(li);
+                });
+            }
 
             // Show the warning
             warningDiv.classList.remove('d-none');
