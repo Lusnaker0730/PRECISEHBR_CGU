@@ -98,25 +98,25 @@ class TestePHILogging:
     
     def test_ephi_access_creates_audit_log(self, client, caplog):
         """Test that ePHI access creates audit log entry"""
-        from audit_logger import get_audit_logger
+        from services.audit_logger import get_audit_logger
         logger = get_audit_logger()
         assert logger is not None
     
     def test_audit_log_includes_user_id(self):
         """Test that audit logs include user identification"""
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         # Audit logger should track user_id
         assert hasattr(AuditLogger, 'log_event')
     
     def test_audit_log_includes_timestamp(self):
         """Test that audit logs include timestamp"""
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         # Audit logs should have timestamps
         assert hasattr(AuditLogger, 'log_event')
     
     def test_audit_log_includes_action(self):
         """Test that audit logs include action performed"""
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         # Audit logs should record actions
         assert hasattr(AuditLogger, 'log_event')
     
@@ -153,7 +153,7 @@ class TestePHIDisclosure:
             assert 'patient' not in header.lower()
             assert 'mrn' not in header.lower()
     
-    def test_no_phi_in_referrer(self, client):
+    def test_no_phi_in_referrer(self, client, app):
         """Test that PHI is not in referrer header"""
         # Referrer policy should prevent PHI leakage
         response = client.get('/')
@@ -182,14 +182,14 @@ class TestDataRetention:
         """Test audit log retention period"""
         # Audit logs should be retained for required period (6 years for HIPAA)
         # This is typically a configuration check
-        assert os.path.exists('audit_logger.py')
+        assert os.path.exists(os.path.join('services', 'audit_logger.py'))
 
 class TestBreachNotification:
     """Test breach notification readiness"""
     
     def test_security_incident_logging(self):
         """Test that security incidents are logged"""
-        from audit_logger import get_audit_logger
+        from services.audit_logger import get_audit_logger
         logger = get_audit_logger()
         # Should be able to log security incidents
         assert logger is not None
@@ -237,7 +237,7 @@ class TestSecurityMonitoring:
         """Test unusual activity detection capability"""
         # System should be able to detect unusual patterns
         # This would require actual monitoring system
-        assert os.path.exists('audit_logger.py')
+        assert os.path.exists(os.path.join('services', 'audit_logger.py'))
     
     def test_security_alerts_configured(self):
         """Test that security alerts are configured"""
@@ -248,7 +248,7 @@ class TestSecurityMonitoring:
     def test_log_analysis_capability(self):
         """Test log analysis capability"""
         # Logs should be in analyzable format
-        from audit_logger import get_audit_logger
+        from services.audit_logger import get_audit_logger
         logger = get_audit_logger()
         assert logger is not None
 

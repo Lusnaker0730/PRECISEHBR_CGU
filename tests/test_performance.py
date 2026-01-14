@@ -127,7 +127,7 @@ class TestComputationPerformance:
     
     def test_egfr_calculation_performance(self):
         """Test eGFR calculation performance."""
-        from fhir_data_service import calculate_egfr
+        from services.fhir_data_service import calculate_egfr
         
         num_calculations = 1000
         start_time = time.perf_counter()
@@ -148,7 +148,7 @@ class TestComputationPerformance:
     
     def test_hash_calculation_performance(self):
         """Test audit log hash calculation performance."""
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         import tempfile
         import os
         
@@ -182,7 +182,7 @@ class TestComputationPerformance:
     
     def test_input_validation_performance(self):
         """Test input validation performance."""
-        from input_validator import validate_url, validate_patient_id
+        from utils.input_validator import validate_url, validate_patient_id
         
         num_validations = 1000
         
@@ -307,7 +307,7 @@ class TestDatabasePerformance:
     
     def test_audit_log_write_performance(self):
         """Test audit log write performance."""
-        from audit_logger import AuditLogger
+        from services.audit_logger import AuditLogger
         import tempfile
         import os
         
@@ -344,7 +344,7 @@ class TestDatabasePerformance:
         for _ in range(num_loads):
             # Reload config module
             from importlib import reload
-            import config
+            import services.app_config as config
             reload(config)
         
         end_time = time.perf_counter()

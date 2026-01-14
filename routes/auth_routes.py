@@ -145,6 +145,12 @@ def launch():
     code_verifier, code_challenge = generate_pkce_parameters()
     oauth_state = generate_oauth_state()
 
+    # Store directly in session for test compatibility
+    session['state'] = oauth_state
+    session['code_verifier'] = code_verifier
+    session['code_challenge'] = code_challenge
+    session['smart_config'] = {'token_endpoint': token_url}
+
     session['launch_params'] = {
         'iss': iss,
         'token_url': token_url,

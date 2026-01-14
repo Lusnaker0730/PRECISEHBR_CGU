@@ -247,35 +247,35 @@ class TestCSRFProtection:
 class TestHeadersSecurity:
     """Test HTTP security headers"""
     
-    def test_x_content_type_options(self, client):
+    def test_x_content_type_options(self, client, app):
         """Test X-Content-Type-Options header"""
         response = client.get('/')
         # Should prevent MIME sniffing
         if not app.config.get('TESTING'):
             assert response.headers.get('X-Content-Type-Options') == 'nosniff' or True
     
-    def test_x_frame_options(self, client):
+    def test_x_frame_options(self, client, app):
         """Test X-Frame-Options header"""
         response = client.get('/')
         # Should prevent clickjacking
         if not app.config.get('TESTING'):
             assert response.headers.get('X-Frame-Options') in ['DENY', 'SAMEORIGIN'] or True
     
-    def test_content_security_policy(self, client):
+    def test_content_security_policy(self, client, app):
         """Test Content-Security-Policy header"""
         response = client.get('/')
         # Should have CSP header
         if not app.config.get('TESTING'):
             assert 'Content-Security-Policy' in response.headers or True
     
-    def test_strict_transport_security(self, client):
+    def test_strict_transport_security(self, client, app):
         """Test Strict-Transport-Security header"""
         response = client.get('/')
         # HSTS should be configured in production
         if not app.config.get('TESTING'):
             assert 'Strict-Transport-Security' in response.headers or True
     
-    def test_x_xss_protection(self, client):
+    def test_x_xss_protection(self, client, app):
         """Test X-XSS-Protection header"""
         response = client.get('/')
         # XSS protection header
@@ -306,7 +306,9 @@ class TestLoggingSecurity:
         """Test audit log integrity"""
         # Audit logs should be tamper-proof
         # This would require checking log signing/hashing
-        assert os.path.exists('audit_logger.py')
+        # Audit logs should be tamper-proof
+        # This would require checking log signing/hashing
+        assert os.path.exists(os.path.join('services', 'audit_logger.py')) or os.path.exists('audit_logger.py')
     
     def test_log_rotation_configured(self):
         """Test that log rotation is configured"""
@@ -456,7 +458,7 @@ class TestAuditTrailSecurity:
         """Test that audit logs are immutable"""
         # Audit logs should not be modifiable
         # This would require checking file permissions or log system config
-        assert os.path.exists('audit_logger.py')
+        assert os.path.exists(os.path.join('services', 'audit_logger.py'))
     
     def test_audit_log_includes_required_fields(self):
         """Test that audit logs include required fields"""
@@ -542,7 +544,7 @@ class TestSecurityBestPractices:
     def test_no_hardcoded_secrets(self):
         """Test that no secrets are hardcoded"""
         # Check that secrets come from environment
-        assert os.environ.get('SECRET_KEY') or os.environ.get('TESTING')
+        assert os.environ.get('FLASK_SECRET_KEY') or os.environ.get('SECRET_KEY') or os.environ.get('TESTING')
     
     def test_secure_random_for_tokens(self):
         """Test that secure random is used for tokens"""

@@ -191,7 +191,7 @@ class TestOWASPTop10:
     def test_audit_logging_enabled(self, app):
         """Test that audit logging is configured"""
         # Audit logger should be initialized
-        from audit_logger import get_audit_logger
+        from services.audit_logger import get_audit_logger
         logger = get_audit_logger()
         assert logger is not None
     
@@ -258,7 +258,7 @@ class TestHIPAACompliance:
         """Test audit log retention (HIPAA §164.308(a)(1)(ii)(D))"""
         # Audit logs should be retained for at least 6 years
         # This would be configured in the logging system
-        assert os.path.exists('audit_logger.py')
+        assert os.path.exists(os.path.join('services', 'audit_logger.py'))
     
     def test_emergency_access_procedure(self, app):
         """Test emergency access procedure exists (HIPAA §164.312(a)(2)(ii))"""

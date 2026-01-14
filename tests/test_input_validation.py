@@ -347,7 +347,7 @@ class TestBusinessLogicValidation:
     
     def test_age_range_validation(self):
         """Test age range validation"""
-        import fhir_data_service
+        from services import fhir_data_service
         
         # Test with invalid ages
         result = fhir_data_service.calculate_egfr(1.0, -5, 'male')
@@ -356,7 +356,7 @@ class TestBusinessLogicValidation:
     
     def test_lab_value_range_validation(self):
         """Test laboratory value range validation"""
-        import fhir_data_service
+        from services import fhir_data_service
         
         # Test with impossible lab values
         obs = {
@@ -372,7 +372,7 @@ class TestBusinessLogicValidation:
     
     def test_date_format_validation(self):
         """Test date format validation"""
-        import fhir_data_service
+        from services import fhir_data_service
         
         invalid_dates = [
             '2023-13-01',  # Invalid month

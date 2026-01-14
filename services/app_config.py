@@ -56,7 +56,7 @@ class Config:
     CLIENT_ID = get_secret('SMART_CLIENT_ID')
     REDIRECT_URI = get_secret('SMART_REDIRECT_URI')
     CLIENT_SECRET = get_secret('SMART_CLIENT_SECRET')
-    SMART_SCOPES = get_secret('SMART_SCOPES', 'launch openid fhirUser profile user/Patient.rs user/Observation.rs user/Condition.rs user/MedicationRequest.rs user/Procedure.rs')
+    SMART_SCOPES = get_secret('SMART_SCOPES', 'launch openid fhirUser profile online_access patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/Procedure.read')
     CERNER_DOMAIN = 'cerner.com'
 
     @staticmethod
@@ -64,6 +64,22 @@ class Config:
         if not Config.SECRET_KEY:
             app.logger.error("FATAL: FLASK_SECRET_KEY environment variable must be set for security.")
             raise ValueError("FLASK_SECRET_KEY environment variable is required but not set.")
+        
+        # Validate CLIENT_ID is set (warn only, doesn't raise)
+        if not Config.CLIENT_ID:
+            app.logger.warning("SMART_CLIENT_ID not set, standalone mode may fail.")
+        
+        # Validate REDIRECT_URI is set and clean hash fragments
+        if not Config.REDIRECT_URI:
+            app.logger.warning("SMART_REDIRECT_URI not set, OAuth callback may fail.")
+        elif '#' in Config.REDIRECT_URI:
+            # Remove hash fragment from REDIRECT_URI (per OAuth spec, fragments not allowed)
+            Config.REDIRECT_URI = Config.REDIRECT_URI.split('#')[0].strip()
+            app.logger.info("Removed hash fragment from REDIRECT_URI")
+        
+        # Strip whitespace from REDIRECT_URI if present
+        if Config.REDIRECT_URI:
+            Config.REDIRECT_URI = Config.REDIRECT_URI.strip()
         
         # Determine session directory based on environment
         if os.environ.get('GAE_ENV', '').startswith('standard'):
@@ -73,3 +89,4 @@ class Config:
         else:
             app.config['SESSION_FILE_DIR'] = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'instance', 'flask_session')
             app.config['SESSION_COOKIE_SECURE'] = False
+

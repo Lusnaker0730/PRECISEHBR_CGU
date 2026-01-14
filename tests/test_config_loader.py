@@ -57,15 +57,15 @@ class TestPreciseHbrParameters:
         """Test getting age parameter"""
         age_param = config_loader.config.get('precise_hbr_parameters', {}).get('age')
         assert age_param is not None
-        assert 'min_value' in age_param
-        assert 'max_value' in age_param
+        assert 'truncation_min' in age_param
+        assert 'truncation_max' in age_param
     
     def test_get_hemoglobin_parameter(self):
         """Test getting hemoglobin parameter"""
         hb_param = config_loader.config.get('precise_hbr_parameters', {}).get('hemoglobin')
         assert hb_param is not None
-        assert 'min_value' in hb_param
-        assert 'max_value' in hb_param
+        assert 'truncation_min' in hb_param
+        assert 'truncation_max' in hb_param
 
 
 class TestSnomedCodes:

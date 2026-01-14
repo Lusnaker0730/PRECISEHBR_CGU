@@ -14,7 +14,7 @@ class TestMedicationChecking:
     
     def test_check_aspirin_by_code(self):
         """Test detection of aspirin by RxNorm code."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         medications = [{
             'medicationCodeableConcept': {
@@ -30,7 +30,7 @@ class TestMedicationChecking:
     
     def test_check_aspirin_by_name(self):
         """Test detection of aspirin by name."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         medications = [{
             'medicationCodeableConcept': {
@@ -45,7 +45,7 @@ class TestMedicationChecking:
     
     def test_check_dapt_combination(self):
         """Test detection of DAPT (aspirin + antiplatelet)."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         medications = [
             {
@@ -69,7 +69,7 @@ class TestMedicationChecking:
     
     def test_check_anticoagulant(self):
         """Test detection of oral anticoagulant."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         medications = [{
             'medicationCodeableConcept': {
@@ -85,7 +85,7 @@ class TestMedicationChecking:
     
     def test_check_empty_medications(self):
         """Test handling of empty medication list."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         has_risk, details = check_high_bleeding_risk_medications([])
         # Empty list should return falsy value
@@ -94,7 +94,7 @@ class TestMedicationChecking:
     
     def test_check_malformed_medications(self):
         """Test handling of malformed medication data."""
-        from hooks import check_high_bleeding_risk_medications
+        from routes.hooks import check_high_bleeding_risk_medications
         
         medications = [
             {},
@@ -116,7 +116,7 @@ class TestCardCreation:
     
     def test_create_card_very_hbr(self):
         """Test card creation for Very HBR category."""
-        from hooks import create_precise_hbr_warning_card
+        from routes.hooks import create_precise_hbr_warning_card
         
         card = create_precise_hbr_warning_card(
             patient_name='John Doe',
@@ -133,7 +133,7 @@ class TestCardCreation:
     
     def test_create_card_hbr(self):
         """Test card creation for HBR category."""
-        from hooks import create_precise_hbr_warning_card
+        from routes.hooks import create_precise_hbr_warning_card
         
         card = create_precise_hbr_warning_card(
             patient_name='Jane Doe',
@@ -148,7 +148,7 @@ class TestCardCreation:
     
     def test_create_card_low_risk(self):
         """Test card creation for low risk category."""
-        from hooks import create_precise_hbr_warning_card
+        from routes.hooks import create_precise_hbr_warning_card
         
         card = create_precise_hbr_warning_card(
             patient_name='Bob Smith',
@@ -162,7 +162,7 @@ class TestCardCreation:
     
     def test_card_contains_required_fields(self):
         """Test that card contains all required CDS Hooks fields."""
-        from hooks import create_precise_hbr_warning_card
+        from routes.hooks import create_precise_hbr_warning_card
         
         card = create_precise_hbr_warning_card(
             patient_name='Test Patient',
@@ -180,7 +180,7 @@ class TestCardCreation:
     
     def test_card_medication_list_formatting(self):
         """Test medication list formatting in card detail."""
-        from hooks import create_precise_hbr_warning_card
+        from routes.hooks import create_precise_hbr_warning_card
         
         card = create_precise_hbr_warning_card(
             patient_name='Test',
@@ -202,7 +202,7 @@ class TestCDSServicesEndpoint:
         app = Flask(__name__)
         app.config['TESTING'] = True
         
-        from hooks import hooks_bp
+        from routes.hooks import hooks_bp
         app.register_blueprint(hooks_bp)
         
         return app
@@ -266,7 +266,7 @@ class TestPreciseHBRHook:
         app = Flask(__name__)
         app.config['TESTING'] = True
         
-        from hooks import hooks_bp
+        from routes.hooks import hooks_bp
         app.register_blueprint(hooks_bp)
         
         return app
@@ -303,8 +303,8 @@ class TestPreciseHBRHook:
     
     def test_hook_returns_json(self, client):
         """Test that hook returns JSON response."""
-        with patch('hooks.get_patient_demographics') as mock_demo:
-            with patch('hooks.calculate_precise_hbr_score') as mock_calc:
+        with patch('routes.hooks.get_patient_demographics') as mock_demo:
+            with patch('routes.hooks.calculate_precise_hbr_score') as mock_calc:
                 mock_demo.return_value = {'name': 'Test Patient', 'age': 70}
                 mock_calc.return_value = (3, [], [])
                 
@@ -331,7 +331,7 @@ class TestCORSConfiguration:
         app = Flask(__name__)
         app.config['TESTING'] = True
         
-        from hooks import hooks_bp
+        from routes.hooks import hooks_bp
         app.register_blueprint(hooks_bp)
         
         return app
@@ -367,7 +367,7 @@ class TestErrorHandling:
         app = Flask(__name__)
         app.config['TESTING'] = True
         
-        from hooks import hooks_bp
+        from routes.hooks import hooks_bp
         app.register_blueprint(hooks_bp)
         
         return app
@@ -380,7 +380,7 @@ class TestErrorHandling:
     def test_handles_file_read_error(self, client):
         """Test handling of file read errors."""
         # Test that error handling exists in the code
-        import hooks
+        import routes.hooks as hooks
         import inspect
         source = inspect.getsource(hooks.cds_services_discovery)
         
@@ -408,7 +408,7 @@ class TestIntegration:
         app = Flask(__name__)
         app.config['TESTING'] = True
         
-        from hooks import hooks_bp
+        from routes.hooks import hooks_bp
         app.register_blueprint(hooks_bp)
         
         return app
@@ -426,8 +426,8 @@ class TestIntegration:
             assert discovery_response.status_code == 200
         
         # 2. Call hook (with mocked dependencies)
-        with patch('hooks.get_patient_demographics') as mock_demo:
-            with patch('hooks.calculate_precise_hbr_score') as mock_calc:
+        with patch('routes.hooks.get_patient_demographics') as mock_demo:
+            with patch('routes.hooks.calculate_precise_hbr_score') as mock_calc:
                 mock_demo.return_value = {'name': 'Test', 'age': 70}
                 mock_calc.return_value = (3, [], [])
                 
