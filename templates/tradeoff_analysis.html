@@ -5,11 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Bleeding vs. Thrombosis Trade-off Analysis</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Bootstrap CSS (with SRI) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+          crossorigin="anonymous">
+    <!-- Bootstrap Icons (with SRI) -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+          integrity="sha384-b6lVK+yci+bfDmaY1u0zE8YYJt0TZxLEAFyYSLHId4xoVvsrQu3INevFKo+Xir8e"
+          crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+    <!-- Chart.js (with SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+            integrity="sha384-K2gBuGwHHLPdGI3GCXFyHbfHLoganXvNjSZ3nyxVLwGNtdN5pTl/Xbix7R2lH7iZ"
+            crossorigin="anonymous"></script>
+    <!-- Chart.js Annotation Plugin (with SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"
+            integrity="sha384-aDRB2rbtLOWfGwdZzc5A1qnHfLEURPW0Sg7nLfvBGwHrHHV5J0MZP0WS6HxKjUe2"
+            crossorigin="anonymous"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 
@@ -465,11 +479,11 @@
                         });
                     }
 
-                    // Event listener for guideline image
+                    // Event listener for guideline image - with URL validation
                     const guidelineImg = document.getElementById('hbr-guideline-image');
                     if (guidelineImg) {
                         guidelineImg.addEventListener('click', function () {
-                            window.open(this.src, '_blank');
+                            openImageSafely(this.src);
                         });
                     }
 
@@ -674,11 +688,28 @@
                 }
             }
 
+            /**
+             * Safely open image URL in new tab - validates URL is from same origin.
+             * Prevents opening arbitrary external URLs.
+             */
+            function openImageSafely(imgSrc) {
+                try {
+                    const url = new URL(imgSrc, window.location.origin);
+                    if (url.origin === window.location.origin) {
+                        window.open(url.href, '_blank', 'noopener,noreferrer');
+                    } else {
+                        console.warn('Blocked attempt to open external URL:', url.origin);
+                    }
+                } catch (err) {
+                    console.error('Invalid image URL:', err.message);
+                }
+            }
+
             // Setup click handlers for research images (replacing inline onclick)
             document.addEventListener('DOMContentLoaded', function () {
                 document.querySelectorAll('.research-image').forEach(function (img) {
                     img.addEventListener('click', function () {
-                        window.open(this.src, '_blank');
+                        openImageSafely(this.src);
                     });
                 });
             });

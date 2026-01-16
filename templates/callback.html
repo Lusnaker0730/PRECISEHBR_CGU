@@ -7,17 +7,26 @@
     <title>Authenticating... | PRECISE-HBR</title>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+          crossorigin="anonymous">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Font Awesome (with SRI) -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
+          integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
 
     <!-- Cerner Smart Embeddable Lib CSS -->
     <link rel='stylesheet' type='text/css' href='/static/css/cerner-smart-embeddable-lib-1.7.0.min.css'>
 
-    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+    <!-- FHIR Client (with SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.2/build/fhir-client.min.js"
+            integrity="sha384-jnRt42qMF3DX+5DKhzwQjiPbGPfvOlxUhbOYLOdCBNT8aSxBY0lcJZXpIzKdULph"
+            crossorigin="anonymous"></script>
 
-    <style>
+    <style nonce="{{ csp_nonce() }}">
         * {
             margin: 0;
             padding: 0;
@@ -415,12 +424,18 @@
                 })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.status === 'ok') {
-                            showSuccess();
-                            setTimeout(() => {
-                                window.location.href = data.redirect_url;
-                            }, 800);
-                        } else {
+                        if (data.status === 'ok' && data.redirect_url) {
+                            // Validate redirect URL is relative or same origin for security
+                            const redirectUrl = data.redirect_url;
+                            if (redirectUrl.startsWith('/') || redirectUrl.startsWith(window.location.origin)) {
+                                showSuccess();
+                                setTimeout(() => {
+                                    window.location.href = redirectUrl;
+                                }, 800);
+                            } else {
+                                throw new Error('Invalid redirect URL received from server.');
+                            }
+                        } else if (data.status !== 'ok') {
                             throw new Error(data.error || 'Backend code exchange failed.');
                         }
                     })
@@ -434,8 +449,11 @@
         });
     </script>
 
-    <!-- Babel Polyfill and Cerner Lib -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
+    <!-- Babel Polyfill (with SRI) and Cerner Lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"
+            integrity="sha512-Q8IGgKwDLT+1an+ikzXtPs584hDxyP2X6NFpDyDwrJfpb7UCqRSNv3MAvD5lXk/Y/FxT6dYk+h/sPxWTcPPFwA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
     <script src="/static/js/cerner-smart-embeddable-lib-1.7.0.min.js"></script>
 </body>
 

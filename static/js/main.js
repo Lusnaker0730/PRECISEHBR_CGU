@@ -20,6 +20,10 @@
     // This eliminates hardcoded coefficients and ensures frontend/backend consistency
     let scoringConfig = null;
 
+    // Module-scoped data warnings (previously on window object for security)
+    let dataWarnings = [];
+    let initialMissingCriticalData = [];
+
     /**
      * Fetch scoring configuration from backend API.
      * Must be called before any score calculations.
@@ -34,8 +38,17 @@
                 console.warn('Using fallback scoring config');
                 return scoringConfig;
             }
-            scoringConfig = await response.json();
-            console.log('Scoring config loaded:', scoringConfig);
+            const configData = await response.json();
+
+            // Validate response structure before using
+            if (!validateScoringConfigResponse(configData)) {
+                console.warn('Scoring config validation failed, using fallback');
+                scoringConfig = getDefaultScoringConfig();
+                return scoringConfig;
+            }
+
+            scoringConfig = configData;
+            console.log('Scoring config loaded and validated');
             updateTooltipsWithConfig();
             return scoringConfig;
         } catch (error) {
@@ -100,6 +113,98 @@
         }
     }
 
+    // === Security: Response validation utilities ===
+
+    /**
+     * Validates the structure of risk data API response.
+     * Ensures required fields exist before processing to prevent runtime errors.
+     * @param {Object} data - The response data from /api/calculate_risk
+     * @returns {boolean} - True if response structure is valid
+     */
+    function validateRiskDataResponse(data) {
+        if (!data || typeof data !== 'object') {
+            console.error('Response validation failed: data is not an object');
+            return false;
+        }
+
+        // Check for required top-level properties
+        if (!data.patient_info || typeof data.patient_info !== 'object') {
+            console.error('Response validation failed: missing or invalid patient_info');
+            return false;
+        }
+
+        if (!Array.isArray(data.score_components)) {
+            console.error('Response validation failed: score_components is not an array');
+            return false;
+        }
+
+        // Validate patient_info has at least some identifying information
+        const patientInfo = data.patient_info;
+        if (!patientInfo.patient_id && !patientInfo.id && !patientInfo.name) {
+            console.error('Response validation failed: patient_info missing identification');
+            return false;
+        }
+
+        // Validate each score component has required fields
+        for (let i = 0; i < data.score_components.length; i++) {
+            const component = data.score_components[i];
+            if (!component || typeof component !== 'object') {
+                console.error('Response validation failed: invalid score_component at index', i);
+                return false;
+            }
+            if (typeof component.parameter !== 'string') {
+                console.error('Response validation failed: score_component missing parameter at index', i);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Validates the structure of scoring config API response.
+     * @param {Object} config - The response data from /api/config/scoring
+     * @returns {boolean} - True if response structure is valid
+     */
+    function validateScoringConfigResponse(config) {
+        if (!config || typeof config !== 'object') {
+            console.error('Scoring config validation failed: config is not an object');
+            return false;
+        }
+
+        // Check for required properties
+        if (typeof config.base_score !== 'number') {
+            console.error('Scoring config validation failed: missing or invalid base_score');
+            return false;
+        }
+
+        if (!config.coefficients || typeof config.coefficients !== 'object') {
+            console.error('Scoring config validation failed: missing or invalid coefficients');
+            return false;
+        }
+
+        // Validate coefficient structure for required parameters
+        const requiredCoefficients = ['age', 'hemoglobin', 'egfr', 'wbc'];
+        for (const key of requiredCoefficients) {
+            const coef = config.coefficients[key];
+            if (!coef || typeof coef !== 'object') {
+                console.error('Scoring config validation failed: missing coefficient', key);
+                return false;
+            }
+            if (typeof coef.threshold !== 'number' || typeof coef.coefficient !== 'number') {
+                console.error('Scoring config validation failed: invalid coefficient structure for', key);
+                return false;
+            }
+        }
+
+        if (!config.binary_scores || typeof config.binary_scores !== 'object') {
+            console.error('Scoring config validation failed: missing or invalid binary_scores');
+            return false;
+        }
+
+        return true;
+    }
+
     // === Security: HTML escape utility to prevent XSS ===
     function escapeHtml(text) {
         if (text === null || text === undefined) return '';
@@ -152,12 +257,7 @@
             normalRange: '150-400 10?/L',
             riskFactors: '<100 10?/L is an ARC-HBR Major Criterion<br><50 10?/L is severe thrombocytopenia'
         },
-        'Platelet count <100': {
-            title: 'Platelet Count <100 10?/L (Thrombocytopenia)',
-            content: 'Platelets are key for coagulation. Low platelet count (<10010?/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding.',
-            normalRange: '150-400 10?/L',
-            riskFactors: '<100 10?/L is an ARC-HBR Major Criterion'
-        },
+
         'Chronic bleeding diathesis': {
             title: 'Chronic Bleeding Diathesis',
             content: 'Refers to congenital or acquired coagulation disorders, such as Hemophilia, von Willebrand disease, etc. These patients have inherent clotting defects, and antiplatelet therapy further increases risk.',
@@ -182,24 +282,8 @@
             normalRange: 'No chronic use',
             riskFactors: 'ARC-HBR Minor Criterion<br>Includes: ibuprofen, naproxen, steroids, etc.'
         },
-        'Anemia': {
-            title: 'Anemia',
-            content: 'Anemia (Hb <11 g/dL) may indicate chronic bleeding and reduces tolerance to bleeding complications. Anemic patients are more prone to hemodynamic instability if bleeding occurs.',
-            normalRange: 'Hb ?13 g/dL (Male), ?12 g/dL (Female)',
-            riskFactors: 'Hb <11 g/dL is an ARC-HBR Minor Criterion'
-        },
-        'Chronic kidney disease': {
-            title: 'Chronic Kidney Disease',
-            content: 'CKD (eGFR <60 mL/min) affects platelet function and coagulation factor metabolism. Also, many antithrombotics are renally cleared; impairment leads to accumulation and bleeding.',
-            normalRange: 'eGFR ?60 mL/min/1.73m2',
-            riskFactors: 'eGFR <60 is an ARC-HBR Minor Criterion<br>eGFR <30 is a Major Criterion'
-        },
-        'Thrombocytopenia': {
-            title: 'Thrombocytopenia',
-            content: 'Low platelet count affects primary hemostasis. Moderate thrombocytopenia (<10010?/L) may increase bleeding risk, especially during invasive procedures or antithrombotic therapy.',
-            normalRange: '150-400 10?/L',
-            riskFactors: '<100 10?/L is an ARC-HBR Major Criterion'
-        }
+
+
     };
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -232,9 +316,22 @@
             btn.addEventListener('click', () => window.location.reload());
         });
 
-        // Guideline Image
+        // Guideline Image - with URL validation for security
         document.querySelectorAll('.guideline-img').forEach(img => {
-            img.addEventListener('click', (e) => window.open(e.target.src, '_blank'));
+            img.addEventListener('click', (e) => {
+                const imgSrc = e.target.src;
+                // Validate URL is from same origin to prevent opening arbitrary URLs
+                try {
+                    const url = new URL(imgSrc, window.location.origin);
+                    if (url.origin === window.location.origin) {
+                        window.open(url.href, '_blank', 'noopener,noreferrer');
+                    } else {
+                        console.warn('Blocked attempt to open external URL:', url.origin);
+                    }
+                } catch (err) {
+                    console.error('Invalid image URL:', err.message);
+                }
+            });
         });
 
         // Dynamic Table Delegation
@@ -301,12 +398,19 @@
                 throw new Error(errorMessage);
             }
             const data = await response.json();
+
+            // Validate response structure before processing
+            if (!validateRiskDataResponse(data)) {
+                throw new Error('Invalid response format from server');
+            }
+
             displayResults(data);
         } catch (error) {
-            // Structured error logging
+            // Structured error logging (PHI redacted for security)
             const errorInfo = {
                 message: error.message,
-                patientId: patientId,
+                // Redact patient ID to prevent PHI exposure in browser console
+                patientId: patientId ? '[REDACTED]' : 'missing',
                 timestamp: new Date().toISOString(),
                 type: error.name || 'Error'
             };
@@ -328,7 +432,8 @@
         scoreComponentData = data.score_components; // Store for recalculation
 
         // Store data warnings from backend (missing FHIR resources)
-        window.dataWarnings = data.data_warnings || [];
+        // Using module-scoped variable instead of window object for security
+        dataWarnings = data.data_warnings || [];
 
         // Check for required data completeness
         const requiredParameters = ['Age', 'Hemoglobin', 'eGFR', 'White Blood Cell'];
@@ -353,7 +458,8 @@
         document.getElementById('results-container').classList.remove('d-none');
 
         // Store missing data info for later use
-        window.initialMissingCriticalData = missingCriticalData;
+        // Using module-scoped variable instead of window object for security
+        initialMissingCriticalData = missingCriticalData;
 
         // Patient Info
         const patientId = data.patient_info.patient_id ||
@@ -597,24 +703,6 @@
         }
     }
 
-    // === NEW: Generate Tooltip HTML ===
-    function generateTooltip(parameterKey) {
-        const tooltip = clinicalTooltips[parameterKey];
-        if (!tooltip) return '';
-
-        return `
-            <span class="info-tooltip">
-                <i class="fas fa-info-circle"></i>
-                <span class="tooltip-content">
-                    <strong>${tooltip.title}</strong><br><br>
-                    ${tooltip.content}<br><br>
-                    <strong>Normal Range:</strong><br>${tooltip.normalRange}<br><br>
-                    <strong>Risk Factors:</strong><br>${tooltip.riskFactors}
-                </span>
-            </span>
-        `;
-    }
-
     function formatValueWithUnit(value, unit) {
         // Format the value nicely with appropriate decimal places
         if (typeof value === 'number') {
@@ -644,8 +732,11 @@
 
         // Track missing data for warning display
         let missingDataItems = [];
-        // Build HTML string first to avoid repeated DOM reparsing (memory leak fix)
-        let tableHtml = '';
+
+        // Clear existing content safely
+        while (componentsBody.firstChild) {
+            componentsBody.removeChild(componentsBody.firstChild);
+        }
 
         if (scoreComponentData && scoreComponentData.length > 0) {
             scoreComponentData.forEach(item => {
@@ -655,141 +746,263 @@
                 }
 
                 const cleanParameterName = translateParameterName(item.parameter || 'Unnamed Criterion');
-                // Escape values for XSS prevention
-                const safeParameterName = escapeHtml(cleanParameterName);
-                const safeParameter = escapeHtml(item.parameter);
-                let valueControl = '';
                 const unit = getUnitForParameter(item.parameter);
-                const safeUnit = escapeHtml(unit);
 
                 // Check if this is missing data
                 const isMissingData = (item.value === 'Not available' || item.value === 'N/A' ||
                     (item.raw_value === null && item.is_present === null));
 
-                // Create an input for numbers, a checkbox for booleans, or manual input for missing data
-                if (item.raw_value !== null && typeof item.raw_value === 'number') {
-                    const formattedValue = formatValueWithUnit(item.raw_value, unit);
-                    const step = unit === "years" ? "1" : "0.01";
+                // Create table row using DOM APIs
+                const tr = document.createElement('tr');
 
-                    // Add unit toggle button for Hemoglobin
-                    const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                        `<button type="button" class="unit-toggle-btn" title="Toggle Unit">?</button>` : '';
-
-                    valueControl = `
-                        <div class="input-group input-group-lg-text">
-                            <input type="number"
-                                   class="form-control input-number-lg"
-                                   id="input-${safeParameter}"
-                                   value="${escapeHtml(formattedValue)}"
-                                   step="${step}">
-                            ${safeUnit ? `<span class="input-group-text input-unit-lg">${safeUnit}</span>` : ''}
-                            ${unitToggleBtn}
-                        </div>
-                    `;
-                } else if (item.is_present !== null && typeof item.is_present === 'boolean') {
-                    const checked = item.is_present ? 'checked' : '';
-                    // Check if this is an ARC-HBR element (should not have editable score)
-                    const isArcElement = item.is_arc_hbr_element === true;
-                    const safeValue = escapeHtml(item.value);
-                    valueControl = `
-                        <div class="form-check form-switch">
-                            <input class="form-check-input form-switch-lg"
-                                   type="checkbox"
-                                   id="input-${safeParameter}"
-                                   ${checked}
-                                   data-is-arc-element="${isArcElement}">
-                            <label class="form-check-label form-check-label-lg"
-                                   for="input-${safeParameter}">
-                                ${safeValue}
-                            </label>
-                        </div>
-                    `;
-                } else if (isMissingData) {
-                    // Missing data - provide manual input option
-                    missingDataItems.push(cleanParameterName);
-                    const step = unit === "years" ? "1" : "0.01";
-                    const placeholder = unit ? `Enter value in ${safeUnit}` : "Enter value";
-
-                    // Add unit toggle button for Hemoglobin
-                    const unitToggleBtn = item.parameter.includes("Hemoglobin") ?
-                        `<button type="button" class="unit-toggle-btn" title="Toggle Unit">?</button>` : '';
-
-                    valueControl = `
-                        <div class="input-group input-group-lg-text">
-                            <input type="number"
-                                   class="form-control input-missing"
-                                   id="input-${safeParameter}"
-                                   placeholder="${escapeHtml(placeholder)}"
-                                   step="${step}"
-                                   data-missing="true">
-                            ${safeUnit ? `<span class="input-group-text unit-missing">${safeUnit}</span>` : ''}
-                            <span class="input-group-text icon-missing">
-                                <i class="fas fa-exclamation-triangle text-warning" title="Missing data - please enter manually if available"></i>
-                            </span>
-                            ${unitToggleBtn}
-                        </div>
-                    `;
-                } else {
-                    valueControl = `<span class="font-weight-500 font-lg">${escapeHtml(item.value)}</span>`; // Fallback for base score or others
-                }
-
-                // Generate score badge cell - hide for ARC-HBR elements
-                let scoreBadgeHtml = '';
-                if (item.is_arc_hbr_element === true) {
-                    // Don't show score for ARC-HBR elements
-                    scoreBadgeHtml = '<span class="text-muted arc-badge-placeholder">X</span>';
-                } else {
-                    scoreBadgeHtml = `<span class="badge bg-primary score-badge" id="score-${safeParameter}">${escapeHtml(item.score)}</span>`;
-                }
+                // === Parameter Name Cell ===
+                const tdParam = document.createElement('td');
+                tdParam.className = 'table-cell-lg';
+                tdParam.textContent = cleanParameterName;
 
                 // Generate tooltip for clinical information
                 const tooltipKey = cleanParameterName.split('(')[0].trim();
-                const tooltipHtml = generateTooltip(tooltipKey);
+                const tooltipElement = createTooltipElement(tooltipKey);
+                if (tooltipElement) {
+                    tdParam.appendChild(tooltipElement);
+                }
+                tr.appendChild(tdParam);
 
-                const safeDate = escapeHtml(item.date || 'N/A');
-                tableHtml += `
-                    <tr>
-                        <td class="table-cell-lg">
-                            ${safeParameterName}
-                            ${tooltipHtml}
-                        </td>
-                        <td>${valueControl}</td>
-                        <td>${scoreBadgeHtml}</td>
-                        <td class="table-cell-lg ${item.is_outdated ? 'text-danger' : ''}">
-                            ${safeDate}
-                            ${item.is_outdated ? '<br><small><i class="fas fa-exclamation-circle"></i> Please Retest</small>' : ''}
-                        </td>
-                    </tr>
-                `;
+                // === Value Control Cell ===
+                const tdValue = document.createElement('td');
+                const valueControl = createValueControl(item, unit, isMissingData);
+                if (valueControl) {
+                    tdValue.appendChild(valueControl);
+                }
+                if (isMissingData) {
+                    missingDataItems.push(cleanParameterName);
+                }
+                tr.appendChild(tdValue);
+
+                // === Score Badge Cell ===
+                const tdScore = document.createElement('td');
+                if (item.is_arc_hbr_element === true) {
+                    const span = document.createElement('span');
+                    span.className = 'text-muted arc-badge-placeholder';
+                    span.textContent = 'X';
+                    tdScore.appendChild(span);
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-primary score-badge';
+                    badge.id = `score-${item.parameter}`;
+                    badge.textContent = item.score;
+                    tdScore.appendChild(badge);
+                }
+                tr.appendChild(tdScore);
+
+                // === Date Cell ===
+                const tdDate = document.createElement('td');
+                tdDate.className = 'table-cell-lg';
+                if (item.is_outdated) {
+                    tdDate.classList.add('text-danger');
+                }
+                tdDate.textContent = item.date || 'N/A';
+                if (item.is_outdated) {
+                    const br = document.createElement('br');
+                    const small = document.createElement('small');
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-exclamation-circle';
+                    small.appendChild(icon);
+                    small.appendChild(document.createTextNode(' Please Retest'));
+                    tdDate.appendChild(br);
+                    tdDate.appendChild(small);
+                }
+                tr.appendChild(tdDate);
+
+                componentsBody.appendChild(tr);
             });
-
-            // Assign all HTML at once (prevents repeated DOM reparsing)
-            componentsBody.innerHTML = tableHtml;
 
             // Display missing data warning if any
             displayMissingDataWarning(missingDataItems);
         } else {
-            componentsBody.innerHTML = '<tr><td colspan="4" class="text-center">No risk components available for editing.</td></tr>';
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 4;
+            td.className = 'text-center';
+            td.textContent = 'No risk components available for editing.';
+            tr.appendChild(td);
+            componentsBody.appendChild(tr);
         }
+    }
+
+    /**
+     * Creates a value control element (input/checkbox) for a score component.
+     * Uses DOM APIs instead of innerHTML for security.
+     */
+    function createValueControl(item, unit, isMissingData) {
+        if (item.raw_value !== null && typeof item.raw_value === 'number') {
+            return createNumberInput(item, unit, false);
+        } else if (item.is_present !== null && typeof item.is_present === 'boolean') {
+            return createCheckboxInput(item);
+        } else if (isMissingData) {
+            return createNumberInput(item, unit, true);
+        } else {
+            const span = document.createElement('span');
+            span.className = 'font-weight-500 font-lg';
+            span.textContent = item.value;
+            return span;
+        }
+    }
+
+    /**
+     * Creates a number input with optional unit display.
+     * Uses DOM APIs instead of innerHTML for security.
+     */
+    function createNumberInput(item, unit, isMissing) {
+        const div = document.createElement('div');
+        div.className = 'input-group input-group-lg-text';
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = isMissing ? 'form-control input-missing' : 'form-control input-number-lg';
+        input.id = `input-${item.parameter}`;
+        input.step = unit === 'years' ? '1' : '0.01';
+
+        if (isMissing) {
+            input.placeholder = unit ? `Enter value in ${unit}` : 'Enter value';
+            input.setAttribute('data-missing', 'true');
+        } else {
+            input.value = formatValueWithUnit(item.raw_value, unit);
+        }
+
+        div.appendChild(input);
+
+        // Add unit span if unit exists
+        if (unit) {
+            const unitSpan = document.createElement('span');
+            unitSpan.className = isMissing ? 'input-group-text unit-missing' : 'input-group-text input-unit-lg';
+            unitSpan.textContent = unit;
+            div.appendChild(unitSpan);
+        }
+
+        // Add warning icon for missing data
+        if (isMissing) {
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'input-group-text icon-missing';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-exclamation-triangle text-warning';
+            icon.title = 'Missing data - please enter manually if available';
+            iconSpan.appendChild(icon);
+            div.appendChild(iconSpan);
+        }
+
+        // Add unit toggle button for Hemoglobin
+        if (item.parameter.includes('Hemoglobin')) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'unit-toggle-btn';
+            toggleBtn.title = 'Toggle Unit';
+            toggleBtn.textContent = '⇄';
+            div.appendChild(toggleBtn);
+        }
+
+        return div;
+    }
+
+    /**
+     * Creates a checkbox input for boolean values.
+     * Uses DOM APIs instead of innerHTML for security.
+     */
+    function createCheckboxInput(item) {
+        const div = document.createElement('div');
+        div.className = 'form-check form-switch';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'form-check-input form-switch-lg';
+        input.id = `input-${item.parameter}`;
+        input.checked = item.is_present;
+        input.setAttribute('data-is-arc-element', item.is_arc_hbr_element === true);
+
+        const label = document.createElement('label');
+        label.className = 'form-check-label form-check-label-lg';
+        label.htmlFor = `input-${item.parameter}`;
+        label.textContent = item.value;
+
+        div.appendChild(input);
+        div.appendChild(label);
+
+        return div;
+    }
+
+    /**
+     * Creates a tooltip element using DOM APIs instead of innerHTML.
+     */
+    function createTooltipElement(parameterKey) {
+        const tooltip = clinicalTooltips[parameterKey];
+        if (!tooltip) return null;
+
+        const span = document.createElement('span');
+        span.className = 'info-tooltip';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-info-circle';
+        span.appendChild(icon);
+
+        const content = document.createElement('span');
+        content.className = 'tooltip-content';
+
+        // Build tooltip content safely
+        const title = document.createElement('strong');
+        title.textContent = tooltip.title;
+        content.appendChild(title);
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createTextNode(tooltip.content));
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createElement('br'));
+
+        const normalLabel = document.createElement('strong');
+        normalLabel.textContent = 'Normal Range:';
+        content.appendChild(normalLabel);
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createTextNode(tooltip.normalRange));
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createElement('br'));
+
+        const riskLabel = document.createElement('strong');
+        riskLabel.textContent = 'Risk Factors:';
+        content.appendChild(riskLabel);
+        content.appendChild(document.createElement('br'));
+        // Note: riskFactors may contain <br> tags from config updates, so we handle it specially
+        const riskText = tooltip.riskFactors.replace(/<br>/g, '\n');
+        riskText.split('\n').forEach((line, idx, arr) => {
+            content.appendChild(document.createTextNode(line));
+            if (idx < arr.length - 1) {
+                content.appendChild(document.createElement('br'));
+            }
+        });
+
+        span.appendChild(content);
+        return span;
     }
 
     function displayMissingDataWarning(missingItems) {
         const warningDiv = document.getElementById('missing-data-warning');
         const missingList = document.getElementById('missing-data-list');
 
-        // Get FHIR resource warnings from backend
-        const dataWarnings = window.dataWarnings || [];
-        const hasFhirWarnings = dataWarnings.length > 0;
+        // Get FHIR resource warnings from module-scoped variable
+        const currentDataWarnings = dataWarnings || [];
+        const hasFhirWarnings = currentDataWarnings.length > 0;
         const hasMissingLabData = missingItems && missingItems.length > 0;
 
         if (hasMissingLabData || hasFhirWarnings) {
-            missingList.innerHTML = '';
+            // Clear list safely using DOM API
+            clearElement(missingList);
 
             // Add FHIR resource warnings first (more critical)
             if (hasFhirWarnings) {
-                dataWarnings.forEach(warning => {
+                currentDataWarnings.forEach(warning => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<strong>${escapeHtml(warning.resource)} Records:</strong> ${escapeHtml(warning.message)}`;
+                    const strong = document.createElement('strong');
+                    strong.textContent = (warning.resource || 'Unknown') + ' Records:';
+                    li.appendChild(strong);
+                    li.appendChild(document.createTextNode(' ' + (warning.message || '')));
                     li.className = 'missing-list-item fhir-warning-item';
                     missingList.appendChild(li);
                 });
@@ -810,6 +1023,140 @@
         } else {
             // Hide the warning if no missing data
             warningDiv.classList.add('d-none');
+        }
+    }
+
+    /**
+     * Display incomplete data warning using safe DOM APIs.
+     * Replaces innerHTML-based approach to prevent XSS.
+     */
+    function displayIncompleteDataWarning(missingCriticalData) {
+        const totalScoreEl = document.getElementById('total-score');
+        const riskLevelEl = document.getElementById('risk-level');
+        const recommendationEl = document.getElementById('recommendation');
+
+        // Clear and rebuild total-score element
+        clearElement(totalScoreEl);
+        const warningIcon = document.createElement('i');
+        warningIcon.className = 'fas fa-exclamation-triangle text-warning';
+        totalScoreEl.appendChild(warningIcon);
+
+        // Clear and rebuild risk-level element
+        clearElement(riskLevelEl);
+        const riskSpan = document.createElement('span');
+        riskSpan.className = 'text-warning';
+        riskSpan.textContent = 'Incomplete Data';
+        riskLevelEl.appendChild(riskSpan);
+
+        // Clear and rebuild recommendation element
+        clearElement(recommendationEl);
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning mb-0';
+        alertDiv.setAttribute('role', 'alert');
+
+        const strongEl = document.createElement('strong');
+        const editIcon = document.createElement('i');
+        editIcon.className = 'fas fa-edit';
+        strongEl.appendChild(editIcon);
+        strongEl.appendChild(document.createTextNode(' Please enter the following missing data:'));
+        alertDiv.appendChild(strongEl);
+
+        const ul = document.createElement('ul');
+        ul.className = 'mb-0 mt-2';
+
+        const displayNames = {
+            'Age': 'Age',
+            'Hemoglobin': 'Hemoglobin',
+            'eGFR': 'eGFR (Glomerular Filtration Rate)',
+            'White Blood Cell': 'White Blood Cell Count'
+        };
+
+        missingCriticalData.forEach(param => {
+            const li = document.createElement('li');
+            const strong = document.createElement('strong');
+            strong.textContent = displayNames[param] || param;
+            li.appendChild(strong);
+            ul.appendChild(li);
+        });
+
+        alertDiv.appendChild(ul);
+
+        const p = document.createElement('p');
+        p.className = 'mb-0 mt-2';
+        const small = document.createElement('small');
+        small.textContent = 'Once complete data is entered, the risk score will be calculated automatically.';
+        p.appendChild(small);
+        alertDiv.appendChild(p);
+
+        recommendationEl.appendChild(alertDiv);
+    }
+
+    /**
+     * Display validation errors warning using safe DOM APIs.
+     * Replaces innerHTML-based approach to prevent XSS.
+     */
+    function displayValidationErrorsWarning(validationErrors) {
+        const totalScoreEl = document.getElementById('total-score');
+        const riskLevelEl = document.getElementById('risk-level');
+        const recommendationEl = document.getElementById('recommendation');
+
+        // Clear and rebuild total-score element
+        clearElement(totalScoreEl);
+        const errorIcon = document.createElement('i');
+        errorIcon.className = 'fas fa-times-circle text-danger';
+        totalScoreEl.appendChild(errorIcon);
+
+        // Clear and rebuild risk-level element
+        clearElement(riskLevelEl);
+        const riskSpan = document.createElement('span');
+        riskSpan.className = 'text-danger';
+        riskSpan.textContent = 'Invalid Values';
+        riskLevelEl.appendChild(riskSpan);
+
+        // Clear and rebuild recommendation element
+        clearElement(recommendationEl);
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger mb-0';
+        alertDiv.setAttribute('role', 'alert');
+
+        const strongEl = document.createElement('strong');
+        const exclamIcon = document.createElement('i');
+        exclamIcon.className = 'fas fa-exclamation-circle';
+        strongEl.appendChild(exclamIcon);
+        strongEl.appendChild(document.createTextNode(' Cannot calculate risk score - Please correct the following errors:'));
+        alertDiv.appendChild(strongEl);
+
+        const ul = document.createElement('ul');
+        ul.className = 'mb-0 mt-2';
+
+        validationErrors.forEach(err => {
+            const li = document.createElement('li');
+            const strong = document.createElement('strong');
+            const cleanParam = err.parameter.replace('PRECISE-HBR - ', '');
+            strong.textContent = cleanParam + ':';
+            li.appendChild(strong);
+            li.appendChild(document.createTextNode(' ' + err.message));
+            ul.appendChild(li);
+        });
+
+        alertDiv.appendChild(ul);
+
+        const p = document.createElement('p');
+        p.className = 'mb-0 mt-2';
+        const small = document.createElement('small');
+        small.textContent = 'Please enter clinically valid values to calculate the risk score.';
+        p.appendChild(small);
+        alertDiv.appendChild(p);
+
+        recommendationEl.appendChild(alertDiv);
+    }
+
+    /**
+     * Safely clear all child elements from an element.
+     */
+    function clearElement(element) {
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
         }
     }
 
@@ -836,29 +1183,8 @@
 
         // If critical data is missing, show warning in the Total Risk Score area
         if (missingCriticalData.length > 0) {
-            // Show warning message instead of risk score
-            document.getElementById('total-score').innerHTML = `
-                <i class="fas fa-exclamation-triangle text-warning"></i>
-            `;
-            document.getElementById('risk-level').innerHTML = `
-                <span class="text-warning">Incomplete Data</span>
-            `;
-            document.getElementById('recommendation').innerHTML = `
-                <div class="alert alert-warning mb-0" role="alert">
-                    <strong><i class="fas fa-edit"></i> Please enter the following missing data:</strong>
-                    <ul class="mb-0 mt-2">
-                        ${missingCriticalData.map(param => {
-                let displayName = param;
-                if (param === 'Age') displayName = 'Age';
-                if (param === 'Hemoglobin') displayName = 'Hemoglobin';
-                if (param === 'eGFR') displayName = 'eGFR (Glomerular Filtration Rate)';
-                if (param === 'White Blood Cell') displayName = 'White Blood Cell Count';
-                return `<li><strong>${escapeHtml(displayName)}</strong></li>`;
-            }).join('')}
-                    </ul>
-                    <p class="mb-0 mt-2"><small>Once complete data is entered, the risk score will be calculated automatically.</small></p>
-                </div>
-            `;
+            // Show warning message instead of risk score using safe DOM APIs
+            displayIncompleteDataWarning(missingCriticalData);
 
             // Hide CCD export button when data is incomplete
             document.getElementById('copyResultBtn').classList.add('d-none');
@@ -866,28 +1192,11 @@
             return; // Stop calculation but keep UI visible
         }
 
-        // === NEW: Check for validation errors that should block calculation ===
+        // === Check for validation errors that should block calculation ===
         const validationErrors = hasValidationErrors();
         if (validationErrors.length > 0) {
-            // Show validation error message instead of risk score
-            document.getElementById('total-score').innerHTML = `
-                <i class="fas fa-times-circle text-danger"></i>
-            `;
-            document.getElementById('risk-level').innerHTML = `
-                <span class="text-danger">Invalid Values</span>
-            `;
-            document.getElementById('recommendation').innerHTML = `
-                <div class="alert alert-danger mb-0" role="alert">
-                    <strong><i class="fas fa-exclamation-circle"></i> Cannot calculate risk score - Please correct the following errors:</strong>
-                    <ul class="mb-0 mt-2">
-                        ${validationErrors.map(err => {
-                const cleanParam = err.parameter.replace('PRECISE-HBR - ', '');
-                return `<li><strong>${escapeHtml(cleanParam)}:</strong> ${escapeHtml(err.message)}</li>`;
-            }).join('')}
-                    </ul>
-                    <p class="mb-0 mt-2"><small>Please enter clinically valid values to calculate the risk score.</small></p>
-                </div>
-            `;
+            // Show validation error message instead of risk score using safe DOM APIs
+            displayValidationErrorsWarning(validationErrors);
 
             // Hide CCD export button when there are validation errors
             document.getElementById('copyResultBtn').classList.add('d-none');
@@ -1101,7 +1410,7 @@
             currentPatientData.recommendation = recommendation;
         }
 
-        // --- NEW: Add/Remove Tradeoff Analysis Link ---
+        // --- Add/Remove Tradeoff Analysis Link ---
         const totalScoreCard = document.getElementById('risk-level').parentElement;
         // First, remove any existing tradeoff link to prevent duplicates
         const existingLink = totalScoreCard.querySelector('#tradeoff-link-container');
@@ -1111,15 +1420,7 @@
 
         // Add the link only if score meets HBR threshold
         if (score >= RISK_THRESHOLDS.HBR) {
-            const tradeoffDiv = document.createElement('div');
-            tradeoffDiv.id = 'tradeoff-link-container';
-            tradeoffDiv.className = 'alert alert-info mt-3';
-            tradeoffDiv.innerHTML = `
-                <strong>High Bleeding Risk Detected (PRECISE-HBR ≥${RISK_THRESHOLDS.HBR}).</strong>
-                <br><br>
-                <a href="/tradeoff_analysis" class="btn btn-info btn-sm mt-2" target="_blank" rel="noopener noreferrer">
-                    <i class="fas fa-chart-line"></i> View Bleeding vs. Thrombosis Trade-off Analysis
-                </a>`;
+            const tradeoffDiv = createTradeoffLinkElement(RISK_THRESHOLDS.HBR);
             totalScoreCard.appendChild(tradeoffDiv);
         }
 
@@ -1137,22 +1438,67 @@
             hbrRecommendationsSection.classList.add('d-none');
         }
 
-        // --- NEW: Outdated Data Warning ---
+        // --- Outdated Data Warning ---
         // Add warning about outdated data
         const outdatedWarningId = 'outdated-data-warning';
         const existingOutdated = totalScoreCard.querySelector(`#${outdatedWarningId}`);
         if (existingOutdated) existingOutdated.remove();
 
         if (hasOutdatedData) {
-            const outdatedDiv = document.createElement('div');
-            outdatedDiv.id = outdatedWarningId;
-            outdatedDiv.className = 'alert alert-danger mt-3 mb-0';
-            outdatedDiv.innerHTML = `
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>Data Outdated (>3 months):</strong> Risk score may be unreliable. Please re-verify values.
-            `;
+            const outdatedDiv = createOutdatedWarningElement(outdatedWarningId);
             totalScoreCard.appendChild(outdatedDiv);
         }
+    }
+
+    /**
+     * Creates tradeoff analysis link element using safe DOM APIs.
+     */
+    function createTradeoffLinkElement(threshold) {
+        const div = document.createElement('div');
+        div.id = 'tradeoff-link-container';
+        div.className = 'alert alert-info mt-3';
+
+        const strong = document.createElement('strong');
+        strong.textContent = 'High Bleeding Risk Detected (PRECISE-HBR ≥' + threshold + ').';
+        div.appendChild(strong);
+
+        div.appendChild(document.createElement('br'));
+        div.appendChild(document.createElement('br'));
+
+        const link = document.createElement('a');
+        link.href = '/tradeoff_analysis';
+        link.className = 'btn btn-info btn-sm mt-2';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-chart-line';
+        link.appendChild(icon);
+        link.appendChild(document.createTextNode(' View Bleeding vs. Thrombosis Trade-off Analysis'));
+
+        div.appendChild(link);
+        return div;
+    }
+
+    /**
+     * Creates outdated data warning element using safe DOM APIs.
+     */
+    function createOutdatedWarningElement(elementId) {
+        const div = document.createElement('div');
+        div.id = elementId;
+        div.className = 'alert alert-danger mt-3 mb-0';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-exclamation-triangle';
+        div.appendChild(icon);
+        div.appendChild(document.createTextNode(' '));
+
+        const strong = document.createElement('strong');
+        strong.textContent = 'Data Outdated (>3 months):';
+        div.appendChild(strong);
+
+        div.appendChild(document.createTextNode(' Risk score may be unreliable. Please re-verify values.'));
+        return div;
     }
 
     function displayError(errorMessage) {
@@ -1171,11 +1517,11 @@
             'PRECISE-HBR - White Blood Cell Count': 'White Blood Cell Count (truncated above 15103)',
             'PRECISE-HBR - Prior Bleeding': 'Previous bleeding',
             'PRECISE-HBR - Oral Anticoagulation': 'Long-term oral anticoagulation',
-            'PRECISE-HBR - Platelet Count': 'Platelet count <100 10?/L',
+            'PRECISE-HBR - Platelet Count': 'Platelet count (<100 10?/L)',
             'PRECISE-HBR - Chronic Bleeding Diathesis': 'Chronic bleeding diathesis',
-            'PRECISE-HBR - Liver Cirrhosis': 'Liver cirrhosis with portal hypertension',
+            'PRECISE-HBR - Liver Cirrhosis': 'Liver cirrhosis (with portal hypertension)',
             'PRECISE-HBR - Active Malignancy': 'Active malignancy',
-            'PRECISE-HBR - NSAIDs/Corticosteroids': 'Chronic use of nsaids or corticosteroids',
+            'PRECISE-HBR - NSAIDs/Corticosteroids': 'Chronic use of nsaids (or corticosteroids)',
             'PRECISE-HBR - ARC-HBR Summary': 'ARC-HBR Elements ?1'
         };
 
@@ -1243,6 +1589,11 @@
             });
 
             const data = await response.json();
+
+            // Validate response is an object with expected structure
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid response format from feedback API');
+            }
 
             if (data.status === 'success') {
                 document.getElementById('feedbackMessage').textContent = data.message;
@@ -1533,6 +1884,7 @@
             `;
 
         // Make a backend call to invalidate the session with CSRF token
+        // This is critical for security - server-side session must be invalidated
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         const headers = csrfMeta ? { 'X-CSRFToken': csrfMeta.getAttribute('content') } : {};
 
@@ -1540,9 +1892,20 @@
             method: 'POST',
             credentials: 'same-origin',
             headers: headers
-        }).catch(function (err) {
-            console.error('Logout request failed:', err);
-        });
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    // Server-side logout may have failed - log warning
+                    // Note: Client UI already shows logged-out state for UX
+                    console.warn('Server logout returned non-OK status:', response.status,
+                        '- Server session may still be active. User should close browser.');
+                }
+            })
+            .catch(function (err) {
+                // Network error - server session may still be active
+                console.error('Logout request failed:', err.message,
+                    '- Server session may still be active. User should close browser.');
+            });
     }
 
     // Attach activity listeners

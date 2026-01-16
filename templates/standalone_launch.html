@@ -3,7 +3,7 @@
 {% block title %}Standalone App Launch{% endblock %}
 
 {% block content %}
-<style>
+<style nonce="{{ csp_nonce() }}">
     /* Custom styles for centering the launch form */
     .centered-container {
         display: flex;

@@ -3,7 +3,7 @@
 {% block title %}Software Documentation{% endblock %}
 
 {% block content %}
-<style>
+<style nonce="{{ csp_nonce() }}">
     /* Custom styles for the documentation page */
     .docs-container {
         display: flex;
@@ -129,7 +129,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce() }}">
     // Simple scrollspy for the docs navigation
     document.addEventListener('DOMContentLoaded', function () {
         const sections = document.querySelectorAll('.docs-content section');
