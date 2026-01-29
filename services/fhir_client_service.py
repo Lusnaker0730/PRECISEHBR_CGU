@@ -11,13 +11,25 @@ from fhirclient.models import condition, medicationrequest, observation, patient
 
 from services.config_loader import config_loader
 from services.fhir_utils import sort_bundle_entries_by_date
+from utils.security_labels import check_resources_security, get_security_summary
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
-    """Custom HTTP adapter with configurable timeout"""
+    """Custom HTTP adapter with short timeout for App Engine Standard.
+    
+    App Engine Standard has a hard 60-second request deadline.
+    Since we make multiple FHIR calls per request, each call needs
+    a short timeout (15s) to ensure total time stays under the limit.
+    Retries are disabled to avoid extending total request time.
+    """
+    
+    # GAE Standard has 60s limit; with ~4 FHIR calls, use 15s per call max
+    DEFAULT_TIMEOUT = 15
     
     def __init__(self, *args, **kwargs):
-        self.timeout = kwargs.pop('timeout', 60)  # 60 seconds default
+        self.timeout = kwargs.pop('timeout', self.DEFAULT_TIMEOUT)
+        # Remove retries parameter if passed (we don't use it)
+        kwargs.pop('retries', None)
         super().__init__(*args, **kwargs)
     
     def send(self, request, **kwargs):
@@ -77,7 +89,7 @@ class FHIRClientService:
             'Content-Type': 'application/fhir+json'
         })
 
-        adapter = TimeoutHTTPAdapter(timeout=90)
+        adapter = TimeoutHTTPAdapter(timeout=15)  # 15s per request, fits GAE 60s limit
         smart.server.session.mount('http://', adapter)
         smart.server.session.mount('https://', adapter)
 
@@ -99,6 +111,15 @@ class FHIRClientService:
             patient_resource = patient.Patient.read(patient_id, self.smart.server)
             return patient_resource.as_json(), None
 
+        except requests.exceptions.ConnectTimeout:
+            logging.error('Connection timeout fetching patient')
+            return None, 'Connection to health records timed out. Please try again.'
+        except requests.exceptions.ReadTimeout:
+            logging.error('Read timeout fetching patient')
+            return None, 'Health records server is slow to respond. Please try again.'
+        except requests.exceptions.Timeout:
+            logging.error('Timeout fetching patient')
+            return None, 'Request timed out. The health records server may be busy.'
         except Exception as e:
             error_msg = str(e)
             logging.error(f'Error fetching patient: {type(e).__name__}')
@@ -155,6 +176,9 @@ class FHIRClientService:
             result = observation.Observation.where(search_params).perform(self.smart.server)
             return self._extract_sorted_observations(result)
 
+        except requests.exceptions.Timeout:
+            logging.warning('Timeout fetching observations by LOINC')
+            return []
         except Exception as e:
             logging.warning(f'Error fetching observations by LOINC: {type(e).__name__}')
             return []
@@ -185,6 +209,9 @@ class FHIRClientService:
                     logging.info(f'Found observations via text search: {term}')
                     return observations
 
+            except requests.exceptions.Timeout:
+                logging.debug(f'Timeout for text search "{term}"')
+                continue
             except Exception as e:
                 logging.debug(f'Text search failed for "{term}": {type(e).__name__}')
 
@@ -225,6 +252,9 @@ class FHIRClientService:
             logging.info(f'Fetched {len(conditions_list)} condition(s)')
             return conditions_list
 
+        except requests.exceptions.Timeout:
+            logging.warning('Timeout fetching conditions - continuing without condition data')
+            return []
         except Exception as e:
             error_str = str(e).lower()
             if '504' in error_str or 'timeout' in error_str:
@@ -342,7 +372,47 @@ class FHIRClientService:
                 patient_id, resource_type, codes, text_terms
             )
 
+        # Check security labels on all retrieved resources
+        all_resources = self._collect_all_resources(raw_data)
+        security_summary = get_security_summary(all_resources)
+        
+        if security_summary['warnings']:
+            raw_data['_security_warnings'] = security_summary['warnings']
+            logging.info(
+                f"Security labels found: {security_summary['restricted_count']} restricted, "
+                f"{security_summary['very_restricted_count']} very restricted resources"
+            )
+        
+        raw_data['_security_summary'] = {
+            'has_restricted': security_summary['requires_elevated_access'],
+            'restricted_count': security_summary['restricted_count'],
+            'very_restricted_count': security_summary['very_restricted_count'],
+        }
+
         return raw_data, None
+    
+    def _collect_all_resources(self, raw_data: dict) -> list:
+        """Collect all FHIR resources from raw_data for security analysis."""
+        resources = []
+        
+        # Add patient
+        if raw_data.get('patient'):
+            resources.append(raw_data['patient'])
+        
+        # Add conditions
+        for condition in raw_data.get('conditions', []):
+            resources.append(condition)
+        
+        # Add observations (various types stored by resource_type keys)
+        for key, value in raw_data.items():
+            if key.startswith('_') or key in ('patient', 'conditions', 'med_requests', 'procedures'):
+                continue
+            if isinstance(value, list):
+                resources.extend(value)
+            elif isinstance(value, dict) and 'resourceType' in value:
+                resources.append(value)
+        
+        return resources
 
 
 def get_fhir_data(fhir_server_url, access_token, patient_id, client_id):

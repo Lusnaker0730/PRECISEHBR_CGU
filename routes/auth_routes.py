@@ -10,6 +10,7 @@ from extensions import csrf
 from services.app_config import Config
 from services.audit_logger import get_audit_logger, log_user_authentication
 from utils.input_validator import validate_url
+from utils.oidc_validator import validate_id_token_safe
 from utils.web_utils import render_error_page
 
 
@@ -236,11 +237,42 @@ def build_token_request(code, launch_params):
 
 
 def store_token_response(token_response, launch_params):
-    """Store the token response in the session."""
+    """Store the token response in the session with id_token validation."""
+    issuer = launch_params.get('iss')
+    
+    # Validate id_token if present (OIDC security enhancement)
+    id_token = token_response.get('id_token')
+    user_identity = None
+    
+    if id_token:
+        claims, validation_error = validate_id_token_safe(
+            id_token=id_token,
+            issuer=issuer,
+            client_id=Config.CLIENT_ID
+        )
+        
+        if validation_error:
+            # Log warning but don't fail - some servers may not provide id_token
+            current_app.logger.warning(
+                f"id_token validation failed: {validation_error}. "
+                "Continuing with access_token only."
+            )
+        elif claims:
+            user_identity = {
+                'subject': claims.get('sub'),
+                'fhir_user': claims.get('fhirUser'),
+                'name': claims.get('name'),
+                'email': claims.get('email'),
+                'auth_methods': claims.get('amr', []),
+            }
+            current_app.logger.info(
+                f"id_token validated successfully. fhirUser: {claims.get('fhirUser')}"
+            )
+    
     session['fhir_data'] = {
         'token': token_response.get('access_token'),
         'patient': token_response.get('patient'),
-        'server': launch_params.get('iss'),
+        'server': issuer,
         'client_id': Config.CLIENT_ID,
         'token_type': token_response.get('token_type', 'Bearer'),
         'expires_in': token_response.get('expires_in'),
@@ -250,6 +282,13 @@ def store_token_response(token_response, launch_params):
 
     if 'patient' in token_response:
         session['patient_id'] = token_response['patient']
+    
+    # Store validated user identity if available
+    if user_identity:
+        session['user_identity'] = user_identity
+        # Also set fhir_user for easy access
+        if user_identity.get('fhir_user'):
+            session['fhir_user'] = user_identity['fhir_user']
 
     safe_token_info = {
         'patient': token_response.get('patient'),
@@ -257,7 +296,10 @@ def store_token_response(token_response, launch_params):
         'token_type': token_response.get('token_type'),
         'expires_in': token_response.get('expires_in'),
         'has_access_token': bool(token_response.get('access_token')),
-        'has_refresh_token': bool(token_response.get('refresh_token'))
+        'has_refresh_token': bool(token_response.get('refresh_token')),
+        'has_id_token': bool(id_token),
+        'id_token_validated': user_identity is not None,
+        'fhir_user': user_identity.get('fhir_user') if user_identity else None
     }
     current_app.logger.info(f"Token exchange successful: {safe_token_info}")
 
@@ -305,6 +347,146 @@ def exchange_code():
     )
 
     return jsonify({"status": "ok", "redirect_url": url_for('web.main_page')})
+
+
+@auth_bp.route('/api/refresh-token', methods=['POST'])
+@csrf.exempt
+def refresh_token():
+    """
+    Refresh the access token using the refresh token.
+    
+    Implements Refresh Token Rotation as per SMART on FHIR security standards:
+    - Exchange refresh token for new access token
+    - Receive new refresh token (rotation)
+    - Old refresh token is invalidated
+    """
+    fhir_data = session.get('fhir_data')
+    
+    if not fhir_data:
+        current_app.logger.warning("Token refresh attempted without session data")
+        return jsonify({"error": "No active session found."}), 401
+    
+    current_refresh_token = fhir_data.get('refresh_token')
+    
+    if not current_refresh_token:
+        current_app.logger.info("Token refresh attempted but no refresh token available")
+        return jsonify({"error": "No refresh token available."}), 400
+    
+    # Get token endpoint from session
+    smart_config = session.get('smart_config', {})
+    token_url = smart_config.get('token_endpoint')
+    
+    if not token_url:
+        # Try to rediscover from launch params
+        launch_params = session.get('launch_params', {})
+        token_url = launch_params.get('token_url')
+    
+    if not token_url:
+        current_app.logger.error("Cannot refresh token: no token endpoint in session")
+        return jsonify({"error": "Token endpoint not found."}), 400
+    
+    # Build refresh token request
+    token_params = {
+        'grant_type': 'refresh_token',
+        'refresh_token': current_refresh_token,
+        'client_id': Config.CLIENT_ID,
+    }
+    
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+    }
+    
+    # Add client credentials if available
+    if Config.CLIENT_SECRET:
+        auth_str = f"{Config.CLIENT_ID}:{Config.CLIENT_SECRET}"
+        auth_b64 = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
+        headers['Authorization'] = f"Basic {auth_b64}"
+        token_params.pop('client_id', None)
+    
+    try:
+        response = requests.post(token_url, data=token_params, headers=headers, timeout=15)
+        response.raise_for_status()
+        token_response = response.json()
+    except requests.exceptions.HTTPError as e:
+        current_app.logger.error(f"Token refresh failed: {e.response.status_code}")
+        
+        # Log security event - refresh token may have been compromised
+        audit_logger = get_audit_logger()
+        audit_logger.log_event(
+            event_type='AUTHENTICATION',
+            action='token_refresh_failed',
+            user_id=session.get('session_id', 'unknown'),
+            patient_id=session.get('patient_id'),
+            outcome='failure',
+            details={
+                'status_code': e.response.status_code,
+                'reason': 'http_error'
+            },
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        # If refresh token is invalid, clear session to force re-authentication
+        if e.response.status_code in (400, 401):
+            session.clear()
+            return jsonify({
+                "error": "Session expired. Please re-authenticate.",
+                "requires_reauth": True
+            }), 401
+        
+        return jsonify({"error": "Failed to refresh token."}), e.response.status_code
+        
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error during token refresh: {e}")
+        return jsonify({"error": "An internal server error occurred."}), 500
+    
+    # Implement Token Rotation: update with new tokens
+    new_access_token = token_response.get('access_token')
+    new_refresh_token = token_response.get('refresh_token')
+    
+    if not new_access_token:
+        current_app.logger.error("Token refresh response missing access_token")
+        return jsonify({"error": "Invalid token response."}), 500
+    
+    # Update session with new tokens (rotation - old refresh token is now invalid)
+    fhir_data['token'] = new_access_token
+    fhir_data['expires_in'] = token_response.get('expires_in')
+    fhir_data['token_type'] = token_response.get('token_type', 'Bearer')
+    
+    # Rotate refresh token if a new one was provided
+    if new_refresh_token:
+        fhir_data['refresh_token'] = new_refresh_token
+        current_app.logger.info("Refresh token rotated successfully")
+    else:
+        # Some servers don't return a new refresh token
+        current_app.logger.info("Token refreshed (no new refresh token provided)")
+    
+    session['fhir_data'] = fhir_data
+    session.modified = True
+    
+    # Log successful refresh
+    audit_logger = get_audit_logger()
+    audit_logger.log_event(
+        event_type='AUTHENTICATION',
+        action='token_refreshed',
+        user_id=session.get('session_id', 'unknown'),
+        patient_id=session.get('patient_id'),
+        outcome='success',
+        details={
+            'new_expires_in': token_response.get('expires_in'),
+            'refresh_token_rotated': bool(new_refresh_token)
+        },
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get('User-Agent')
+    )
+    
+    return jsonify({
+        "status": "ok",
+        "expires_in": token_response.get('expires_in'),
+        "token_type": token_response.get('token_type', 'Bearer')
+    })
+
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():

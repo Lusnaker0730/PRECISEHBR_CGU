@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session, current_app
 from extensions import limiter
 from utils.web_utils import login_required
+from utils.patient_context import require_patient_context
 from services.audit_logger import audit_ephi_access, get_audit_logger
 from services.config_loader import config_loader
 import utils.input_validator as input_validator
@@ -10,6 +11,7 @@ api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/api/calculate_risk', methods=['POST'])
 @login_required
+@require_patient_context  # BOLA protection - validates patient context
 @limiter.limit("10 per minute")
 @audit_ephi_access(action='calculate_risk_score', resource_type='Patient,Observation,Condition')
 def calculate_risk_api():
