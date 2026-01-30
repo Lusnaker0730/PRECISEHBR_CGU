@@ -42,7 +42,7 @@ class ConfidentialityLevel(Enum):
     
     def requires_elevated_access(self) -> bool:
         """Check if this level requires elevated access."""
-        return self in (cls.RESTRICTED, cls.VERY_RESTRICTED)
+        return self in (ConfidentialityLevel.RESTRICTED, ConfidentialityLevel.VERY_RESTRICTED)
     
     def is_sensitive(self) -> bool:
         """Check if this level indicates sensitive data."""

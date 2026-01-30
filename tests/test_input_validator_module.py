@@ -547,5 +547,333 @@ class TestEdgeCases:
         assert is_valid is False
 
 
+# =============================================================================
+# FHIR Search Injection Protection Tests
+# =============================================================================
+
+from utils.input_validator import (
+    validate_loinc_code,
+    validate_fhir_date,
+    validate_search_param_name,
+    validate_search_param_value,
+    validate_fhir_search_params,
+    detect_injection_patterns,
+    sanitize_fhir_search_value,
+    ALLOWED_SEARCH_PARAMS,
+)
+
+
+class TestLOINCCodeValidation:
+    """Test LOINC code validation."""
+    
+    def test_valid_loinc_codes(self):
+        """Test that valid LOINC codes are accepted."""
+        valid_codes = [
+            '718-7',       # Hemoglobin
+            '4548-4',      # HbA1c
+            '2160-0',      # Creatinine
+            '1742-6',      # ALT
+            '14749-6',     # Glucose fasting
+        ]
+        
+        for code in valid_codes:
+            is_valid, error = validate_loinc_code(code)
+            assert is_valid is True, f"Failed for: {code}, error: {error}"
+    
+    def test_reject_invalid_loinc_formats(self):
+        """Test that invalid LOINC formats are rejected."""
+        invalid_codes = [
+            'ABC-1',       # Letters not allowed
+            '123',         # Missing check digit
+            '123456789-1', # Too many digits
+            '1-12',        # Check digit should be single
+            '',
+            None,
+        ]
+        
+        for code in invalid_codes:
+            is_valid, error = validate_loinc_code(code)
+            assert is_valid is False, f"Should reject: {code}"
+    
+    def test_reject_loinc_injection(self):
+        """Test that injection attempts in LOINC codes are rejected."""
+        injection_attempts = [
+            "718-7'; DROP TABLE",
+            "718-7<script>",
+            "718-7; ls",
+        ]
+        
+        for code in injection_attempts:
+            is_valid, error = validate_loinc_code(code)
+            assert is_valid is False, f"Should reject: {code}"
+
+
+class TestFHIRDateValidation:
+    """Test FHIR date format validation."""
+    
+    def test_valid_fhir_dates(self):
+        """Test that valid FHIR date formats are accepted."""
+        valid_dates = [
+            '2024',
+            '2024-01',
+            '2024-01-15',
+            '2024-01-15T10:30:00',
+            '2024-01-15T10:30:00Z',
+            '2024-01-15T10:30:00+08:00',
+            '2024-01-15T10:30:00-05:00',
+        ]
+        
+        for date in valid_dates:
+            is_valid, error = validate_fhir_date(date)
+            assert is_valid is True, f"Failed for: {date}, error: {error}"
+    
+    def test_valid_fhir_date_prefixes(self):
+        """Test FHIR date comparison prefixes."""
+        prefix_dates = [
+            'ge2024-01-01',  # Greater or equal
+            'le2024-12-31',  # Less or equal
+            'gt2024-01-01',  # Greater than
+            'lt2024-12-31',  # Less than
+            'eq2024-06-15',  # Equal
+        ]
+        
+        for date in prefix_dates:
+            is_valid, error = validate_fhir_date(date)
+            assert is_valid is True, f"Failed for: {date}, error: {error}"
+    
+    def test_reject_invalid_date_formats(self):
+        """Test that invalid date formats are rejected."""
+        invalid_dates = [
+            '01-15-2024',     # Wrong order
+            '2024/01/15',     # Wrong separator
+            '24-01-15',       # Short year
+            'January 15',     # Text format
+            '',
+            None,
+        ]
+        
+        for date in invalid_dates:
+            is_valid, error = validate_fhir_date(date)
+            assert is_valid is False, f"Should reject: {date}"
+
+
+class TestSearchParamNameValidation:
+    """Test FHIR search parameter name validation."""
+    
+    def test_allowed_search_params(self):
+        """Test that whitelisted params are allowed."""
+        allowed = ['patient', 'code', 'category', 'date', 'status', '_id', '_count']
+        
+        for param in allowed:
+            is_valid, error = validate_search_param_name(param)
+            assert is_valid is True, f"Failed for: {param}, error: {error}"
+    
+    def test_allowed_params_with_modifiers(self):
+        """Test that modifier suffixes are allowed."""
+        modified_params = [
+            'code:exact',
+            'code:contains',
+            'patient:missing',
+            'date:not',
+        ]
+        
+        for param in modified_params:
+            is_valid, error = validate_search_param_name(param)
+            assert is_valid is True, f"Failed for: {param}, error: {error}"
+    
+    def test_reject_unknown_params(self):
+        """Test that unknown params are rejected."""
+        unknown_params = [
+            'malicious',
+            'unknown_param',
+            '../../../etc/passwd',
+            '<script>',
+        ]
+        
+        for param in unknown_params:
+            is_valid, error = validate_search_param_name(param)
+            assert is_valid is False, f"Should reject: {param}"
+
+
+class TestSearchParamValueValidation:
+    """Test FHIR search parameter value validation."""
+    
+    def test_valid_search_values(self):
+        """Test that valid search values are accepted."""
+        valid_values = [
+            'patient-123',
+            'http://loinc.org|718-7',
+            '2024-01-15',
+            'active',
+        ]
+        
+        for value in valid_values:
+            is_valid, error = validate_search_param_value(value)
+            assert is_valid is True, f"Failed for: {value}, error: {error}"
+    
+    def test_reject_injection_attempts(self):
+        """Test that injection attempts are rejected."""
+        injection_values = [
+            "value'; DROP TABLE",
+            "value<script>alert(1)</script>",
+            "value${env.SECRET}",
+            "value{{template}}",
+            "value../../../etc/passwd",
+        ]
+        
+        for value in injection_values:
+            is_valid, error = validate_search_param_value(value)
+            assert is_valid is False, f"Should reject: {value}"
+    
+    def test_reject_excessive_length(self):
+        """Test that excessively long values are rejected."""
+        long_value = 'a' * 1000
+        is_valid, error = validate_search_param_value(long_value)
+        assert is_valid is False
+
+
+class TestDetectInjectionPatterns:
+    """Test injection pattern detection."""
+    
+    def test_detects_sql_injection(self):
+        """Test detection of SQL injection patterns."""
+        sql_patterns = [
+            "test'; SELECT * FROM users",
+            "test\" OR \"1\"=\"1",
+        ]
+        
+        for pattern in sql_patterns:
+            result = detect_injection_patterns(pattern)
+            assert result is not None, f"Should detect: {pattern}"
+    
+    def test_detects_template_injection(self):
+        """Test detection of template injection patterns."""
+        template_patterns = [
+            "${env.PASSWORD}",
+            "{{constructor.constructor}}",
+        ]
+        
+        for pattern in template_patterns:
+            result = detect_injection_patterns(pattern)
+            assert result is not None, f"Should detect: {pattern}"
+    
+    def test_detects_path_traversal(self):
+        """Test detection of path traversal patterns."""
+        traversal_patterns = [
+            "../../../etc/passwd",
+            "..\\..\\windows",
+        ]
+        
+        for pattern in traversal_patterns:
+            result = detect_injection_patterns(pattern)
+            assert result is not None, f"Should detect: {pattern}"
+    
+    def test_clean_values_pass(self):
+        """Test that clean values pass detection."""
+        clean_values = [
+            "patient-123",
+            "http://loinc.org|718-7",
+            "2024-01-15",
+        ]
+        
+        for value in clean_values:
+            result = detect_injection_patterns(value)
+            assert result is None, f"Should pass: {value}"
+
+
+class TestValidateFHIRSearchParams:
+    """Test comprehensive FHIR search parameter validation."""
+    
+    def test_valid_search_params_dict(self):
+        """Test that valid parameter dictionaries are accepted."""
+        valid_params = {
+            'patient': 'patient-123',
+            'code': 'http://loinc.org|718-7',
+            'date': '2024-01-15',
+        }
+        
+        is_valid, error = validate_fhir_search_params(valid_params)
+        assert is_valid is True, f"Failed: {error}"
+    
+    def test_empty_params_valid(self):
+        """Test that empty params dict is valid."""
+        is_valid, error = validate_fhir_search_params({})
+        assert is_valid is True
+    
+    def test_reject_too_many_params(self):
+        """Test that too many params are rejected."""
+        many_params = {f'param_{i}': f'value_{i}' for i in range(25)}
+        
+        is_valid, error = validate_fhir_search_params(many_params, strict_whitelist=False)
+        assert is_valid is False
+        assert 'many' in error.lower()
+    
+    def test_reject_injection_in_params(self):
+        """Test that injection in any param is rejected."""
+        injection_params = {
+            'patient': "patient'; DROP TABLE"
+        }
+        
+        is_valid, error = validate_fhir_search_params(injection_params)
+        assert is_valid is False
+    
+    def test_validates_date_params(self):
+        """Test that date parameters are validated."""
+        invalid_date_params = {
+            'date': 'invalid-date-format'
+        }
+        
+        is_valid, error = validate_fhir_search_params(invalid_date_params)
+        assert is_valid is False
+    
+    def test_validates_patient_id(self):
+        """Test that patient ID is validated."""
+        invalid_patient_params = {
+            'patient': '../../../etc/passwd'
+        }
+        
+        is_valid, error = validate_fhir_search_params(invalid_patient_params)
+        assert is_valid is False
+
+
+class TestSanitizeFHIRSearchValue:
+    """Test FHIR search value sanitization."""
+    
+    def test_preserves_valid_fhir_syntax(self):
+        """Test that valid FHIR syntax is preserved."""
+        valid_values = [
+            ('http://loinc.org|718-7', 'http://loinc.org|718-7'),
+            ('patient-123', 'patient-123'),
+            ('2024-01-15', '2024-01-15'),
+        ]
+        
+        for input_val, expected in valid_values:
+            result = sanitize_fhir_search_value(input_val)
+            assert result == expected, f"Failed for: {input_val}"
+    
+    def test_removes_dangerous_chars(self):
+        """Test that dangerous characters are removed."""
+        dangerous_values = [
+            ("value<script>", "valuescript"),
+            ("value'injection", "valueinjection"),
+        ]
+        
+        for input_val, _ in dangerous_values:
+            result = sanitize_fhir_search_value(input_val)
+            assert '<' not in result
+            assert "'" not in result
+    
+    def test_truncates_long_values(self):
+        """Test that long values are truncated."""
+        long_value = 'a' * 1000
+        result = sanitize_fhir_search_value(long_value, max_length=100)
+        assert len(result) <= 100
+    
+    def test_handles_empty_input(self):
+        """Test handling of empty input."""
+        assert sanitize_fhir_search_value('') == ''
+        assert sanitize_fhir_search_value(None) == ''
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

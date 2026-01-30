@@ -270,3 +270,272 @@ def validate_state(state: str) -> ValidationResult:
 
     return True, None
 
+
+# =============================================================================
+# FHIR Search Injection Protection
+# =============================================================================
+
+# LOINC code format: 12345-6 (numeric with optional check digit)
+LOINC_PATTERN = re.compile(r'^[0-9]{1,7}-[0-9]$')
+
+# FHIR date formats: YYYY, YYYY-MM, YYYY-MM-DD, or with time
+FHIR_DATE_PATTERN = re.compile(
+    r'^([0-9]{4})(-[0-9]{2})?(-[0-9]{2})?(T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})?)?$'
+)
+
+# Dangerous patterns that could indicate injection attempts
+INJECTION_PATTERNS = [
+    r'[;\'"\\]',           # SQL-like injection chars
+    r'\$\{',               # Template injection
+    r'\{\{',               # Template injection
+    r'<[a-zA-Z]',          # HTML/XML tags
+    r'javascript:',        # XSS
+    r'\\x[0-9a-fA-F]{2}',  # Hex encoded chars
+    r'%[0-9a-fA-F]{2}',    # URL encoded (except allowed ones)
+    r'\.\.',               # Path traversal
+    r'[\r\n]',             # CRLF injection
+]
+
+# Allowed FHIR search parameter names (whitelist)
+ALLOWED_SEARCH_PARAMS = frozenset([
+    # Common parameters
+    'patient', 'subject', '_id', '_count', '_sort', '_include', '_revinclude',
+    # Observation parameters
+    'code', 'category', 'date', 'status', 'value-quantity', 'component-code',
+    # Condition parameters
+    'clinical-status', 'verification-status', 'onset-date', 'recorded-date',
+    # MedicationRequest parameters
+    'medication', 'status', 'authoredon', 'intent',
+    # Consent parameters
+    'scope', 'action', 'actor', 'purpose',
+    # General parameters
+    'identifier', '_lastUpdated', '_profile', '_tag', '_security',
+])
+
+
+def validate_loinc_code(code: str) -> ValidationResult:
+    """
+    Validate LOINC code format.
+    
+    LOINC codes follow the pattern: 12345-6 (up to 7 digits, dash, check digit)
+    
+    Args:
+        code: LOINC code to validate
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if error := _require_string(code, "LOINC code"):
+        return False, error
+    
+    if len(code) > 10:
+        return False, "LOINC code is too long"
+    
+    if not LOINC_PATTERN.match(code):
+        return False, f"Invalid LOINC code format: {code}"
+    
+    return True, None
+
+
+def validate_fhir_date(date_str: str) -> ValidationResult:
+    """
+    Validate FHIR date/dateTime format.
+    
+    Valid formats:
+    - YYYY
+    - YYYY-MM
+    - YYYY-MM-DD
+    - YYYY-MM-DDTHH:MM:SS
+    - YYYY-MM-DDTHH:MM:SSZ
+    - YYYY-MM-DDTHH:MM:SS+HH:MM
+    
+    Args:
+        date_str: Date string to validate
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if error := _require_string(date_str, "Date"):
+        return False, error
+    
+    if len(date_str) > 30:
+        return False, "Date string is too long"
+    
+    # Remove FHIR date prefixes (eq, ne, lt, gt, le, ge, sa, eb, ap)
+    cleaned = date_str
+    for prefix in ['eq', 'ne', 'lt', 'gt', 'le', 'ge', 'sa', 'eb', 'ap']:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            break
+    
+    if not FHIR_DATE_PATTERN.match(cleaned):
+        return False, f"Invalid FHIR date format: {date_str}"
+    
+    return True, None
+
+
+def detect_injection_patterns(value: str) -> Optional[str]:
+    """
+    Detect potential injection attack patterns in a value.
+    
+    Args:
+        value: String value to check
+    
+    Returns:
+        Description of detected pattern, or None if clean
+    """
+    if not value or not isinstance(value, str):
+        return None
+    
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, value, re.IGNORECASE):
+            return f"Potential injection pattern detected: {pattern}"
+    
+    return None
+
+
+def validate_search_param_name(param_name: str) -> ValidationResult:
+    """
+    Validate FHIR search parameter name against whitelist.
+    
+    Args:
+        param_name: Search parameter name to validate
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if error := _require_string(param_name, "Parameter name"):
+        return False, error
+    
+    # Allow modifier suffixes (e.g., :exact, :contains, :missing)
+    base_name = param_name.split(':')[0]
+    
+    if base_name not in ALLOWED_SEARCH_PARAMS:
+        return False, f"Search parameter '{param_name}' is not in whitelist"
+    
+    return True, None
+
+
+def validate_search_param_value(value: str, param_name: str = "value") -> ValidationResult:
+    """
+    Validate a FHIR search parameter value for injection attacks.
+    
+    Args:
+        value: Parameter value to validate
+        param_name: Name of the parameter (for error messages)
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not value:
+        return True, None  # Empty values are allowed
+    
+    if not isinstance(value, str):
+        return False, f"{param_name} must be a string"
+    
+    if len(value) > 500:
+        return False, f"{param_name} is too long"
+    
+    # Check for injection patterns
+    injection = detect_injection_patterns(value)
+    if injection:
+        return False, f"{param_name}: {injection}"
+    
+    return True, None
+
+
+def validate_fhir_search_params(
+    params: dict[str, str],
+    strict_whitelist: bool = True
+) -> ValidationResult:
+    """
+    Validate a dictionary of FHIR search parameters.
+    
+    Performs:
+    1. Parameter name whitelist validation (if strict_whitelist=True)
+    2. Value injection pattern detection
+    3. Special validation for known parameter types (LOINC, dates, etc.)
+    
+    Args:
+        params: Dictionary of search parameters
+        strict_whitelist: If True, reject unknown parameter names
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not isinstance(params, dict):
+        return False, "Search parameters must be a dictionary"
+    
+    if len(params) > 20:
+        return False, "Too many search parameters"
+    
+    for name, value in params.items():
+        # Validate parameter name
+        if strict_whitelist:
+            is_valid, error = validate_search_param_name(name)
+            if not is_valid:
+                return False, error
+        
+        # Skip None/empty values
+        if value is None:
+            continue
+        
+        # Convert to string if necessary
+        str_value = str(value)
+        
+        # Validate value for injection
+        is_valid, error = validate_search_param_value(str_value, name)
+        if not is_valid:
+            return False, error
+        
+        # Special validation for known types
+        if name == 'code' and '|' in str_value:
+            # LOINC code with system prefix: http://loinc.org|12345-6
+            parts = str_value.split('|')
+            if len(parts) == 2:
+                code = parts[1]
+                if LOINC_PATTERN.match(code):
+                    continue  # Valid LOINC format
+                # Not LOINC format, but could be valid other code
+        
+        elif name in ('date', '_lastUpdated', 'onset-date', 'recorded-date', 'authoredon'):
+            is_valid, error = validate_fhir_date(str_value)
+            if not is_valid:
+                return False, error
+        
+        elif name in ('patient', 'subject') and '/' not in str_value:
+            # Validate patient ID format
+            is_valid, error = validate_patient_id(str_value)
+            if not is_valid:
+                return False, error
+    
+    return True, None
+
+
+def sanitize_fhir_search_value(value: str, max_length: int = 500) -> str:
+    """
+    Sanitize a FHIR search parameter value.
+    
+    Removes dangerous characters while preserving valid FHIR syntax.
+    
+    Args:
+        value: Value to sanitize
+        max_length: Maximum allowed length
+    
+    Returns:
+        Sanitized value
+    """
+    if not value or not isinstance(value, str):
+        return ""
+    
+    # Truncate to max length
+    sanitized = value[:max_length]
+    
+    # Allow FHIR-specific characters: alphanumeric, pipe, colon, dash, dot, slash
+    # Remove other potentially dangerous characters
+    sanitized = re.sub(r'[^\w|:.\-/,=~\s]', '', sanitized)
+    
+    # Remove any remaining injection patterns
+    sanitized = re.sub(r'[\r\n]', '', sanitized)
+    
+    return sanitized.strip()

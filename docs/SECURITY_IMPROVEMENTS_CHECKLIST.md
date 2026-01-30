@@ -7,6 +7,41 @@
 
 ## ✅ 已完成項目
 
+### 2026-01-30 已實作
+
+- [x] **meta.security 標籤處理** (標準 6.1.1)
+  - 新增 `utils/security_labels.py`
+  - 支援 HL7 Confidentiality Code System (N, R, V 等級)
+  - 資源安全分析 `analyze_resource_security()`
+  - 已整合至 `services/fhir_client_service.py`
+  - 敏感欄位遮蔽功能 `filter_restricted_fields()`
+  - 完整測試 `tests/test_security_labels.py`
+
+- [x] **Refresh Token Rotation** (標準 2.4.2)
+  - 實作於 `routes/auth_routes.py` `/api/refresh-token` endpoint
+  - 使用新 refresh token 自動取代舊 token
+  - Token 刷新失敗時清除 session 強制重新認證
+  - 稽核日誌記錄 token 刷新事件
+
+- [x] **MFA 驗證 (amr claim)** (標準 3.1.1 / V2)
+  - 新增 `utils/mfa_validator.py` - RFC 8176 標準 MFA 方法
+  - `require_mfa` 裝飾器保護敏感操作
+  - 從 session 檢查 `amr` claim
+  - 完整測試 `tests/test_mfa_validator.py` (21 tests)
+
+- [x] **FHIR Search Injection 防護** (標準 3.2.3)
+  - 擴充 `utils/input_validator.py`
+  - LOINC 代碼驗證、FHIR 日期格式驗證
+  - 白名單搜尋參數驗證
+  - 注入攻擊模式偵測
+  - 完整測試 `tests/test_input_validator_module.py` (27 tests)
+
+- [x] **Consent 資源查詢** (標準 6.2)
+  - 新增 `services/consent_service.py`
+  - 查詢 FHIR Consent 資源確認病患同意
+  - 根據 consent 過濾可存取資源
+  - 完整測試 `tests/test_consent_service.py` (20 tests)
+
 ### 2026-01-29 已實作
 
 - [x] **id_token JWT 驗證** (標準 2.2.1)
@@ -26,53 +61,13 @@
 
 ## 🔴 高優先級 (High Priority)
 
-### FHIR 資源安全
-
-- [ ] **meta.security 標籤處理** (標準 6.1.1)
-  - 讀取 FHIR 資源時檢查 `meta.security` 元素
-  - 處理 `N` (Normal), `R` (Restricted), `V` (Very Restricted) 標籤
-  - 對 R/V 等級資源實施 UI 警告或資料遮蔽
-  - **預估工時**: 4-6 小時
-  - **實作位置**: `services/fhir_data_service.py`
-
-### Token 安全
-
-- [ ] **Refresh Token Rotation** (標準 2.4.2)
-  - 使用 refresh token 換取新 access token 時，invalidate 舊的 refresh token
-  - 限制 refresh token 重放攻擊窗口
-  - **預估工時**: 2-3 小時
-  - **實作位置**: `routes/auth_routes.py`
+✅ **所有高優先級項目已完成！** (已移至「已完成項目」區段)
 
 ---
 
 ## 🟡 中優先級 (Medium Priority)
 
-### 隱私控制
-
-- [ ] **Consent 資源查詢** (標準 6.2)
-  - 存取病患資料前查詢 FHIR Consent 資源
-  - 根據 Consent 過濾可存取的資源類型
-  - 支援細粒度隱私偏好
-  - **預估工時**: 8-12 小時
-  - **實作位置**: `services/fhir_client_service.py`
-
-### 多因子認證
-
-- [ ] **MFA 驗證 (amr claim)** (標準 3.1.1 / V2)
-  - 從 id_token 中檢查 `amr` (Authentication Methods Reference) claim
-  - 對敏感操作要求 MFA 認證
-  - 記錄認證方法到稽核日誌
-  - **預估工時**: 3-4 小時
-  - **實作位置**: `utils/oidc_validator.py`, `routes/auth_routes.py`
-
-### 輸入驗證
-
-- [ ] **FHIR Search Injection 防護** (標準 3.2.3)
-  - 對 FHIR 搜尋參數進行嚴格型別檢查
-  - 使用白名單過濾搜尋參數
-  - 防止 Query String 注入攻擊
-  - **預估工時**: 4-6 小時
-  - **實作位置**: `services/fhir_client_service.py`, `utils/input_validator.py`
+✅ **所有中優先級項目已完成！** (已移至「已完成項目」區段)
 
 ---
 
@@ -148,11 +143,11 @@
 
 | 類別 | 總項目 | 已完成 | 進度 |
 |------|--------|--------|------|
-| 高優先級 | 2 | 0 | 0% |
-| 中優先級 | 3 | 0 | 0% |
+| 高優先級 | 2 | 2 | 100% ✅ |
+| 中優先級 | 3 | 3 | 100% ✅ |
 | 低優先級 | 3 | 0 | 0% |
 | 維運相關 | 4 | 0 | 0% |
-| **已完成** | 2 | 2 | 100% ✅ |
+| **已完成** | 7 | 7 | 100% ✅ |
 
 ---
 
@@ -165,4 +160,4 @@
 
 ---
 
-*最後更新: 2026-01-29*
+*最後更新: 2026-01-30*
