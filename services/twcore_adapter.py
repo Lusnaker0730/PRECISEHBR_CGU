@@ -71,18 +71,48 @@ class TWCoreAdapter:
 
     @classmethod
     def _extract_names(cls, patient_resource, demographics):
-        """Extract Chinese and English names from patient resource."""
-        for name_data in patient_resource.get("name", []):
+        """Extract Chinese and English names from patient resource.
+        
+        Prioritizes names by 'use' field:
+        1. 'official' - Legal name
+        2. 'usual' - Commonly used name
+        3. First available name if no official/usual found
+        """
+        names = patient_resource.get("name", [])
+        if not names:
+            return
+        
+        # Sort names by priority: official first, then usual, then others
+        def name_priority(name_data):
+            use = name_data.get("use", "")
+            if use == "official":
+                return 0
+            elif use == "usual":
+                return 1
+            elif use == "old":
+                return 99  # Old names should be last
+            else:
+                return 2
+        
+        sorted_names = sorted(names, key=name_priority)
+        
+        # Extract name from highest priority entry
+        for name_data in sorted_names:
             text = name_data.get("text")
+            use = name_data.get("use", "unknown")
+            
             if text:
                 if cls._contains_chinese(text):
                     demographics["name_chinese"] = text
                     demographics["name"] = text
-                    logging.debug("Extracted Chinese name from TW Core IG profile")
+                    logging.debug(f"Extracted Chinese name (use={use}) from TW Core IG profile")
+                    return  # Stop after finding best name
                 else:
                     demographics["name_english"] = text
                     if not demographics["name_chinese"]:
                         demographics["name"] = text
+                        logging.debug(f"Extracted English name (use={use}): {text}")
+                        return  # Stop after finding best name
             elif name_data.get("family") or name_data.get("given"):
                 english_name = " ".join(
                     name_data.get("given", []) + [name_data.get("family", "")]
@@ -90,6 +120,8 @@ class TWCoreAdapter:
                 demographics["name_english"] = english_name
                 if not demographics["name_chinese"]:
                     demographics["name"] = english_name
+                    logging.debug(f"Extracted constructed name (use={use}): {english_name}")
+                    return  # Stop after finding best name
 
     @classmethod
     def _extract_identifiers(cls, patient_resource, demographics):

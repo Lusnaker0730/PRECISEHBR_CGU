@@ -31,9 +31,10 @@ def create_app():
     csrf.init_app(app)
     Session(app)
     
-    # Logging Setup
-    logging.basicConfig(level=logging.INFO)
-    app.logger.setLevel(logging.DEBUG)
+    # Logging Setup - unified log level for both root logger and Flask logger
+    log_level = logging.DEBUG if app.config.get('DEBUG') else logging.INFO
+    logging.basicConfig(level=log_level, format='%(levelname)s:%(name)s:%(message)s')
+    app.logger.setLevel(log_level)
     setup_ephi_logging_filter(app)
     
     # Security Headers & CSP

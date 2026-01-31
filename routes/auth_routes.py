@@ -245,9 +245,49 @@ def store_token_response(token_response, launch_params):
     user_identity = None
     
     if id_token:
+        # Decode id_token without verification to get actual issuer
+        # Cerner uses different issuers for FHIR server vs OAuth/OIDC server
+        validation_issuer = issuer  # Default to FHIR server issuer
+        try:
+            import jwt as jwt_debug
+            unverified_claims = jwt_debug.decode(id_token, options={"verify_signature": False})
+            actual_issuer = unverified_claims.get('iss')
+            
+            if actual_issuer and actual_issuer != issuer:
+                # Check if this is a Cerner authorization server issuer
+                # Format: https://authorization.cerner.com/tenants/{tenant-id}/
+                if 'authorization.cerner.com' in actual_issuer:
+                    # Extract tenant ID from both URLs to verify they match
+                    import re
+                    fhir_tenant_match = re.search(r'/r4/([a-f0-9-]+)', issuer)
+                    auth_tenant_match = re.search(r'/tenants/([a-f0-9-]+)', actual_issuer)
+                    
+                    if fhir_tenant_match and auth_tenant_match:
+                        fhir_tenant = fhir_tenant_match.group(1)
+                        auth_tenant = auth_tenant_match.group(1)
+                        
+                        if fhir_tenant == auth_tenant:
+                            # Tenant IDs match - use actual issuer for validation
+                            # Keep the exact issuer string (including trailing slash) for JWT validation
+                            validation_issuer = actual_issuer
+                            current_app.logger.info(
+                                f"Using Cerner OAuth issuer for id_token validation: {validation_issuer}"
+                            )
+                        else:
+                            current_app.logger.warning(
+                                f"Tenant ID mismatch - FHIR: {fhir_tenant}, Auth: {auth_tenant}"
+                            )
+                else:
+                    current_app.logger.info(
+                        f"id_token issuer differs from FHIR server - "
+                        f"Expected: {issuer}, Actual: {actual_issuer}"
+                    )
+        except Exception as debug_err:
+            current_app.logger.debug(f"Could not decode id_token for issuer check: {debug_err}")
+        
         claims, validation_error = validate_id_token_safe(
             id_token=id_token,
-            issuer=issuer,
+            issuer=validation_issuer,
             client_id=Config.CLIENT_ID
         )
         

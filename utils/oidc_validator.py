@@ -61,7 +61,10 @@ class OIDCValidator:
             client_id: OAuth client ID (expected audience)
             clock_skew_seconds: Allowed clock skew for expiration checks
         """
-        self.issuer = issuer.rstrip('/')
+        # Keep original issuer for JWT validation (requires exact match)
+        self.issuer = issuer
+        # Stripped version for URL building (JWKS endpoint discovery)
+        self._issuer_base = issuer.rstrip('/')
         self.client_id = client_id
         self.clock_skew_seconds = clock_skew_seconds
         self._jwks_client: Optional[PyJWKClient] = None
@@ -78,7 +81,7 @@ class OIDCValidator:
             OIDCValidationError: If JWKS URI cannot be discovered
         """
         # Try .well-known/openid-configuration first
-        oidc_config_url = f"{self.issuer}/.well-known/openid-configuration"
+        oidc_config_url = f"{self._issuer_base}/.well-known/openid-configuration"
         
         try:
             response = requests.get(oidc_config_url, timeout=10)
@@ -91,7 +94,7 @@ class OIDCValidator:
             logger.debug(f"OIDC config not found at {oidc_config_url}: {e}")
         
         # Try .well-known/smart-configuration (SMART on FHIR specific)
-        smart_config_url = f"{self.issuer}/.well-known/smart-configuration"
+        smart_config_url = f"{self._issuer_base}/.well-known/smart-configuration"
         
         try:
             response = requests.get(smart_config_url, timeout=10)
@@ -104,7 +107,7 @@ class OIDCValidator:
             logger.debug(f"SMART config not found at {smart_config_url}: {e}")
         
         # Fall back to common JWKS endpoint pattern
-        default_jwks_uri = f"{self.issuer}/.well-known/jwks.json"
+        default_jwks_uri = f"{self._issuer_base}/.well-known/jwks.json"
         logger.info(f"Using default JWKS URI: {default_jwks_uri}")
         return default_jwks_uri
     
