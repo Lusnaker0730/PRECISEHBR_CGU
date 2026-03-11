@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/ -v --tb=short 2>&1 | tail -30)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_config.py -v --tb=short 2>&1 | tail -30)",
+      "Bash(python -m pytest tests/test_auth_security.py -v --tb=short 2>&1 | tail -20)",
+      "Bash(python -m pytest tests/test_config.py tests/test_auth_security.py tests/test_input_validator_module.py -v --tb=short 2>&1 | tail -60)",
+      "Bash(python -m pytest tests/test_config.py tests/test_auth_security.py tests/test_input_validator_module.py -v --tb=short 2>&1 | tail -40)",
+      "Bash(python -m pytest tests/ --tb=short 2>&1 | tail -30)"
+    ]
+  }
+}

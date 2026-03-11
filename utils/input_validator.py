@@ -3,7 +3,9 @@ Input Validation Module
 Provides validation functions for user inputs to prevent injection attacks
 """
 
+import ipaddress
 import re
+import socket
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -11,6 +13,12 @@ ValidationResult = tuple[bool, Optional[str]]
 
 DANGEROUS_URL_CHARS = frozenset(['<', '>', '"', "'", '`', '\x00', '\r', '\n'])
 LOCALHOST_HOSTNAMES = frozenset(['localhost', '127.0.0.1', '0.0.0.0', '::1'])
+# Cloud metadata hostnames that must be blocked to prevent SSRF
+BLOCKED_HOSTNAMES = frozenset([
+    'metadata.google.internal',
+    'metadata.goog',
+    'instance-data',
+])
 
 
 def _require_string(value: str, field_name: str) -> Optional[str]:
@@ -20,27 +28,50 @@ def _require_string(value: str, field_name: str) -> Optional[str]:
     return None
 
 
-def _is_private_ip(hostname: str) -> bool:
-    """Check if hostname is a private IP address."""
-    if hostname.startswith('192.168.') or hostname.startswith('10.'):
-        return True
+def _is_ip_blocked(ip_str: str) -> bool:
+    """Check if an IP address is private, loopback, link-local, or otherwise unsafe.
 
-    if hostname.startswith('172.'):
-        parts = hostname.split('.')
-        if len(parts) >= 2:
-            try:
-                second_octet = int(parts[1])
-                if 16 <= second_octet <= 31:
-                    return True
-            except ValueError:
-                pass
+    Uses Python's ipaddress module for robust checking that handles IPv4, IPv6,
+    IPv4-mapped IPv6 (e.g., ::ffff:127.0.0.1), and all numeric representations.
+    """
+    try:
+        addr = ipaddress.ip_address(ip_str)
+        # Also handle IPv4-mapped IPv6 addresses (e.g., ::ffff:10.0.0.1)
+        if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
+            addr = addr.ipv4_mapped
+        return addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+    except ValueError:
+        return False
 
-    return False
+
+def _resolve_and_check_hostname(hostname: str) -> Optional[str]:
+    """Resolve hostname via DNS and check that all resolved IPs are safe.
+
+    Returns an error message if the hostname resolves to a blocked IP, None if safe.
+    If DNS resolution fails, returns None (allow) — the real HTTP request will
+    also fail, so unresolvable hosts are not an SSRF risk.
+    """
+    try:
+        results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    except socket.gaierror:
+        # Hostname doesn't resolve — not an SSRF risk (request will fail too)
+        return None
+
+    for family, _, _, _, sockaddr in results:
+        ip = sockaddr[0]
+        if _is_ip_blocked(ip):
+            return "URL resolves to a blocked network address"
+
+    return None
 
 
 def validate_url(url: str, allow_localhost: bool = False) -> ValidationResult:
     """
-    Validate URL format and check for security issues.
+    Validate URL format and check for security issues including SSRF.
+
+    Performs both string-based and DNS-resolution-based checks to prevent
+    SSRF bypasses via DNS rebinding, IPv6-mapped addresses, cloud metadata
+    hostnames, and non-standard IP representations.
 
     Args:
         url: URL string to validate
@@ -69,19 +100,27 @@ def validate_url(url: str, allow_localhost: bool = False) -> ValidationResult:
     if not parsed.netloc:
         return False, "URL must have a valid hostname"
 
-    if not allow_localhost:
-        hostname = parsed.hostname
-        if not hostname:
-            return False, "Invalid hostname"
+    hostname = parsed.hostname
+    if not hostname:
+        return False, "Invalid hostname"
 
-        if hostname.lower() in LOCALHOST_HOSTNAMES:
+    if not allow_localhost:
+        # Block known cloud metadata hostnames
+        hostname_lower = hostname.lower()
+        if hostname_lower in LOCALHOST_HOSTNAMES:
             return False, "Localhost URLs are not allowed"
 
-        if _is_private_ip(hostname):
-            return False, "Private IP addresses are not allowed"
+        if hostname_lower in BLOCKED_HOSTNAMES:
+            return False, "Blocked hostname"
 
-        if hostname.startswith('169.254.'):
-            return False, "Link-local addresses are not allowed"
+        # String-based IP check (fast path for obvious private IPs)
+        if _is_ip_blocked(hostname):
+            return False, "Private or reserved IP addresses are not allowed"
+
+        # DNS resolution check: resolve the hostname and verify all resolved IPs
+        dns_error = _resolve_and_check_hostname(hostname)
+        if dns_error:
+            return False, dns_error
 
     return True, None
 

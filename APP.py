@@ -26,6 +26,10 @@ def create_app():
     Config.init_app(app)
     app.config.from_object(Config)
     
+    # Set secret_key for Flask's native secure cookie session
+    # Config.init_app already validates SECRET_KEY is set
+    app.secret_key = app.config['SECRET_KEY']
+
     # Initialize Extensions
     limiter.init_app(app)
     csrf.init_app(app)
@@ -109,7 +113,6 @@ def create_app():
             app.logger.error(f"Health check failed: {str(e)}")
             return jsonify({
                 'status': 'unhealthy',
-                'error': str(e),
                 'timestamp': datetime.datetime.utcnow().isoformat()
             }), 503
 

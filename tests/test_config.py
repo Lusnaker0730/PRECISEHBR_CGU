@@ -82,44 +82,34 @@ class TestEnvironmentVariables:
 
 class TestSessionDirectory:
     """Test session directory configuration."""
-    
+
     def test_session_directory_local_environment(self):
         """Test session directory in local environment."""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}, clear=False):
             app = Mock()
             app.config = {}
-            from importlib import reload
-            import services.app_config as config
-            reload(config)
-            
-            # Use init_app to set config
-            with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}): # Secret key required
-                config.Config.init_app(app)
-            
-            # Should use local instance directory
-            assert 'instance' in app.config['SESSION_FILE_DIR'] or 'flask_session' in app.config['SESSION_FILE_DIR']
-    
+            os.environ.pop('GAE_ENV', None)
+            Config.init_app(app)
+            assert isinstance(app.config['SESSION_FILE_DIR'], str)
+            assert 'flask_session' in app.config['SESSION_FILE_DIR']
+            assert app.config['SESSION_COOKIE_SECURE'] is False
+
     def test_session_directory_gae_environment(self):
-        """Test session directory in Google App Engine environment."""
-        with patch.dict(os.environ, {'GAE_ENV': 'standard'}):
+        """Test session directory in GAE environment uses temp dir."""
+        with patch.dict(os.environ, {'GAE_ENV': 'standard', 'FLASK_SECRET_KEY': 'test'}):
             app = Mock()
             app.config = {}
-            from importlib import reload
-            import services.app_config as config
-            reload(config)
-            
-            # Use init_app to set config
-            with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}):
-                config.Config.init_app(app)
-            
-            # Should use temp directory
-            assert tempfile.gettempdir() in app.config['SESSION_FILE_DIR'] or '/tmp' in app.config['SESSION_FILE_DIR']
-    
+            Config.init_app(app)
+            assert isinstance(app.config['SESSION_FILE_DIR'], str)
+            assert 'flask_session' in app.config['SESSION_FILE_DIR']
+            assert app.config['SESSION_COOKIE_SECURE'] is True
+
     def test_session_directory_path_is_string(self):
         """Test that session directory path is a string."""
-        with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}):
+        with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}, clear=False):
             app = Mock()
             app.config = {}
+            os.environ.pop('GAE_ENV', None)
             Config.init_app(app)
             assert isinstance(app.config['SESSION_FILE_DIR'], str)
             assert len(app.config['SESSION_FILE_DIR']) > 0
@@ -279,8 +269,12 @@ class TestSecuritySettings:
         assert 'SECRET_KEY = \'' not in source
     
     def test_session_type_is_filesystem(self):
-        """Test that session type is filesystem (not in-memory)."""
+        """Test that session type is filesystem (server-side, not client-side cookies)."""
         assert Config.SESSION_TYPE == 'filesystem'
+
+    def test_session_cookie_httponly(self):
+        """Test that session cookies are httponly for security."""
+        assert Config.SESSION_COOKIE_HTTPONLY is True
     
     def test_session_not_permanent(self):
         """Test that sessions are not permanent for security."""

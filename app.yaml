@@ -29,8 +29,12 @@ env_variables:
   # Production Environment
   FLASK_ENV: production
   FLASK_DEBUG: false
-  SMART_CLIENT_ID: "edad05cb-7665-4941-8222-1854e0c3fd04"
+  # Secret key - MUST be stored in Secret Manager for production security
   FLASK_SECRET_KEY: "projects/${PROJECT_ID}/secrets/FLASK_SECRET_KEY/versions/latest"
+  # Client IDs from Secret Manager
+  SMART_CLIENT_ID: "projects/${PROJECT_ID}/secrets/SMART_CLIENT_ID/versions/latest"
+  EPIC_CLIENT_ID: "projects/${PROJECT_ID}/secrets/EPIC_CLIENT_ID/versions/latest"
+  CERNER_CLIENT_ID: "projects/${PROJECT_ID}/secrets/CERNER_CLIENT_ID/versions/latest"
 
 automatic_scaling:
   min_instances: 1

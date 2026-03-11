@@ -71,6 +71,13 @@ def log_auth_failure(error_type, details=None):
 auth_bp = Blueprint('auth', __name__)
 
 
+def _apply_basic_auth(headers, client_id, client_secret):
+    """Add HTTP Basic Auth header for confidential client authentication."""
+    auth_str = f"{client_id}:{client_secret}"
+    auth_b64 = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
+    headers['Authorization'] = f"Basic {auth_b64}"
+
+
 def get_smart_config(iss):
     """Get SMART configuration from the FHIR server.
 
@@ -95,11 +102,12 @@ def get_smart_config(iss):
 def fetch_smart_configuration(iss):
     """Fetch SMART configuration from the FHIR server.
 
-    Attempts .well-known/smart-configuration first, then falls back to FHIRClient discovery.
+    Attempts .well-known/smart-configuration first, then falls back to metadata (Conformance/CapabilityStatement) parsing.
 
     Returns:
         Tuple of (auth_url, token_url) or (None, None) on failure
     """
+    # 1. Try .well-known/smart-configuration (Standard for R4)
     smart_config_url = f"{iss.rstrip('/')}/.well-known/smart-configuration"
 
     try:
@@ -108,14 +116,56 @@ def fetch_smart_configuration(iss):
         config = response.json()
         return config.get('authorization_endpoint'), config.get('token_endpoint')
     except (requests.exceptions.RequestException, ValueError) as e:
-        current_app.logger.warning(f"Failed to fetch .well-known/smart-configuration: {e}. Falling back.")
+        current_app.logger.warning(f"Failed to fetch .well-known/smart-configuration: {e}. Falling back to metadata.")
 
+    # 2. Try fetching metadata directly (Robust fallback for DSTU2/R4)
+    metadata_url = f"{iss.rstrip('/')}/metadata"
+    try:
+        response = requests.get(metadata_url, headers={'Accept': 'application/json, application/fhir+json'}, timeout=15)
+        response.raise_for_status()
+        metadata = response.json()
+        
+        # Parse conformance/capability statement for oauth-uris extension
+        # Structure: rest[0].security.extension[] where url is ...oauth-uris
+        # Inside extension: extension[url=authorize].valueUri, extension[url=token].valueUri
+        
+        rest = metadata.get('rest', [])
+        if not rest:
+            raise ValueError("No 'rest' field in metadata")
+            
+        security = rest[0].get('security', {})
+        extensions = security.get('extension', [])
+        
+        auth_url = None
+        token_url = None
+        
+        SMART_OAUTH_URI = "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris"
+        
+        for ext in extensions:
+            if ext.get('url') == SMART_OAUTH_URI:
+                for sub_ext in ext.get('extension', []):
+                    if sub_ext.get('url') == 'authorize':
+                        auth_url = sub_ext.get('valueUri')
+                    elif sub_ext.get('url') == 'token':
+                        token_url = sub_ext.get('valueUri')
+                break
+        
+        if auth_url and token_url:
+            current_app.logger.info(f"Discovered OAuth URLs from metadata: Auth={auth_url}, Token={token_url}")
+            return auth_url, token_url
+            
+        current_app.logger.warning("Metadata fetched but SMART OAuth extensions not found.")
+        
+    except Exception as e:
+        current_app.logger.error(f"Manual metadata fetch failed for ISS {iss}: {e}")
+
+    # 3. Last resort: Try fhirclient library (though it often fails on DSTU2 auth_settings)
     try:
         fhir_client = client.FHIRClient(settings={'app_id': 'my_app', 'api_base': iss})
         auth_settings = fhir_client.server.auth_settings
         return auth_settings.get('authorize_uri'), auth_settings.get('token_uri')
     except Exception as e:
-        current_app.logger.error(f"FHIR config error for ISS {iss}: {e}")
+        current_app.logger.error(f"fhirclient fallback failed for ISS {iss}: {e}")
         return None, None
 
 
@@ -152,16 +202,19 @@ def launch():
     session['code_challenge'] = code_challenge
     session['smart_config'] = {'token_endpoint': token_url}
 
+    client_id = Config.get_client_id_by_iss(iss)
+
     session['launch_params'] = {
         'iss': iss,
         'token_url': token_url,
         'code_verifier': code_verifier,
-        'state': oauth_state
+        'state': oauth_state,
+        'client_id': client_id
     }
 
     auth_params = {
         'response_type': 'code',
-        'client_id': Config.CLIENT_ID,
+        'client_id': client_id,
         'redirect_uri': Config.REDIRECT_URI,
         'scope': Config.SMART_SCOPES,
         'state': oauth_state,
@@ -214,11 +267,13 @@ def build_token_request(code, launch_params):
     Returns:
         Tuple of (token_params, headers)
     """
+    client_id = launch_params.get('client_id', Config.CLIENT_ID)
+    
     token_params = {
         'grant_type': 'authorization_code',
         'code': code,
         'redirect_uri': Config.REDIRECT_URI,
-        'client_id': Config.CLIENT_ID,
+        'client_id': client_id,
         'code_verifier': launch_params['code_verifier']
     }
 
@@ -227,10 +282,10 @@ def build_token_request(code, launch_params):
         'Accept': 'application/json'
     }
 
+    # Confidential clients: use Basic Auth and remove client_id from body per spec
+    # Public clients (no secret): client_id stays in body
     if Config.CLIENT_SECRET:
-        auth_str = f"{Config.CLIENT_ID}:{Config.CLIENT_SECRET}"
-        auth_b64 = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
-        headers['Authorization'] = f"Basic {auth_b64}"
+        _apply_basic_auth(headers, client_id, Config.CLIENT_SECRET)
         token_params.pop('client_id', None)
 
     return token_params, headers
@@ -239,6 +294,7 @@ def build_token_request(code, launch_params):
 def store_token_response(token_response, launch_params):
     """Store the token response in the session with id_token validation."""
     issuer = launch_params.get('iss')
+    client_id = launch_params.get('client_id', Config.CLIENT_ID)
     
     # Validate id_token if present (OIDC security enhancement)
     id_token = token_response.get('id_token')
@@ -288,7 +344,7 @@ def store_token_response(token_response, launch_params):
         claims, validation_error = validate_id_token_safe(
             id_token=id_token,
             issuer=validation_issuer,
-            client_id=Config.CLIENT_ID
+            client_id=client_id
         )
         
         if validation_error:
@@ -313,7 +369,7 @@ def store_token_response(token_response, launch_params):
         'token': token_response.get('access_token'),
         'patient': token_response.get('patient'),
         'server': issuer,
-        'client_id': Config.CLIENT_ID,
+        'client_id': client_id,
         'token_type': token_response.get('token_type', 'Bearer'),
         'expires_in': token_response.get('expires_in'),
         'scope': token_response.get('scope'),
@@ -361,8 +417,15 @@ def exchange_code():
 
     token_params, headers = build_token_request(data['code'], launch_params)
 
+    # Validate token_url to prevent SSRF via session tampering
+    token_url = launch_params.get('token_url')
+    is_valid, url_error = validate_url(token_url)
+    if not is_valid:
+        current_app.logger.error(f"Invalid token_url in session: {url_error}")
+        return jsonify({"error": "Invalid token endpoint URL."}), 400
+
     try:
-        response = requests.post(launch_params['token_url'], data=token_params, headers=headers, timeout=15)
+        response = requests.post(token_url, data=token_params, headers=headers, timeout=15)
         response.raise_for_status()
         token_response = response.json()
     except requests.exceptions.HTTPError as e:
@@ -424,12 +487,21 @@ def refresh_token():
     if not token_url:
         current_app.logger.error("Cannot refresh token: no token endpoint in session")
         return jsonify({"error": "Token endpoint not found."}), 400
-    
+
+    # Validate token_url to prevent SSRF via session tampering
+    is_valid, url_error = validate_url(token_url)
+    if not is_valid:
+        current_app.logger.error(f"Invalid token_url in session for refresh: {url_error}")
+        return jsonify({"error": "Invalid token endpoint URL."}), 400
+
     # Build refresh token request
+    # Use client_id from original session data if available, otherwise fallback to configured default
+    client_id = fhir_data.get('client_id', Config.CLIENT_ID)
+    
     token_params = {
         'grant_type': 'refresh_token',
         'refresh_token': current_refresh_token,
-        'client_id': Config.CLIENT_ID,
+        'client_id': client_id,
     }
     
     headers = {
@@ -437,11 +509,9 @@ def refresh_token():
         'Accept': 'application/json'
     }
     
-    # Add client credentials if available
+    # Confidential clients: use Basic Auth and remove client_id from body
     if Config.CLIENT_SECRET:
-        auth_str = f"{Config.CLIENT_ID}:{Config.CLIENT_SECRET}"
-        auth_b64 = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
-        headers['Authorization'] = f"Basic {auth_b64}"
+        _apply_basic_auth(headers, client_id, Config.CLIENT_SECRET)
         token_params.pop('client_id', None)
     
     try:

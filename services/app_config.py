@@ -53,11 +53,33 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Client Config
-    CLIENT_ID = get_secret('SMART_CLIENT_ID')
+    DEFAULT_CLIENT_ID = get_secret('SMART_CLIENT_ID')
+    EPIC_CLIENT_ID = get_secret('EPIC_CLIENT_ID')
+    CERNER_CLIENT_ID = get_secret('CERNER_CLIENT_ID')
+    
+    CLIENT_ID = DEFAULT_CLIENT_ID
+
     REDIRECT_URI = get_secret('SMART_REDIRECT_URI')
     CLIENT_SECRET = get_secret('SMART_CLIENT_SECRET')
     SMART_SCOPES = get_secret('SMART_SCOPES', 'launch openid fhirUser profile online_access patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/Procedure.read')
+    EPIC_DOMAIN = 'epic.com'
     CERNER_DOMAIN = 'cerner.com'
+
+    @classmethod
+    def get_client_id_by_iss(cls, iss: str) -> str:
+        """Determines the correct Client ID based on the FHIR server URL (ISS)."""
+        if not iss:
+            return cls.DEFAULT_CLIENT_ID
+
+        iss_lower = iss.lower()
+
+        if cls.EPIC_DOMAIN in iss_lower and cls.EPIC_CLIENT_ID:
+            return cls.EPIC_CLIENT_ID
+
+        if cls.CERNER_DOMAIN in iss_lower and cls.CERNER_CLIENT_ID:
+            return cls.CERNER_CLIENT_ID
+
+        return cls.DEFAULT_CLIENT_ID
 
     @staticmethod
     def init_app(app):
@@ -81,12 +103,15 @@ class Config:
         if Config.REDIRECT_URI:
             Config.REDIRECT_URI = Config.REDIRECT_URI.strip()
         
-        # Determine session directory based on environment
+        # Configure session storage and cookie security per environment
         if os.environ.get('GAE_ENV', '').startswith('standard'):
             import tempfile
             app.config['SESSION_FILE_DIR'] = os.path.join(tempfile.gettempdir(), 'flask_session')
             app.config['SESSION_COOKIE_SECURE'] = True
         else:
-            app.config['SESSION_FILE_DIR'] = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'instance', 'flask_session')
+            app.config['SESSION_FILE_DIR'] = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'instance', 'flask_session'
+            )
             app.config['SESSION_COOKIE_SECURE'] = False
 
