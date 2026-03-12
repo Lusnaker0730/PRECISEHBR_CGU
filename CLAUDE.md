@@ -123,6 +123,102 @@ Score formula: `base(2) + age_score + hb_score + egfr_score + wbc_score + bleedi
 
 Risk thresholds: <=22 = non-HBR, 23-26 = HBR (4% risk), >=27 = Very HBR (6% risk)
 
+## 法規文件自動化生成 (TFDA / IEC 62304 / ISO 14971)
+
+本專案目標為取得 **TFDA SaMD（醫療器材軟體）認證**。開發產出物直接作為法規送審證據，避免事後補文件。
+
+### 適用法規標準
+- **IEC 62304:2006+A1:2015** — 醫療器材軟體生命週期
+- **ISO 14971:2019** — 醫療器材風險管理
+- **IEC 82304-1:2016** — 健康軟體產品安全
+
+### 追溯架構
+
+所有法規產出物透過五層追溯鏈串聯：
+
+```
+SRS（軟體需求規格）→ SDS（軟體設計規格）→ 實作（PR）→ TEST（驗證）→ RISK（風險控制）
+```
+
+- **SRS-001~012**：軟體需求規格（GitHub Issues，標籤 `requirement`）
+- **SDS-001~012**：軟體設計規格（GitHub Issues，標籤 `design`）
+- **RISK-001~009**：風險分析項目，依 ISO 14971（GitHub Issues，標籤 `risk`）
+- **TC-001~014**：驗證與確效測試案例（GitHub Issues，標籤 `test`）
+
+### Pytest 法規追溯標記
+
+測試**必須**使用標記以追溯至需求／風險／設計：
+
+```python
+@pytest.mark.requirement("SRS-001")   # 追溯至軟體需求
+@pytest.mark.risk("RISK-001")         # 追溯至風險控制措施
+@pytest.mark.design("SDS-001")        # 追溯至設計規格
+```
+
+標記定義於 `pytest.ini`，已啟用 `--strict-markers`。
+
+### PR 範本（法規追溯區段）
+
+每個 PR **必須**填寫 `.github/PULL_REQUEST_TEMPLATE.md` 中的法規追溯區段：
+- **Implements**：連結 `[SRS]` 需求 Issue
+- **Design**：連結 `[SDS]` 設計 Issue
+- **Mitigates**：連結 `[RISK]` 風險 Issue
+- **Verifies**：連結 `[TEST]` 測試 Issue
+- **變更分類**：依 IEC 62304 分為 Class A / B / C
+
+### CI/CD 工作流程 — `regulatory-artifacts.yml`
+
+於**發佈標籤**（`v*`）或手動觸發時執行，產生 TFDA 送審文件：
+
+| 產出物 | IEC 62304 條款 | 說明 |
+|--------|---------------|------|
+| `unit-test-results.xml` | §5.5 軟體單元驗證 | JUnit XML 測試結果 |
+| `unit-test-report.html` | §5.5 軟體單元驗證 | 人類可讀測試報告 |
+| `security-test-results.xml` | §5.7 軟體風險管理 | 安全測試結果 |
+| `coverage-html/` | §5.5.3 測試覆蓋率 | 程式碼覆蓋率報告 |
+| `bandit-report.json` | §5.7 風險管理 | 靜態安全分析 |
+| `dependency-audit.json` | §5.7 風險管理 | 相依套件弱點掃描（pip-audit） |
+| `sbom-pip-packages.json` | §5.8 軟體配置管理 | 軟體物料清單（SBOM） |
+| `changelog.md` | §5.8.4 變更歷史 | Git 提交紀錄 |
+| `traceability-matrix.md` | §5.1.1 追溯性 | 從 GitHub Issues 產生的需求追溯矩陣 |
+| `validation-summary.md` | — | 總體驗證摘要（含法規引用） |
+
+產出物保留 **約 7 年**（2555 天），符合 TFDA 紀錄保存要求。
+
+### 腳本工具
+
+| 腳本 | 用途 |
+|------|------|
+| `scripts/create_regulatory_issues.py` | 批次建立 SRS/SDS/RISK/TC GitHub Issues 及標籤。用法：`python scripts/create_regulatory_issues.py [--dry-run]` |
+| `scripts/setup-regulatory-labels.sh` | 建立法規分類用 GitHub 標籤 |
+| `scripts/add_pytest_markers.py` | 為測試檔案加入 `@pytest.mark.requirement` / `@pytest.mark.risk` 標記 |
+
+### GitHub 法規分類標籤
+
+| 標籤 | 顏色 | IEC 62304 對應 |
+|------|------|---------------|
+| `requirement` | 藍色 | §5.2 軟體需求分析 |
+| `design` | 青色 | §5.3 軟體設計 |
+| `risk` | 紅色 | ISO 14971 風險分析 |
+| `test` | 綠色 | §5.5 軟體驗證 |
+| `verification` | 紫色 | §5.5 驗證項目 |
+| `class-A` | 淺藍 | 無傷害可能 |
+| `class-B` | 黃色 | 非嚴重傷害可能 |
+| `class-C` | 紅色 | 死亡或嚴重傷害可能 |
+
+### 關鍵報告
+
+- `reports/test-traceability.json` / `.md` — 測試對需求的追溯對應
+- `reports/regulatory-issue-mapping.json` — SRS/SDS/RISK/TC ID 與 GitHub Issue 編號的對應
+
+### 開發規範
+
+1. **每個功能／修復**應追溯至 `[SRS]` 需求 Issue
+2. **PR 必須連結**需求／設計／風險／測試 Issue（透過 PR 範本）
+3. **新增測試**應包含 `@pytest.mark.requirement("SRS-XXX")` 及／或 `@pytest.mark.risk("RISK-XXX")`
+4. **禁止硬編碼**臨床參數 — 所有數值來自 `config/cdss_config.json`
+5. **安全關鍵變更**（Class C：分數計算、風險分類、臨床狀態偵測）需執行 golden dataset 驗證（`tests/verify_precise_hbr.py`）
+
 ## Important Notes
 
 - The `.env` file is in `.gitignore` but exists locally - never commit secrets
