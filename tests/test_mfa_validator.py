@@ -22,6 +22,11 @@ from utils.mfa_validator import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-005"),
+]
+
 class TestMFAMethodsConstants:
     """Test MFA method constants are correctly defined."""
     

@@ -18,6 +18,12 @@ from services.consent_service import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-011"),
+    pytest.mark.design("SDS-011"),
+]
+
 class TestConsentStatus:
     """Test ConsentStatus enum."""
     

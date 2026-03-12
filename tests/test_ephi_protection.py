@@ -11,6 +11,8 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-008")
 class TestePHIAccessControl:
     """Test ePHI access control mechanisms"""
     
@@ -38,6 +40,7 @@ class TestePHIAccessControl:
             # Should specify individual resources
             assert 'Patient' in scopes or scopes == ''
 
+@pytest.mark.requirement("SRS-006")
 class TestePHITransmission:
     """Test ePHI transmission security"""
     
@@ -65,6 +68,7 @@ class TestePHITransmission:
         # Should require auth but accept POST
         assert response.status_code in [302, 401, 403]
 
+@pytest.mark.requirement("SRS-006")
 class TestePHIStorage:
     """Test ePHI storage security"""
     
@@ -93,6 +97,8 @@ class TestePHIStorage:
         # Flask-Session should encrypt session data
         assert app.config.get('SESSION_TYPE') or app.config.get('TESTING')
 
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.risk("RISK-008")
 class TestePHILogging:
     """Test ePHI logging and audit trail"""
     
@@ -131,6 +137,8 @@ class TestePHILogging:
         # Only audit logs should contain PHI
         assert True  # Logging filter should handle this
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-008")
 class TestePHIDisclosure:
     """Test ePHI disclosure prevention"""
     
@@ -161,6 +169,7 @@ class TestePHIDisclosure:
         if not app.config.get('TESTING'):
             assert 'Referrer-Policy' in response.headers or True
 
+@pytest.mark.requirement("SRS-010")
 class TestDataRetention:
     """Test data retention policies"""
     
@@ -184,6 +193,7 @@ class TestDataRetention:
         # This is typically a configuration check
         assert os.path.exists(os.path.join('services', 'audit_logger.py'))
 
+@pytest.mark.requirement("SRS-010")
 class TestBreachNotification:
     """Test breach notification readiness"""
     
@@ -203,6 +213,7 @@ class TestBreachNotification:
         # Failed attempts should be logged
         assert True
 
+@pytest.mark.requirement("SRS-011")
 class TestPatientPrivacy:
     """Test patient privacy protections"""
     
@@ -230,6 +241,7 @@ class TestPatientPrivacy:
             response = client.get('/main')
         assert response.status_code in [200, 302, 401, 403]
 
+@pytest.mark.requirement("SRS-010")
 class TestSecurityMonitoring:
     """Test security monitoring capabilities"""
     
@@ -252,6 +264,7 @@ class TestSecurityMonitoring:
         logger = get_audit_logger()
         assert logger is not None
 
+@pytest.mark.requirement("SRS-005")
 class TestThirdPartyIntegration:
     """Test third-party integration security"""
     

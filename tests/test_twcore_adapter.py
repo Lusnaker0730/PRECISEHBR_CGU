@@ -2,6 +2,13 @@
 import unittest
 from datetime import date, timedelta
 from services.twcore_adapter import TWCoreAdapter
+import pytest
+
+
+pytestmark = [
+    pytest.mark.requirement("SRS-009"),
+    pytest.mark.design("SDS-009"),
+]
 
 class TestTWCoreAdapter(unittest.TestCase):
 

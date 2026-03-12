@@ -37,9 +37,9 @@
             "truncation_min": 30,
             "truncation_max": 80,
             "threshold": 30,
-            "coefficient": 0.26,
-            "formula": "(effective_age - 30) × 0.26",
-            "score_contribution": "Age-based scoring: 0.26 points per year above 30"
+            "coefficient": 0.25,
+            "formula": "(effective_age - 30) × 0.25",
+            "score_contribution": "Age-based scoring: 0.25 points per year above 30"
         },
         "hemoglobin": {
             "description": "Hemoglobin level in g/dL",
@@ -93,7 +93,8 @@
                 "chronic_bleeding_diathesis",
                 "active_malignancy",
                 "liver_cirrhosis_portal_hypertension",
-                "nsaids_corticosteroids"
+                "nsaids_corticosteroids",
+                "recent_major_surgery_trauma"
             ],
             "score_contribution": "Presence of ≥1 factor increases risk"
         }
@@ -381,6 +382,23 @@
                 "description": "Platelet count < 100 ×10⁹/L"
             },
             "description": "Thrombocytopenia (血小板減少症)"
+        },
+        "recent_major_surgery_trauma": {
+            "snomed_codes": [
+                "417005009",
+                "371626004",
+                "417094008"
+            ],
+            "icd10cm_codes": [
+                "S00", "S10", "S20", "S30", "S40", "S50", "S60", "S70", "S80", "S90", "T07", "T14"
+            ],
+            "text_keywords": [
+                "major surgery",
+                "recent surgery",
+                "major trauma",
+                "severe trauma"
+            ],
+            "description": "Recent major surgery or trauma (近期重大手術或創傷)"
         }
     },
     "medication_keywords": {

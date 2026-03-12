@@ -20,6 +20,12 @@ from utils.oidc_validator import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-005"),
+    pytest.mark.risk("RISK-005"),
+]
+
 class TestOIDCValidatorAlgorithms:
     """Test algorithm security checks."""
     

@@ -18,6 +18,11 @@ from utils.security_labels import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-006"),
+]
+
 class TestExtractSecurityLabels:
     """Test security label extraction from resources."""
     

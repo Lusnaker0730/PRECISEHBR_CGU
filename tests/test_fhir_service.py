@@ -20,6 +20,8 @@ from services import (
 )
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestPatientDemographics:
     """Test patient demographics extraction"""
     
@@ -71,6 +73,8 @@ class TestPatientDemographics:
         assert result['gender'] == 'male'
 
 
+@pytest.mark.requirement("SRS-003")
+@pytest.mark.risk("RISK-003")
 class TestUnitConversion:
     """Test unit conversion service"""
     
@@ -109,6 +113,8 @@ class TestUnitConversion:
         assert result == 10.5
 
 
+@pytest.mark.requirement("SRS-012")
+@pytest.mark.risk("RISK-001")
 class TestConditionChecker:
     """Test condition checking service"""
     
@@ -177,6 +183,8 @@ class TestConditionChecker:
         assert isinstance(result, bool)
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-001")
 class TestRiskCalculation:
     """Test risk calculation functions"""
     
@@ -213,6 +221,7 @@ class TestRiskCalculation:
         assert 'full_label' in result
 
 
+@pytest.mark.requirement("SRS-012")
 class TestArcHbrFactors:
     """Test ARC-HBR factors checking"""
     
@@ -269,6 +278,7 @@ class TestArcHbrFactors:
         assert 'active_malignancy' in result
 
 
+@pytest.mark.requirement("SRS-012")
 class TestMedicationFunctions:
     """Test medication-related functions"""
     
@@ -317,6 +327,7 @@ class TestMedicationFunctions:
         assert 'recommendations' in result
 
 
+@pytest.mark.requirement("SRS-001")
 class TestHelperFunctions:
     """Test helper functions"""
     
@@ -352,6 +363,9 @@ class TestHelperFunctions:
         assert isinstance(result, str)
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.risk("RISK-004")
+@pytest.mark.design("SDS-004")
 class TestErrorHandling:
     """Test error handling"""
     

@@ -7,6 +7,13 @@ import pytest
 from services.unit_conversion_service import UnitConversionService, unit_converter
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-003"),
+    pytest.mark.risk("RISK-003"),
+    pytest.mark.design("SDS-003"),
+]
+
 class TestGetValueFromObservation:
     """Tests for get_value_from_observation method"""
     

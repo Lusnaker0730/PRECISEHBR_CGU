@@ -10,6 +10,9 @@ from unittest.mock import MagicMock, patch
 # Register IEC 62304 regulatory traceability plugin
 pytest_plugins = ["tests.regulatory_plugin"]
 
+# Exclude tests requiring optional dependencies (e.g., selenium)
+collect_ignore_glob = ["verify_web_parallel.py"]
+
 # Add parent directory to path
 import os
 import sys

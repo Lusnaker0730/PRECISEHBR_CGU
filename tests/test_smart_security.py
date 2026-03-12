@@ -11,6 +11,13 @@ from unittest.mock import patch, Mock
 import sys
 import os
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-005"),
+    pytest.mark.risk("RISK-005"),
+    pytest.mark.design("SDS-005"),
+]
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 class TestSMARTLaunchSecurity:

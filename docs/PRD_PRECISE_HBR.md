@@ -123,7 +123,7 @@ PRECISE-HBR SMART on FHIR 是一款臨床決策支援系統 (Clinical Decision S
 
 | 參數 | 資料類型 | 來源 | 係數 |
 |------|----------|------|------|
-| 年齡 | 連續變數 (歲) | Patient 資源 | +0.26/年 (30-80歲截斷) |
+| 年齡 | 連續變數 (歲) | Patient 資源 | +0.25/年 (30-80歲截斷) |
 | 血紅素 | 連續變數 (g/dL) | Observation | +2.5/g/dL 下降 (5-15截斷) |
 | eGFR | 連續變數 (mL/min) | Observation/計算 | +0.05/mL/min 下降 (5-100截斷) |
 | 白血球數 | 連續變數 (10⁹/L) | Observation | +0.8/10⁹/L 上升 (3-15截斷) |
@@ -844,7 +844,7 @@ interface TradeoffResult {
   "coefficients": {
     "age": {
       "threshold": 30,
-      "coefficient": 0.26,
+      "coefficient": 0.25,
       "truncation_min": 30,
       "truncation_max": 80
     },
@@ -983,7 +983,7 @@ GET /api/config/scoring
 {
   "base_score": 2,
   "coefficients": {
-    "age": { "threshold": 30, "coefficient": 0.26, ... },
+    "age": { "threshold": 30, "coefficient": 0.25, ... },
     "hemoglobin": { "threshold": 15.0, "coefficient": 2.5, ... },
     "egfr": { "threshold": 100, "coefficient": 0.05, ... },
     "wbc": { "threshold": 3.0, "coefficient": 0.8, ... }

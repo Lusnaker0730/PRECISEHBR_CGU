@@ -9,6 +9,9 @@ from unittest.mock import Mock, patch, mock_open
 from flask import Flask
 
 
+@pytest.mark.requirement("SRS-008")
+@pytest.mark.requirement("SRS-012")
+@pytest.mark.design("SDS-008")
 class TestMedicationChecking:
     """Test medication checking functionality."""
     
@@ -111,6 +114,8 @@ class TestMedicationChecking:
             pass
 
 
+@pytest.mark.requirement("SRS-008")
+@pytest.mark.design("SDS-008")
 class TestCardCreation:
     """Test CDS Hooks card creation."""
     
@@ -193,6 +198,7 @@ class TestCardCreation:
         assert 'Med1, Med2, Med3' in card['detail']
 
 
+@pytest.mark.requirement("SRS-008")
 class TestCDSServicesEndpoint:
     """Test CDS Services discovery endpoint."""
     
@@ -257,6 +263,7 @@ class TestCDSServicesEndpoint:
             assert response.content_type == 'application/json'
 
 
+@pytest.mark.requirement("SRS-008")
 class TestPreciseHBRHook:
     """Test PRECISE-HBR bleeding risk hook endpoint."""
     
@@ -322,6 +329,7 @@ class TestPreciseHBRHook:
                     assert response.content_type == 'application/json'
 
 
+@pytest.mark.requirement("SRS-008")
 class TestCORSConfiguration:
     """Test CORS configuration for CDS Hooks."""
     
@@ -358,6 +366,7 @@ class TestCORSConfiguration:
             assert any(h.startswith('Access-Control') for h in headers.keys())
 
 
+@pytest.mark.requirement("SRS-008")
 class TestErrorHandling:
     """Test error handling in hooks."""
     
@@ -399,6 +408,7 @@ class TestErrorHandling:
             assert 'services' in data
 
 
+@pytest.mark.requirement("SRS-008")
 class TestIntegration:
     """Integration tests for hooks functionality."""
     

@@ -8,6 +8,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from services.tradeoff_model_calculator import TradeoffModelCalculator
 from services.config_loader import config_loader
+import pytest
+
+
+pytestmark = [
+    pytest.mark.requirement("SRS-007"),
+    pytest.mark.risk("RISK-007"),
+    pytest.mark.design("SDS-007"),
+]
 
 class TestTradeoffModelSafety(unittest.TestCase):
     

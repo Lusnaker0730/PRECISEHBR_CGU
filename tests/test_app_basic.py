@@ -33,6 +33,7 @@ def test_index_redirect(client):
     assert response.status_code in [200, 302, 308]
 
 
+@pytest.mark.requirement("SRS-008")
 def test_cds_services_endpoint(client):
     """Test the CDS services discovery endpoint."""
     response = client.get('/cds-services')
@@ -44,6 +45,7 @@ def test_cds_services_endpoint(client):
         assert isinstance(data['services'], list)
 
 
+@pytest.mark.requirement("SRS-005")
 def test_launch_endpoint_exists(client):
     """Test that the launch endpoint exists."""
     response = client.get('/launch')
@@ -51,6 +53,7 @@ def test_launch_endpoint_exists(client):
     assert response.status_code in [200, 302, 400, 500]
 
 
+@pytest.mark.requirement("SRS-005")
 def test_callback_endpoint_exists(client):
     """Test that the callback endpoint exists."""
     response = client.get('/callback')
@@ -65,6 +68,7 @@ def test_static_files_accessible(client):
     assert response.status_code in [200, 302, 404]
 
 
+@pytest.mark.requirement("SRS-008")
 def test_cors_headers(client):
     """Test CORS headers are present."""
     response = client.options('/cds-services')
@@ -72,6 +76,7 @@ def test_cors_headers(client):
     assert response.status_code in [200, 204, 302]
 
 
+@pytest.mark.requirement("SRS-006")
 def test_security_headers(client):
     """Test security headers are present."""
     response = client.get('/')

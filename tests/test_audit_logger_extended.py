@@ -12,6 +12,8 @@ from unittest.mock import Mock, patch, mock_open
 from services.audit_logger import AuditLogger, audit_ephi_access
 
 
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.design("SDS-010")
 class TestAuditLoggerInitialization:
     """Test AuditLogger initialization."""
     
@@ -58,6 +60,7 @@ class TestAuditLoggerInitialization:
             assert tempfile.gettempdir() in logger.audit_file_path
 
 
+@pytest.mark.requirement("SRS-010")
 class TestAuditEventLogging:
     """Test audit event logging functionality."""
     
@@ -149,6 +152,8 @@ class TestAuditEventLogging:
         assert entry['user_agent'] == 'Mozilla/5.0'
 
 
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.risk("RISK-008")
 class TestTamperResistance:
     """Test tamper-resistance features."""
     
@@ -268,6 +273,7 @@ class TestTamperResistance:
                 assert os.path.exists(audit_logger.audit_file_path)
 
 
+@pytest.mark.requirement("SRS-010")
 class TestAuditDecorator:
     """Test audit_ephi_access decorator."""
     
@@ -328,6 +334,7 @@ class TestAuditDecorator:
             assert result == 'success'
 
 
+@pytest.mark.requirement("SRS-010")
 class TestAuditQuery:
     """Test audit log query functionality."""
     
@@ -390,6 +397,7 @@ class TestAuditQuery:
             assert os.path.exists(audit_logger.audit_file_path)
 
 
+@pytest.mark.requirement("SRS-010")
 class TestErrorHandling:
     """Test error handling in audit logger."""
     
@@ -439,6 +447,7 @@ class TestErrorHandling:
             shutil.rmtree(temp_audit_dir, ignore_errors=True)
 
 
+@pytest.mark.requirement("SRS-010")
 class TestComplianceFeatures:
     """Test compliance-related features."""
     

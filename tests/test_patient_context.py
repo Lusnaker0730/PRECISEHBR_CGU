@@ -20,6 +20,13 @@ from utils.patient_context import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-006"),
+    pytest.mark.risk("RISK-009"),
+    pytest.mark.design("SDS-006"),
+]
+
 @pytest.fixture
 def app():
     """Create a test Flask app."""

@@ -465,10 +465,41 @@ class ConditionCheckerService:
             if plt_val is not None and plt_val < threshold:
                 return True
 
-        # Check ICD-10 diagnosis
         conditions = raw_data.get('conditions', [])
         has_icd10, _ = cls._check_icd10_codes(conditions, icd10_codes)
         return has_icd10
+
+    @classmethod
+    def check_recent_major_surgery_or_trauma(cls, conditions: list) -> tuple[bool, str | None]:
+        """
+        Check for recent major surgery or trauma.
+        Supports SNOMED CT and ICD-10-CM.
+
+        Returns:
+            Tuple of (has_condition, condition_info)
+        """
+        snomed_config = config_loader.get_snomed_codes('recent_major_surgery_trauma')
+        snomed_codes = snomed_config.get('snomed_codes', ['417005009', '371626004'])
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
+        text_keywords = snomed_config.get('text_keywords', ['major surgery', 'major trauma'])
+
+        # Check SNOMED codes
+        for condition in conditions:
+            display = cls._find_snomed_code(condition, snomed_codes)
+            if display is not None:
+                return True, display or 'Recent major surgery or trauma'
+
+        # Check ICD-10 codes
+        has_icd10, icd10_info = cls._check_icd10_codes(conditions, icd10_codes)
+        if has_icd10:
+            return True, icd10_info
+
+        # Check text keywords
+        has_text, text_info = cls._check_text_keywords(conditions, text_keywords)
+        if has_text:
+            return True, text_info
+
+        return False, None
     
     @classmethod
     def check_arc_hbr_factors_detailed(cls, raw_data: dict, medications: list) -> dict:
@@ -485,6 +516,7 @@ class ConditionCheckerService:
         has_active_cancer, _ = cls.check_active_cancer(conditions)
         has_liver_condition, _ = cls.check_liver_cirrhosis_with_portal_hypertension(conditions)
         has_nsaids = cls.check_nsaids_or_corticosteroids(medications)
+        has_recent_surgery, _ = cls.check_recent_major_surgery_or_trauma(conditions)
 
         factors = [
             has_thrombocytopenia,
@@ -492,6 +524,7 @@ class ConditionCheckerService:
             has_active_cancer,
             has_liver_condition,
             has_nsaids,
+            has_recent_surgery,
         ]
 
         return {
@@ -501,6 +534,7 @@ class ConditionCheckerService:
             'active_malignancy': has_active_cancer,
             'liver_cirrhosis': has_liver_condition,
             'nsaids_corticosteroids': has_nsaids,
+            'recent_major_surgery_trauma': has_recent_surgery,
         }
 
 

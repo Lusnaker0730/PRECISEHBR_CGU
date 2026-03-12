@@ -86,6 +86,7 @@ class TestHealthEndpoint:
         assert 'service' in data
         assert 'version' in data
 
+@pytest.mark.requirement("SRS-008")
 class TestCDSServicesEndpoint:
     """Test /cds-services endpoint."""
     

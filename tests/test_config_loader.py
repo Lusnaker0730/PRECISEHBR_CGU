@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from services.config_loader import config_loader
 
 
+@pytest.mark.requirement("SRS-001")
 class TestConfigLoader:
     """Test ConfigLoader class"""
     
@@ -41,6 +42,8 @@ class TestConfigLoader:
         assert 'scoring_method' in scoring_logic
 
 
+@pytest.mark.requirement("SRS-001")
+@pytest.mark.design("SDS-001")
 class TestPreciseHbrParameters:
     """Test PRECISE-HBR parameters retrieval"""
     
@@ -68,6 +71,7 @@ class TestPreciseHbrParameters:
         assert 'truncation_max' in hb_param
 
 
+@pytest.mark.requirement("SRS-012")
 class TestSnomedCodes:
     """Test SNOMED code retrieval"""
     
@@ -110,6 +114,7 @@ class TestSnomedCodes:
         assert codes is None or codes == {}
 
 
+@pytest.mark.requirement("SRS-012")
 class TestMedicationKeywords:
     """Test medication keyword retrieval"""
     
@@ -136,6 +141,7 @@ class TestMedicationKeywords:
         assert isinstance(nsaids, dict)
 
 
+@pytest.mark.requirement("SRS-012")
 class TestBleedingHistoryKeywords:
     """Test bleeding history keyword retrieval"""
     
@@ -150,6 +156,7 @@ class TestBleedingHistoryKeywords:
         assert any('bleeding' in k for k in keywords_lower)
 
 
+@pytest.mark.requirement("SRS-003")
 class TestLaboratoryValues:
     """Test laboratory value configuration"""
     
@@ -182,6 +189,7 @@ class TestLaboratoryValues:
         assert isinstance(plt_codes, tuple)
 
 
+@pytest.mark.requirement("SRS-003")
 class TestUnitConversionConfig:
     """Test unit conversion configuration"""
     
@@ -199,6 +207,7 @@ class TestUnitConversionConfig:
             assert 'target_unit' in hb_config or 'conversion_factors' in hb_config
 
 
+@pytest.mark.requirement("SRS-001")
 class TestConfigReload:
     """Test configuration reload functionality"""
     
@@ -215,6 +224,7 @@ class TestConfigReload:
         assert reloaded_version == initial_version
 
 
+@pytest.mark.requirement("SRS-001")
 class TestConfigValidation:
     """Test configuration validation"""
     
@@ -245,6 +255,7 @@ class TestConfigValidation:
         assert scoring_logic['scoring_method'] in ['PRECISE-HBR', 'ARC-HBR']
 
 
+@pytest.mark.requirement("SRS-001")
 class TestErrorHandling:
     """Test error handling in config loader"""
     
@@ -268,6 +279,8 @@ class TestErrorHandling:
                 assert True
 
 
+@pytest.mark.requirement("SRS-009")
+@pytest.mark.requirement("SRS-012")
 class TestICD10Codes:
     """Test ICD-10 code retrieval"""
     
@@ -285,6 +298,8 @@ class TestICD10Codes:
         assert isinstance(codes['icd10cm_codes'], list)
 
 
+@pytest.mark.requirement("SRS-009")
+@pytest.mark.requirement("SRS-012")
 class TestNHICodes:
     """Test NHI code retrieval"""
     

@@ -563,6 +563,13 @@ from utils.input_validator import (
 )
 
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-006"),
+    pytest.mark.risk("RISK-006"),
+    pytest.mark.design("SDS-006"),
+]
+
 class TestLOINCCodeValidation:
     """Test LOINC code validation."""
     

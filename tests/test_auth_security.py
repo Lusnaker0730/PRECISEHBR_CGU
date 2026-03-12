@@ -19,6 +19,9 @@ from routes.auth_routes import (
 from utils.web_utils import render_error_page
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-005")
 class TestPKCESecurity:
     """Test PKCE (Proof Key for Code Exchange) implementation security."""
 
@@ -97,6 +100,8 @@ class TestPKCESecurity:
         assert len(verifiers) == 100
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
 class TestAuthRouteSecurity:
     """Test security of authentication routes."""
 
@@ -227,6 +232,8 @@ class TestAuthRouteSecurity:
             pass
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
 class TestTokenExchangeSecurity:
     """Test security of token exchange process."""
 
@@ -467,6 +474,7 @@ class TestTokenExchangeSecurity:
                 assert 'HTTP Error' in str(e) or 'web.main_page' in str(e)
 
 
+@pytest.mark.requirement("SRS-005")
 class TestSmartConfigSecurity:
     """Test security of SMART configuration discovery."""
 
@@ -571,6 +579,8 @@ class TestSmartConfigSecurity:
                     assert call.kwargs['timeout'] > 0
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
 class TestSessionSecurity:
     """Test session security in authentication flow."""
 
@@ -652,6 +662,8 @@ class TestSessionSecurity:
                 assert 'client_secret' not in sess
 
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-006")
 class TestErrorHandlingSecurity:
     """Test security aspects of error handling."""
 
@@ -704,6 +716,7 @@ class TestErrorHandlingSecurity:
             pass
 
 
+@pytest.mark.requirement("SRS-005")
 class TestCernerSandboxSecurity:
     """Test security of Cerner sandbox-specific functionality."""
 

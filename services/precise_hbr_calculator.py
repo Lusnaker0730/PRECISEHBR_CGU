@@ -5,6 +5,7 @@ Calculates PRECISE-HBR bleeding risk score
 All scoring coefficients and truncation limits are loaded from cdss_config.json for maintainability.
 """
 import logging
+import math
 from services.unit_conversion_service import unit_converter
 from services.condition_checker import condition_checker
 from services.config_loader import config_loader
@@ -229,7 +230,7 @@ class PreciseHBRCalculator:
         inputs['arc_hbr_count'] = sum([
             arc_details['thrombocytopenia'], arc_details['bleeding_diathesis'],
             arc_details['liver_cirrhosis'], arc_details['active_malignancy'],
-            arc_details['nsaids_corticosteroids']
+            arc_details['nsaids_corticosteroids'], arc_details.get('recent_major_surgery_trauma', False)
         ])
         inputs['metadata']['arc_details'] = arc_details
         
@@ -320,7 +321,7 @@ class PreciseHBRCalculator:
         else:
             breakdown['arc_hbr'] = 0
             
-        return round(score), breakdown
+        return math.floor(score + 0.5), breakdown
 
     @classmethod
     def calculate_score(cls, raw_data, demographics):
@@ -361,7 +362,7 @@ class PreciseHBRCalculator:
             components.append({
                 "parameter": "PRECISE-HBR - Age",
                 "value": f"{age} years (effective: {eff_age})" if age != eff_age else f"{age} years",
-                "score": round(breakdown['age']),
+                "score": math.floor(breakdown['age'] + 0.5),
                 "raw_value": age,
                 "date": "N/A",
                 "description": f"Age score: {breakdown['age']:.2f}"
@@ -381,7 +382,7 @@ class PreciseHBRCalculator:
             components.append({
                 "parameter": "PRECISE-HBR - Hemoglobin",
                 "value": f"{hb} g/dL",
-                "score": round(breakdown['hb']),
+                "score": math.floor(breakdown['hb'] + 0.5),
                 "raw_value": hb,
                 "date": inputs['metadata'].get('hb_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('hb_date', 'N/A')),
@@ -402,7 +403,7 @@ class PreciseHBRCalculator:
             components.append({
                 "parameter": "PRECISE-HBR - eGFR",
                 "value": f"{egfr} mL/min/1.73m²",
-                "score": round(breakdown['egfr']),
+                "score": math.floor(breakdown['egfr'] + 0.5),
                 "raw_value": egfr,
                 "date": inputs['metadata'].get('egfr_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('egfr_date', 'N/A')),
@@ -423,7 +424,7 @@ class PreciseHBRCalculator:
             components.append({
                 "parameter": "PRECISE-HBR - White Blood Cell Count",
                 "value": f"{wbc} 10^9/L",
-                "score": round(breakdown['wbc']),
+                "score": math.floor(breakdown['wbc'] + 0.5),
                 "raw_value": wbc,
                 "date": inputs['metadata'].get('wbc_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('wbc_date', 'N/A')),
@@ -502,6 +503,16 @@ class PreciseHBRCalculator:
         })
 
         components.append({
+            "parameter": "PRECISE-HBR - Recent Major Surgery or Trauma",
+            "value": "Yes" if arc_details.get('recent_major_surgery_trauma') else "No",
+            "score": 0,
+            "is_present": arc_details.get('recent_major_surgery_trauma', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Recent major surgery or trauma"
+        })
+
+        components.append({
             "parameter": "PRECISE-HBR - ARC-HBR Summary",
             "value": f"{inputs['arc_hbr_count']} factor(s)",
             "score": breakdown['arc_hbr'],
@@ -517,8 +528,8 @@ class PreciseHBRCalculator:
             data_warnings.append({
                 'type': 'missing_fhir_resource',
                 'resource': 'Condition',
-                'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy) may be missed.',
-                'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy']
+                'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy, recent major surgery or trauma) may be missed.',
+                'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy', 'Recent Major Surgery or Trauma']
             })
         
         if 'Medication' in empty_resources:

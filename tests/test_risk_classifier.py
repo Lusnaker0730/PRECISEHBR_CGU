@@ -14,6 +14,7 @@ from services.risk_classifier import risk_classifier
 
 @pytest.mark.requirement("SRS-002")
 @pytest.mark.risk("RISK-001")
+@pytest.mark.design("SDS-002")
 class TestRiskClassification:
     """Test risk classification based on PRECISE-HBR score
 
@@ -69,6 +70,10 @@ class TestRiskClassification:
         assert result['category'] == 'Very HBR'
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-001")
+@pytest.mark.risk("RISK-002")
+@pytest.mark.design("SDS-002")
 class TestBleedingRiskPercentage:
     """Test bleeding risk percentage calculation"""
     
@@ -114,6 +119,8 @@ class TestBleedingRiskPercentage:
             assert '%' in result or '.' in result
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.design("SDS-002")
 class TestColorCoding:
     """Test color coding for risk levels"""
     
@@ -139,6 +146,8 @@ class TestColorCoding:
         assert result['color'] == 'danger'
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.design("SDS-002")
 class TestRiskCategoryInfo:
     """Test detailed risk category information"""
     
@@ -163,6 +172,8 @@ class TestRiskCategoryInfo:
         assert result1['color'] == result2['color']
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-001")
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
     
@@ -198,6 +209,8 @@ class TestEdgeCases:
 
 @pytest.mark.requirement("SRS-002")
 @pytest.mark.risk("RISK-001")
+@pytest.mark.risk("RISK-002")
+@pytest.mark.design("SDS-002")
 class TestRiskThresholds:
     """Test risk threshold boundaries - verifies exact cutoff values per SRS-002"""
 
@@ -231,6 +244,8 @@ class TestRiskThresholds:
 
 
 @pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-002")
+@pytest.mark.design("SDS-002")
 class TestBleedingRiskFormula:
     """Test bleeding risk calculation formula"""
 
@@ -261,6 +276,7 @@ class TestBleedingRiskFormula:
             assert 0 <= risk <= 100
 
 
+@pytest.mark.requirement("SRS-002")
 class TestSingletonPattern:
     """Test singleton pattern implementation"""
     
@@ -271,6 +287,8 @@ class TestSingletonPattern:
         assert instance1 is instance2
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.design("SDS-002")
 class TestReturnValueStructure:
     """Test structure of return values"""
     

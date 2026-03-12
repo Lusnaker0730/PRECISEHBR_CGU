@@ -10,6 +10,12 @@ from unittest.mock import patch, Mock
 import sys
 import os
 
+
+pytestmark = [
+    pytest.mark.requirement("SRS-006"),
+    pytest.mark.risk("RISK-006"),
+]
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 class TestOWASPTop10:

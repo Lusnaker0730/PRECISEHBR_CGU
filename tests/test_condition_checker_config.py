@@ -11,6 +11,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from services.condition_checker import condition_checker
 from services.config_loader import config_loader
+import pytest
+
+
+pytestmark = [
+    pytest.mark.requirement("SRS-012"),
+    pytest.mark.risk("RISK-001"),
+    pytest.mark.design("SDS-012"),
+]
 
 class TestConditionCheckerConfigIntegration(unittest.TestCase):
     """Test that ConditionChecker uses the updated configuration"""
