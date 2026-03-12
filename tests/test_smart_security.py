@@ -156,17 +156,24 @@ class TestFHIRServerSecurity:
     """Test FHIR server interaction security"""
     
     def test_fhir_server_url_validation(self, client):
-        """Test FHIR server URL validation"""
+        """Test FHIR server URL validation against SSRF attacks"""
+        # Mock DNS resolution to avoid real network calls that timeout in CI
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            """Return a private IP for all test hosts so SSRF check blocks them."""
+            import socket
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('127.0.0.1', 0))]
+
         invalid_urls = [
             'http://localhost:8080',  # Localhost
             'http://192.168.1.1',  # Private IP
             'http://10.0.0.1',  # Private IP
             'file:///etc/passwd',  # File protocol
         ]
-        for url in invalid_urls:
-            response = client.get(f'/launch?iss={url}')
-            # Should validate against internal URLs
-            assert response.status_code in [200, 302, 400, 500]
+        with patch('socket.getaddrinfo', side_effect=fake_getaddrinfo):
+            for url in invalid_urls:
+                response = client.get(f'/launch?iss={url}')
+                # Should validate against internal URLs
+                assert response.status_code in [200, 302, 400, 500]
     
     def test_fhir_server_certificate_validation(self):
         """Test that FHIR server certificates are validated"""

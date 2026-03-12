@@ -1,0 +1,236 @@
+name: Regulatory Artifacts (IEC 62304)
+
+# Generates artifacts for TFDA software validation report
+# Runs on every release tag and can be triggered manually
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Job 1: Run all tests with JUnit XML + HTML reports
+  validation-tests:
+    name: Software Validation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for traceability
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-flask pytest-html pytest-metadata
+
+    - name: Create test directories
+      run: mkdir -p instance/flask_session reports
+
+    - name: Run Unit Tests (IEC 62304 - Software Unit Verification)
+      run: |
+        pytest tests/ \
+          -m "not slow" \
+          --ignore=tests/test_performance.py \
+          --junitxml=reports/unit-test-results.xml \
+          --html=reports/unit-test-report.html --self-contained-html \
+          --cov=. --cov-report=xml:reports/coverage.xml \
+          --cov-report=html:reports/coverage-html \
+          --cov-report=term-missing \
+          -v --tb=short \
+          2>&1 | tee reports/test-output.log
+      env:
+        FLASK_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+        SMART_CLIENT_ID: test-client-id
+        SMART_REDIRECT_URI: http://localhost:8080/callback
+        TESTING: "true"
+
+    - name: Run Security Tests (Risk Control Verification)
+      if: always()
+      run: |
+        pytest tests/test_security*.py tests/test_auth*.py tests/test_audit*.py tests/test_input_validator*.py \
+          --junitxml=reports/security-test-results.xml \
+          --html=reports/security-test-report.html --self-contained-html \
+          -v --tb=short \
+          2>&1 | tee reports/security-test-output.log || true
+      env:
+        FLASK_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+        SMART_CLIENT_ID: test-client-id
+        SMART_REDIRECT_URI: http://localhost:8080/callback
+        TESTING: "true"
+
+    - name: Generate Software Bill of Materials (SBOM)
+      run: |
+        pip list --format=json > reports/sbom-pip-packages.json
+        pip list --format=columns > reports/sbom-pip-packages.txt
+        echo "Generated at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > reports/sbom-metadata.txt
+        echo "Python version: $(python --version)" >> reports/sbom-metadata.txt
+        echo "OS: $(uname -a)" >> reports/sbom-metadata.txt
+
+    - name: Run pip-audit (Dependency Vulnerability Scan)
+      if: always()
+      run: |
+        pip install pip-audit
+        pip-audit --format=json --output=reports/dependency-audit.json || true
+        pip-audit --format=columns --output=reports/dependency-audit.txt || true
+
+    - name: Run Bandit (Static Security Analysis)
+      if: always()
+      run: |
+        pip install bandit
+        bandit -r . -f json -o reports/bandit-report.json \
+          --exclude ./tests,./venv,./.git,./twcdi || true
+        bandit -r . -f txt -o reports/bandit-report.txt \
+          --exclude ./tests,./venv,./.git,./twcdi || true
+
+    - name: Generate Git Change Log
+      run: |
+        echo "# Change Log" > reports/changelog.md
+        echo "Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> reports/changelog.md
+        echo "" >> reports/changelog.md
+        git log --oneline --no-decorate -50 >> reports/changelog.md
+        echo "" >> reports/changelog.md
+        echo "# Detailed Log (last 50 commits)" >> reports/changelog.md
+        git log --format="## %H%n- **Date**: %ai%n- **Author**: %an <%ae>%n- **Message**: %s%n" -50 >> reports/changelog.md
+
+    - name: Generate Validation Summary
+      if: always()
+      run: |
+        VERSION="${{ github.event.inputs.release_version || github.ref_name }}"
+        cat > reports/validation-summary.md << SUMMARY_EOF
+        # Software Validation Summary Report
+        ## PRECISE-HBR SMART on FHIR Application
+
+        **Version**: ${VERSION}
+        **Date**: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+        **Git SHA**: ${{ github.sha }}
+        **Branch**: ${{ github.ref_name }}
+        **CI Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        ## Regulatory References
+        - IEC 62304:2006+A1:2015 - Medical device software lifecycle
+        - ISO 14971:2019 - Risk management for medical devices
+        - IEC 82304-1:2016 - Health software product safety
+
+        ## Artifacts Included
+        | Artifact | IEC 62304 Clause | Description |
+        |----------|-----------------|-------------|
+        | unit-test-results.xml | 5.5 Software Unit Verification | JUnit XML test results |
+        | unit-test-report.html | 5.5 Software Unit Verification | Human-readable test report |
+        | security-test-results.xml | 5.7 Software Risk Management | Security test results |
+        | coverage-html/ | 5.5.3 Test Coverage | Code coverage report |
+        | bandit-report.json | 5.7 Risk Management | Static security analysis |
+        | dependency-audit.json | 5.7 Risk Management | Dependency vulnerability scan |
+        | sbom-pip-packages.json | 5.8 Software Configuration | Software Bill of Materials |
+        | changelog.md | 5.8.4 Change History | Git commit history |
+        | traceability-matrix.md | 5.1.1 Traceability | Requirements traceability |
+
+        ## Test Execution Environment
+        - **OS**: Ubuntu (GitHub-hosted runner)
+        - **Python**: ${{ env.PYTHON_VERSION }}
+        - **Runner**: ${{ runner.name }}
+        SUMMARY_EOF
+
+    - name: Upload Regulatory Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: regulatory-artifacts-${{ github.sha }}
+        path: reports/
+        retention-days: 2555  # ~7 years (TFDA record retention)
+
+    - name: Post Summary
+      if: always()
+      run: |
+        echo "## Regulatory Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Artifacts for TFDA submission have been generated and uploaded." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+        for f in reports/*.xml reports/*.html reports/*.json reports/*.md; do
+          if [ -f "$f" ]; then
+            echo "| $(basename $f) | Generated |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+
+  # Job 2: Generate Traceability Matrix from GitHub Issues
+  traceability-matrix:
+    name: Traceability Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate Traceability Matrix
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        mkdir -p reports
+
+        cat > reports/traceability-matrix.md << 'HEADER'
+        # Requirements Traceability Matrix
+        ## PRECISE-HBR SMART on FHIR Application
+
+        Per IEC 62304 clause 5.1.1, this matrix traces:
+        - Software Requirements (SRS) -> Design (SDS) -> Implementation (PR) -> Verification (TEST) -> Risk (RISK)
+
+        HEADER
+
+        echo "### Software Requirements [SRS]" >> reports/traceability-matrix.md
+        echo "| Issue | Title | Status | Linked Design | Linked Tests |" >> reports/traceability-matrix.md
+        echo "|-------|-------|--------|---------------|--------------|" >> reports/traceability-matrix.md
+
+        gh issue list --label "requirement" --state all --limit 200 --json number,title,state,body \
+          --jq '.[] | "| #\(.number) | \(.title) | \(.state) | - | - |"' \
+          >> reports/traceability-matrix.md 2>/dev/null || echo "| - | No requirements found | - | - | - |" >> reports/traceability-matrix.md
+
+        echo "" >> reports/traceability-matrix.md
+        echo "### Risk Analysis [RISK]" >> reports/traceability-matrix.md
+        echo "| Issue | Title | Status | Severity | Mitigated By |" >> reports/traceability-matrix.md
+        echo "|-------|-------|--------|----------|--------------|" >> reports/traceability-matrix.md
+
+        gh issue list --label "risk" --state all --limit 200 --json number,title,state \
+          --jq '.[] | "| #\(.number) | \(.title) | \(.state) | - | - |"' \
+          >> reports/traceability-matrix.md 2>/dev/null || echo "| - | No risks found | - | - | - |" >> reports/traceability-matrix.md
+
+        echo "" >> reports/traceability-matrix.md
+        echo "### Test Cases [TEST]" >> reports/traceability-matrix.md
+        echo "| Issue | Title | Status | Traces to Req |" >> reports/traceability-matrix.md
+        echo "|-------|-------|--------|---------------|" >> reports/traceability-matrix.md
+
+        gh issue list --label "test" --state all --limit 200 --json number,title,state \
+          --jq '.[] | "| #\(.number) | \(.title) | \(.state) | - |"' \
+          >> reports/traceability-matrix.md 2>/dev/null || echo "| - | No test cases found | - | - |" >> reports/traceability-matrix.md
+
+        echo "" >> reports/traceability-matrix.md
+        echo "---" >> reports/traceability-matrix.md
+        echo "Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> reports/traceability-matrix.md
+        echo "CI Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> reports/traceability-matrix.md
+
+    - name: Upload Traceability Matrix
+      uses: actions/upload-artifact@v4
+      with:
+        name: traceability-matrix-${{ github.sha }}
+        path: reports/traceability-matrix.md
+        retention-days: 2555

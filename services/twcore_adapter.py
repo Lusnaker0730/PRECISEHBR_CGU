@@ -96,32 +96,32 @@ class TWCoreAdapter:
         
         sorted_names = sorted(names, key=name_priority)
         
-        # Extract name from highest priority entry
+        # Extract names: collect both Chinese and English from all entries
         for name_data in sorted_names:
             text = name_data.get("text")
             use = name_data.get("use", "unknown")
-            
+
             if text:
                 if cls._contains_chinese(text):
-                    demographics["name_chinese"] = text
-                    demographics["name"] = text
-                    logging.debug(f"Extracted Chinese name (use={use}) from TW Core IG profile")
-                    return  # Stop after finding best name
-                else:
-                    demographics["name_english"] = text
                     if not demographics["name_chinese"]:
+                        demographics["name_chinese"] = text
                         demographics["name"] = text
+                        logging.debug(f"Extracted Chinese name (use={use}) from TW Core IG profile")
+                else:
+                    if not demographics["name_english"]:
+                        demographics["name_english"] = text
+                        if not demographics["name_chinese"]:
+                            demographics["name"] = text
                         logging.debug(f"Extracted English name (use={use}): {text}")
-                        return  # Stop after finding best name
             elif name_data.get("family") or name_data.get("given"):
-                english_name = " ".join(
-                    name_data.get("given", []) + [name_data.get("family", "")]
-                ).strip()
-                demographics["name_english"] = english_name
-                if not demographics["name_chinese"]:
-                    demographics["name"] = english_name
+                if not demographics["name_english"]:
+                    english_name = " ".join(
+                        name_data.get("given", []) + [name_data.get("family", "")]
+                    ).strip()
+                    demographics["name_english"] = english_name
+                    if not demographics["name_chinese"]:
+                        demographics["name"] = english_name
                     logging.debug(f"Extracted constructed name (use={use}): {english_name}")
-                    return  # Stop after finding best name
 
     @classmethod
     def _extract_identifiers(cls, patient_resource, demographics):
