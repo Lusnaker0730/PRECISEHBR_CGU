@@ -12,9 +12,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from services.risk_classifier import risk_classifier
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-001")
 class TestRiskClassification:
-    """Test risk classification based on PRECISE-HBR score"""
-    
+    """Test risk classification based on PRECISE-HBR score
+
+    Traces to:
+    - SRS-002: System shall classify PRECISE-HBR scores into risk categories
+    - RISK-001: Incorrect classification may lead to inappropriate DAPT decisions
+    """
+
     def test_classify_low_risk(self):
         """Test classification of low risk patient"""
         result = risk_classifier.get_risk_category_info(15)
@@ -22,13 +29,13 @@ class TestRiskClassification:
         assert 'category' in result
         assert 'color' in result
         assert 'Not high bleeding risk' in result['category']
-    
+
     def test_classify_moderate_risk(self):
         """Test classification of moderate risk patient"""
         result = risk_classifier.get_risk_category_info(24)
         assert result is not None
         assert result['category'] == 'HBR'
-    
+
     def test_classify_high_risk(self):
         """Test classification of high risk patient"""
         result = risk_classifier.get_risk_category_info(28)
@@ -189,9 +196,11 @@ class TestEdgeCases:
             assert True
 
 
+@pytest.mark.requirement("SRS-002")
+@pytest.mark.risk("RISK-001")
 class TestRiskThresholds:
-    """Test risk threshold boundaries"""
-    
+    """Test risk threshold boundaries - verifies exact cutoff values per SRS-002"""
+
     def test_threshold_22_not_hbr(self):
         """Test score 22 (just below HBR threshold)"""
         result = risk_classifier.get_risk_category_info(22)
@@ -221,9 +230,10 @@ class TestRiskThresholds:
         assert result['category'] == 'Very HBR'
 
 
+@pytest.mark.requirement("SRS-002")
 class TestBleedingRiskFormula:
     """Test bleeding risk calculation formula"""
-    
+
     def test_bleeding_risk_increases_with_score(self):
         """Test that bleeding risk increases with score"""
         risk_15 = risk_classifier.calculate_bleeding_risk_percentage(15)

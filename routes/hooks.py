@@ -207,7 +207,7 @@ def handle_precise_hbr_bleeding_risk_hook():
     Shared handler for PRECISE-HBR high bleeding risk alerts.
     """
     try:
-        hook_request = request.get_json()
+        hook_request = request.get_json(silent=True)  # C-03
         if not hook_request:
             return jsonify({"cards": []}), 400
 
@@ -315,7 +315,9 @@ def precise_hbr_patient_view():
     This hook is triggered automatically when a clinician opens a patient's chart.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)  # C-03
+        if not data:
+            return jsonify({"cards": []}), 400
         logging.info(f"Received patient-view CDS Hook request: {data.get('hook')}")
         
         # Extract context and prefetch data

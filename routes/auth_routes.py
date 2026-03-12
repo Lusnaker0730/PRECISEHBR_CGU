@@ -1,12 +1,13 @@
 import base64
 import hashlib
 import os
+import time
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 import requests
 from fhirclient import client
 
-from extensions import csrf
+from extensions import csrf, limiter
 from services.app_config import Config
 from services.audit_logger import get_audit_logger, log_user_authentication
 from utils.input_validator import validate_url
@@ -15,6 +16,8 @@ from utils.web_utils import render_error_page
 
 
 AUTH_METHOD = 'SMART_on_FHIR_OAuth2'
+PKCE_MAX_AGE_SECONDS = 600
+REFRESH_TOKEN_MIN_INTERVAL_SECONDS = 30
 
 
 def generate_pkce_parameters():
@@ -110,9 +113,13 @@ def fetch_smart_configuration(iss):
     # 1. Try .well-known/smart-configuration (Standard for R4)
     smart_config_url = f"{iss.rstrip('/')}/.well-known/smart-configuration"
 
+    MAX_METADATA_RESPONSE_SIZE = 1_000_000  # H-03
+
     try:
         response = requests.get(smart_config_url, headers={'Accept': 'application/json'}, timeout=10)
         response.raise_for_status()
+        if hasattr(response, 'content') and hasattr(response.content, '__len__') and len(response.content) > MAX_METADATA_RESPONSE_SIZE:
+            raise ValueError("SMART configuration response exceeds size limit")
         config = response.json()
         return config.get('authorization_endpoint'), config.get('token_endpoint')
     except (requests.exceptions.RequestException, ValueError) as e:
@@ -123,6 +130,8 @@ def fetch_smart_configuration(iss):
     try:
         response = requests.get(metadata_url, headers={'Accept': 'application/json, application/fhir+json'}, timeout=15)
         response.raise_for_status()
+        if hasattr(response, 'content') and hasattr(response.content, '__len__') and len(response.content) > MAX_METADATA_RESPONSE_SIZE:
+            raise ValueError("Metadata response exceeds size limit")
         metadata = response.json()
         
         # Parse conformance/capability statement for oauth-uris extension
@@ -196,10 +205,16 @@ def launch():
     code_verifier, code_challenge = generate_pkce_parameters()
     oauth_state = generate_oauth_state()
 
-    # Store directly in session for test compatibility
+    # H-02: Validate token_url BEFORE storing in session
+    is_valid_token, url_err = validate_url(token_url, allow_localhost=current_app.config.get('TESTING', False))
+    if not is_valid_token:
+        current_app.logger.error(f"Invalid token_url discovered: {url_err}")
+        return render_error_page("FHIR Config Error", "Invalid token endpoint URL discovered.")
+
     session['state'] = oauth_state
     session['code_verifier'] = code_verifier
     session['code_challenge'] = code_challenge
+    session['pkce_timestamp'] = time.time()  # H-01
     session['smart_config'] = {'token_endpoint': token_url}
 
     client_id = Config.get_client_id_by_iss(iss)
@@ -348,11 +363,13 @@ def store_token_response(token_response, launch_params):
         )
         
         if validation_error:
-            # Log warning but don't fail - some servers may not provide id_token
-            current_app.logger.warning(
+            # C-01: Fail-closed - reject when id_token validation fails
+            current_app.logger.error(
                 f"id_token validation failed: {validation_error}. "
-                "Continuing with access_token only."
+                "Rejecting authentication per fail-closed policy."
             )
+            log_auth_failure('id_token_validation_failed', {'error': validation_error})
+            raise ValueError(f"id_token validation failed: {validation_error}")
         elif claims:
             user_identity = {
                 'subject': claims.get('sub'),
@@ -415,6 +432,13 @@ def exchange_code():
     if error_response:
         return error_response, status_code
 
+    # H-01: Check PKCE parameter expiration
+    pkce_ts = session.get('pkce_timestamp')
+    if pkce_ts and (time.time() - pkce_ts) > PKCE_MAX_AGE_SECONDS:
+        current_app.logger.error("PKCE parameters expired")
+        log_auth_failure('pkce_expired')
+        return jsonify({"error": "Authorization session expired. Please try again."}), 400
+
     token_params, headers = build_token_request(data['code'], launch_params)
 
     # Validate token_url to prevent SSRF via session tampering
@@ -449,31 +473,37 @@ def exchange_code():
         }
     )
 
+    # M-06: Session fingerprint for concurrent session protection
+    session['session_fingerprint'] = hashlib.sha256(
+        f"{request.remote_addr}:{request.headers.get('User-Agent', '')}".encode()
+    ).hexdigest()
+
     return jsonify({"status": "ok", "redirect_url": url_for('web.main_page')})
 
 
 @auth_bp.route('/api/refresh-token', methods=['POST'])
 @csrf.exempt
+@limiter.limit("5 per hour")  # C-05: Rate limit refresh token
 def refresh_token():
-    """
-    Refresh the access token using the refresh token.
-    
-    Implements Refresh Token Rotation as per SMART on FHIR security standards:
-    - Exchange refresh token for new access token
-    - Receive new refresh token (rotation)
-    - Old refresh token is invalidated
-    """
+    """Refresh the access token using the refresh token."""
     fhir_data = session.get('fhir_data')
-    
+
     if not fhir_data:
         current_app.logger.warning("Token refresh attempted without session data")
         return jsonify({"error": "No active session found."}), 401
-    
+
     current_refresh_token = fhir_data.get('refresh_token')
-    
+
     if not current_refresh_token:
         current_app.logger.info("Token refresh attempted but no refresh token available")
         return jsonify({"error": "No refresh token available."}), 400
+
+    # C-05: Enforce minimum interval between refresh requests
+    last_refresh = session.get('last_refresh_timestamp')
+    now = time.time()
+    if last_refresh and (now - last_refresh) < REFRESH_TOKEN_MIN_INTERVAL_SECONDS:
+        current_app.logger.warning("Token refresh attempted too frequently")
+        return jsonify({"error": "Please wait before refreshing again."}), 429
     
     # Get token endpoint from session
     smart_config = session.get('smart_config', {})
@@ -573,8 +603,9 @@ def refresh_token():
         current_app.logger.info("Token refreshed (no new refresh token provided)")
     
     session['fhir_data'] = fhir_data
+    session['last_refresh_timestamp'] = time.time()  # C-05
     session.modified = True
-    
+
     # Log successful refresh
     audit_logger = get_audit_logger()
     audit_logger.log_event(

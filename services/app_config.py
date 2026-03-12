@@ -103,7 +103,8 @@ class Config:
         if Config.REDIRECT_URI:
             Config.REDIRECT_URI = Config.REDIRECT_URI.strip()
         
-        # Configure session storage and cookie security per environment
+        # M-03: Default to secure; only disable for explicit dev mode
+        is_dev = os.environ.get('DEVELOPMENT_MODE', '').lower() in ('true', '1', 'yes')
         if os.environ.get('GAE_ENV', '').startswith('standard'):
             import tempfile
             app.config['SESSION_FILE_DIR'] = os.path.join(tempfile.gettempdir(), 'flask_session')
@@ -113,5 +114,5 @@ class Config:
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                 'instance', 'flask_session'
             )
-            app.config['SESSION_COOKIE_SECURE'] = False
+            app.config['SESSION_COOKIE_SECURE'] = not is_dev
 

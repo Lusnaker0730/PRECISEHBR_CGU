@@ -11,7 +11,6 @@ api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/api/calculate_risk', methods=['POST'])
 @login_required
-@require_patient_context  # BOLA protection - validates patient context
 @limiter.limit("10 per minute")
 @audit_ephi_access(action='calculate_risk_score', resource_type='Patient,Observation,Condition')
 def calculate_risk_api():
@@ -19,6 +18,14 @@ def calculate_risk_api():
     try:
         data = request.get_json()
         patient_id = data.get('patientId') if data else None
+
+        # C-04: Explicit BOLA validation immediately after extraction
+        if patient_id:
+            from utils.patient_context import validate_patient_context
+            is_ctx_valid, ctx_err = validate_patient_context(patient_id)
+            if not is_ctx_valid:
+                current_app.logger.warning(f"BOLA violation: {ctx_err}")
+                return jsonify({'error': ctx_err, 'error_type': 'authorization_error'}), 403
 
         # Check for missing/empty patient ID
         if not patient_id:
@@ -65,8 +72,8 @@ def calculate_risk_api():
                 current_app.logger.error(f"FHIR data service error for patient {patient_id}: {error}")
                 return jsonify({
                     'error': 'An error occurred while retrieving patient data from the health record system.',
-                    'error_type': 'service_error',
-                    'details': str(error)
+                    'error_type': 'service_error'
+                    # C-07: Internal details removed - logged server-side only
                 }), 500
         
         # Explicitly check if the patient data is missing after the call
@@ -107,8 +114,7 @@ def calculate_risk_api():
         if "FHIR server is down" in str(e):
             return jsonify({
                 'error': 'FHIR data service is unavailable.',
-                'error_type': 'service_unavailable',
-                'details': str(e)
+                'error_type': 'service_unavailable'
             }), 503
         return jsonify({
             'error': 'An internal server error occurred.',

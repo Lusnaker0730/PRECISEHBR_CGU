@@ -169,14 +169,18 @@ def require_mfa(operation_name: str = "sensitive_operation"):
             has_mfa = mfa_status.get('has_mfa', False)
             unknown = mfa_status.get('unknown_status', False)
             
-            # If MFA status is unknown (no amr claim), allow access but log warning
+            # M-05: Fail-closed when MFA status unknown
             if unknown:
-                logger.warning(
+                logger.error(
                     f"MFA status unknown for operation: {operation_name}. "
-                    "No amr claim in token."
+                    "Access denied per fail-closed policy."
                 )
-                log_mfa_access(operation_name, True, False, 'warning')
-                return func(*args, **kwargs)
+                log_mfa_access(operation_name, True, False, 'denied')
+                return jsonify({
+                    'error': 'MFA verification unavailable',
+                    'code': 'mfa_status_unknown',
+                    'operation': operation_name,
+                }), 403
             
             if not has_mfa:
                 log_mfa_access(operation_name, True, False, 'denied')

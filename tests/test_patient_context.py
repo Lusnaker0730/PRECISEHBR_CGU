@@ -168,20 +168,20 @@ class TestRequirePatientContextDecorator:
                 assert status_code == 403
                 assert 'error' in result.get_json()
     
-    def test_allows_request_without_patient_id(self, app):
-        """Test that requests without patient_id are allowed through."""
+    def test_rejects_request_without_patient_id(self, app):
+        """M-01: Requests without patient_id are now rejected (strict mode)."""
         @require_patient_context
         def test_route():
             return {'success': True}
-        
+
         with app.test_request_context(
             '/test',
             method='POST',
             json={'someOtherField': 'value'}
         ):
-            result = test_route()
-            
-            assert result == {'success': True}
+            result, status_code = test_route()
+            assert status_code == 400
+            assert 'error' in result.get_json()
 
 
 class TestVerifyPatientAccess:

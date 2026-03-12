@@ -38,17 +38,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-cov pytest-flask pytest-timeout
-        
+        pip install pytest pytest-cov pytest-flask pytest-timeout pytest-html
+
     - name: Create test directories
       run: |
-        mkdir -p instance/flask_session
-        
+        mkdir -p instance/flask_session reports
+
     - name: Run quick tests
       run: |
         pytest tests/ \
           --timeout=30 \
           --cov=. --cov-report=term-missing \
+          --junitxml=reports/quick-test-results.xml \
           -v --tb=line \
           -x --ignore=tests/test_performance.py
       env:
@@ -57,12 +58,20 @@ jobs:
         SMART_REDIRECT_URI: http://localhost:8080/callback
         TESTING: "true"
         
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quick-test-results
+        path: reports/
+        retention-days: 365
+
     - name: Test Summary
       if: always()
       run: |
-        echo "## 🧪 Quick Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "## Quick Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Tests completed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+        echo "Tests completed. JUnit XML report uploaded as artifact." >> $GITHUB_STEP_SUMMARY
 
   matrix-tests:
     name: Python ${{ matrix.python-version }} Tests

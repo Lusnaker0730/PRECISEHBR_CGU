@@ -11,7 +11,10 @@ from fhirclient.models import condition, medicationrequest, observation, patient
 
 from services.config_loader import config_loader
 from services.fhir_utils import sort_bundle_entries_by_date
+from utils.input_validator import validate_loinc_code
 from utils.security_labels import check_resources_security, get_security_summary
+
+MAX_FHIR_SEARCH_COUNT = 100
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
@@ -167,10 +170,22 @@ class FHIRClientService:
         if not loinc_codes:
             return []
 
+        # H-07: Validate LOINC codes before search
+        validated_codes = []
+        for code in loinc_codes:
+            is_valid, _ = validate_loinc_code(code)
+            if is_valid:
+                validated_codes.append(code)
+            else:
+                logging.warning(f'Invalid LOINC code rejected: {str(code)[:20]}')
+        if not validated_codes:
+            return []
+        count = min(max(1, count), MAX_FHIR_SEARCH_COUNT)
+
         try:
             search_params = {
                 'patient': patient_id,
-                'code': ','.join(loinc_codes),
+                'code': ','.join(validated_codes),
                 '_count': str(count)
             }
             result = observation.Observation.where(search_params).perform(self.smart.server)
@@ -235,6 +250,9 @@ class FHIRClientService:
         """
         Fetch patient conditions.
 
+        Uses 'subject' search parameter per TWCDI CapabilityStatement.
+        Filters by clinical-status=active to reduce payload size.
+
         Args:
             patient_id: Patient identifier
             count: Number of conditions to fetch
@@ -244,7 +262,8 @@ class FHIRClientService:
         """
         try:
             result = condition.Condition.where({
-                'patient': patient_id,
+                'subject': f'Patient/{patient_id}',
+                'clinical-status': 'active',
                 '_count': str(count)
             }).perform(self.smart.server)
 
@@ -267,6 +286,8 @@ class FHIRClientService:
         """
         Fetch patient procedures.
 
+        Uses 'subject' search parameter per TWCDI CapabilityStatement.
+
         Args:
             patient_id: Patient identifier
             count: Number of procedures to fetch
@@ -276,7 +297,7 @@ class FHIRClientService:
         """
         try:
             result = procedure.Procedure.where({
-                'patient': patient_id,
+                'subject': f'Patient/{patient_id}',
                 '_count': str(count)
             }).perform(self.smart.server)
 
@@ -292,27 +313,60 @@ class FHIRClientService:
         """
         Fetch patient medication requests.
 
+        Uses 'subject' search parameter per TWCDI CapabilityStatement.
+        Category filtering is done client-side because TWCDI does not
+        define 'category' as a supported search parameter for MedicationRequest.
+
         Args:
             patient_id: Patient identifier
-            category: Optional medication category filter
+            category: Optional medication category for client-side filtering
 
         Returns:
             List of medication request resources
         """
         try:
-            search_params = {'patient': patient_id}
-            if category:
-                search_params['category'] = category
+            search_params = {'subject': f'Patient/{patient_id}'}
 
             result = medicationrequest.MedicationRequest.where(search_params).perform(self.smart.server)
 
             med_list = self._extract_resources(result)
+
+            if category:
+                med_list = self._filter_by_category(med_list, category)
+
             logging.info(f'Fetched {len(med_list)} medication request(s)')
             return med_list
 
         except Exception as e:
             logging.warning(f'Error fetching medication requests: {type(e).__name__}')
             return []
+
+    @staticmethod
+    def _filter_by_category(med_list, category):
+        """
+        Filter medication requests by category client-side.
+
+        TWCDI does not support 'category' as a server-side search parameter
+        for MedicationRequest, so filtering is performed after retrieval.
+
+        Args:
+            med_list: List of MedicationRequest resources
+            category: Category string to match (e.g. 'outpatient')
+
+        Returns:
+            Filtered list of medication requests
+        """
+        filtered = []
+        for med in med_list:
+            for cat in med.get('category', []):
+                matched = any(
+                    coding.get('code') == category
+                    for coding in cat.get('coding', [])
+                )
+                if matched or cat.get('text', '').lower() == category.lower():
+                    filtered.append(med)
+                    break
+        return filtered
     
     def _fetch_observation_with_fallback(self, patient_id, resource_type, loinc_codes, text_terms):
         """

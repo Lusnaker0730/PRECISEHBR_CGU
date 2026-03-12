@@ -54,7 +54,7 @@ def create_app():
             'cdn.jsdelivr.net',
             'cdnjs.cloudflare.com',
             'fonts.googleapis.com',
-            '\'unsafe-inline\''
+            # H-08: Removed unsafe-inline, using nonce-based CSP instead
         ],
         'font-src': [
             '\'self\'',
@@ -72,7 +72,7 @@ def create_app():
     # Disable force_https in testing/development to avoid 302 redirects
     is_testing = app.config.get('TESTING', False) or os.environ.get('TESTING', '').lower() == 'true'
     force_https = not is_testing and not app.config.get('DEBUG', False)
-    Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src'], force_https=force_https)
+    Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src', 'style-src'], force_https=force_https)  # H-08
     
     # Register Blueprints
     app.register_blueprint(web_bp)
@@ -123,6 +123,10 @@ def create_app():
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
+        response.headers['X-Content-Type-Options'] = 'nosniff'  # M-07
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
         return response
         
     return app

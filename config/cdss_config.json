@@ -639,6 +639,16 @@
             "complex_pci": "397682003",
             "bare_metal_stent": "427183000"
         },
+        "icd10_codes": {
+            "_description": "ICD-10-CM/PCS codes for TWCDI-compliant servers that may lack SNOMED CT",
+            "copd": ["J44"],
+            "nstemi": ["I21.4"],
+            "stemi": ["I21.0", "I21.1", "I21.2", "I21.3"],
+            "diabetes": ["E10", "E11", "E13"],
+            "myocardial_infarction": ["I21", "I22", "I25.2"],
+            "complex_pci": ["02703", "02713", "02723", "02733"],
+            "bare_metal_stent": ["02703Z", "02713Z", "02723Z", "02733Z"]
+        },
         "smoking_status": {
             "loinc_code": "72166-2",
             "current_smoker_codes": [

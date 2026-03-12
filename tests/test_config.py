@@ -85,7 +85,7 @@ class TestSessionDirectory:
 
     def test_session_directory_local_environment(self):
         """Test session directory in local environment."""
-        with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test'}, clear=False):
+        with patch.dict(os.environ, {'FLASK_SECRET_KEY': 'test', 'DEVELOPMENT_MODE': 'true'}, clear=False):
             app = Mock()
             app.config = {}
             os.environ.pop('GAE_ENV', None)

@@ -101,6 +101,9 @@ class ConsentService:
             from fhirclient.models import consent
             
             # Query for active consents for this patient
+            # Note: Consent is not part of TWCDI CapabilityStatement.
+            # This query may fail on strictly TWCDI-compliant servers;
+            # the except block handles graceful degradation.
             search_params = {
                 'patient': patient_id,
                 'status': 'active',
@@ -180,15 +183,16 @@ class ConsentService:
         )
     
     def _default_permit_result(self) -> ConsentResult:
-        """Return default permit result when consent cannot be checked."""
+        """C-02: Default DENY when consent cannot be checked."""
+        logger.warning("Consent check unavailable - defaulting to DENY")
         return ConsentResult(
-            status=ConsentStatus.ACTIVE,
-            has_active_consent=True,
-            permitted_resources=list(CONSENT_SENSITIVE_RESOURCES),
-            denied_resources=[],
-            provision_type=ConsentProvision.PERMIT,
+            status=ConsentStatus.INACTIVE,
+            has_active_consent=False,
+            permitted_resources=[],
+            denied_resources=list(CONSENT_SENSITIVE_RESOURCES),
+            provision_type=ConsentProvision.DENY,
             consent_id=None,
-            details={'default': True, 'reason': 'Client not configured'}
+            details={'default': True, 'reason': 'Client not configured - deny by default'}
         )
     
     def _no_consent_result(self, patient_id: str) -> ConsentResult:

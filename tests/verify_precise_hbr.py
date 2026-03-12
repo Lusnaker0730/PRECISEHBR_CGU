@@ -148,6 +148,9 @@ def convert_to_calculator_input(case):
 # Since we want to verify the MATH, we can patch the condition checker results
 # to match our test case intent.
 
+@pytest.mark.requirement("SRS-001")
+@pytest.mark.risk("RISK-001")
+@pytest.mark.design("SDS-001")
 @pytest.mark.parametrize("case", generate_golden_dataset(20)) # Run 20 random cases for unit testing
 def test_golden_dataset_verification(case):
     # Prepare Inputs
@@ -185,6 +188,9 @@ def test_golden_dataset_verification(case):
 # 3. Boundary Value Analysis
 # ==========================================
 
+@pytest.mark.requirement("SRS-001")
+@pytest.mark.risk("RISK-001")
+@pytest.mark.design("SDS-001")
 def test_boundary_values():
     """Test specific boundary conditions defined in Protocol Phase 2"""
     from unittest.mock import patch

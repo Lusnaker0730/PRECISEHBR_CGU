@@ -45,9 +45,10 @@ class EPhiLoggingFilter(logging.Filter):
             (re.compile(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b'), '[DATE_REDACTED]'),
             (re.compile(r'\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b'), '[DATE_REDACTED]'),
             
-            # Patient ID / MRN patterns
-            (re.compile(r'\b(?:patient[_-]?id|mrn|medical[_-]?record)[:\s]*[A-Za-z0-9-]+\b', re.IGNORECASE), '[PATIENT_ID_REDACTED]'),
-            
+            # M-14: Patient ID / MRN patterns - also match standalone IDs
+            (re.compile(r'\b(?:patient[_-]?id|mrn|medical[_-]?record)\s*[:=]\s*[A-Za-z0-9-]+\b', re.IGNORECASE), '[PATIENT_ID_REDACTED]'),
+            (re.compile(r'\bpatient\s+[A-Za-z0-9]{6,}\b', re.IGNORECASE), 'patient [PATIENT_ID_REDACTED]'),
+
             # FHIR resource IDs with Patient prefix
             (re.compile(r'\bPatient/[A-Za-z0-9-]+\b'), 'Patient/[REDACTED]'),
             

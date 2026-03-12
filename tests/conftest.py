@@ -7,6 +7,9 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+# Register IEC 62304 regulatory traceability plugin
+pytest_plugins = ["tests.regulatory_plugin"]
+
 # Add parent directory to path
 import os
 import sys

@@ -1,0 +1,473 @@
+{
+  "generated": "2026-03-12T04:47:27.467610+00:00",
+  "total_traced_tests": 34,
+  "passed": 13,
+  "failed": 21,
+  "traceability": [
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case0]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case1]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case2]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case3]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case4]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case5]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case6]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case7]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case8]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case9]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case10]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case11]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case12]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case13]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case14]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case15]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case16]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case17]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case18]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_golden_dataset_verification[case19]",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/verify_precise_hbr.py::test_boundary_values",
+      "outcome": "failed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_low_risk",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_moderate_risk",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_high_risk",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_boundary_score_23",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_boundary_score_27",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_zero_score",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskClassification::test_classify_very_high_score",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskThresholds::test_threshold_22_not_hbr",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskThresholds::test_threshold_23_hbr",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskThresholds::test_threshold_26_hbr",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestRiskThresholds::test_threshold_27_very_high_hbr",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ],
+        "risk": [
+          "RISK-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestBleedingRiskFormula::test_bleeding_risk_increases_with_score",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_risk_classifier.py::TestBleedingRiskFormula::test_bleeding_risk_reasonable_range",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-002"
+        ]
+      }
+    }
+  ]
+}

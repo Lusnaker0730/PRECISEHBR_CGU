@@ -8,6 +8,7 @@ All clinical codes and keywords are loaded from cdss_config.json for maintainabi
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from services.config_loader import config_loader
@@ -134,14 +135,12 @@ class ConditionCheckerService:
 
     @classmethod
     def _check_text_keywords(cls, conditions: list, keywords: list) -> tuple[bool, str | None]:
-        """
-        Check for text keywords in conditions.
-        Returns tuple (found_boolean, matched_condition_text).
-        """
+        """H-06: Check keywords with word boundary matching."""
         for condition in conditions:
             condition_text = cls.get_condition_text(condition).lower()
             for keyword in keywords:
-                if keyword.lower() in condition_text:
+                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                if re.search(pattern, condition_text):
                     return True, condition_text
         return False, None
 

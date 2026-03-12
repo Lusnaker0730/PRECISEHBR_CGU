@@ -62,9 +62,9 @@ class AuditLogger:
 
         # Create audit directory if it doesn't exist
         try:
-            os.makedirs(self.audit_dir, exist_ok=True)
+            os.makedirs(self.audit_dir, mode=0o700, exist_ok=True)  # M-04
         except OSError as e:
-            logger.warning(f"Could not create audit directory {self.audit_dir}: {e}. Audit logging may be limited.")
+            logger.error(f"AUDIT COMPLIANCE WARNING: Could not create audit directory {self.audit_dir}: {e}")  # C-06
 
         # Initialize audit log file with header if it doesn't exist
         if not os.path.exists(self.audit_file_path):
@@ -91,10 +91,13 @@ class AuditLogger:
             
             with open(self.audit_file_path, 'w', encoding='utf-8') as f:
                 f.write(json.dumps(metadata, ensure_ascii=False) + '\n')
-            
+            try:
+                os.chmod(self.audit_file_path, 0o600)  # M-04
+            except OSError:
+                pass
             logger.info(f"Audit log initialized: {self.audit_file_path}")
         except OSError as e:
-            logger.warning(f"Could not initialize audit log file {self.audit_file_path}: {e}. Continuing without file-based audit logging.")
+            logger.error(f"AUDIT COMPLIANCE WARNING: Could not initialize audit log {self.audit_file_path}: {e}")  # C-06
     
     def _get_last_hash(self) -> Optional[str]:
         """
@@ -189,8 +192,9 @@ class AuditLogger:
         Returns:
             The logged audit entry
         """
-        # Use lock to ensure thread-safe hash chain
+        # H-04: Lock protects both read and write of hash chain
         with self._lock:
+            current_last_hash = self._last_hash
             audit_entry = {
                 'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
                 'event_type': event_type,
@@ -203,7 +207,7 @@ class AuditLogger:
                 'ip_address': ip_address,
                 'user_agent': user_agent,
                 'details': details or {},
-                'previous_hash': self._last_hash
+                'previous_hash': current_last_hash
             }
             audit_entry['entry_hash'] = self._calculate_hash(audit_entry)
 

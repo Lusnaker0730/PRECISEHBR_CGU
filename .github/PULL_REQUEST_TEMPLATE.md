@@ -19,6 +19,31 @@
 - [ ] ⚡ Performance improvement
 - [ ] 🔒 Security fix
 
+## Regulatory Traceability (IEC 62304 / ISO 14971)
+
+<!-- REQUIRED for TFDA compliance. Link ALL related issues. -->
+
+### Requirements Implemented
+<!-- Link to [SRS] issues -->
+- Implements: #
+
+### Design Specifications
+<!-- Link to [SDS] issues -->
+- Design: #
+
+### Risks Mitigated
+<!-- Link to [RISK] issues if this PR implements a risk control -->
+- Mitigates: #
+
+### Test Cases
+<!-- Link to [TEST] issues verified by this PR -->
+- Verifies: #
+
+### Change Classification (IEC 62304)
+- [ ] Class A change - No impact on safety
+- [ ] Class B change - Could cause non-serious injury
+- [ ] Class C change - Could cause serious injury or death
+
 ## Related Issues
 
 <!-- Link to related issues using #issue_number -->

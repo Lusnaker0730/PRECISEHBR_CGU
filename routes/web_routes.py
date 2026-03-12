@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app
+from markupsafe import escape
 from utils.web_utils import is_session_valid, login_required, render_error_page
 from services.audit_logger import audit_ephi_access
+from extensions import limiter
 import random
 import datetime
 import json
@@ -47,6 +49,7 @@ def report_issue_page():
     return render_template('report_issue.html', captcha_question=f"{num1} + {num2} = ?")
 
 @web_bp.route('/submit-complaint', methods=['POST'])
+@limiter.limit("5 per hour")  # M-13
 def submit_complaint():
     """Handle complaint submission and storage."""
     user_answer = request.form.get('captcha_answer')
@@ -57,10 +60,16 @@ def submit_complaint():
         num2 = random.randint(1, 10)
         session['captcha_answer'] = num1 + num2
         
-        return render_template('report_issue.html', 
+        # M-08: Sanitize prev_data before re-rendering
+        sanitized_prev = {
+            'subject': str(escape(request.form.get('subject', '')))[:200],
+            'description': str(escape(request.form.get('description', '')))[:2000],
+            'contact_email': str(escape(request.form.get('contact_email', '')))[:100],
+        }
+        return render_template('report_issue.html',
                              error="Security check failed. Please solve the math problem correctly.",
                              captcha_question=f"{num1} + {num2} = ?",
-                             prev_data=request.form), 400
+                             prev_data=sanitized_prev), 400
 
     reference_id = f"COMP-{datetime.datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
     
@@ -84,12 +93,13 @@ def submit_complaint():
         return render_template('report_issue.html', 
                              error="Please fill in all required fields."), 400
     
-    # Save to file
-    # We use current_app.instance_path or just os.getcwd()/instance
-    # APP.py used os.getcwd()/instance/complaints
-    complaints_dir = os.path.join(os.getcwd(), 'instance', 'complaints')
+    # M-12: Path traversal protection
+    instance_path = os.path.abspath(current_app.instance_path)
+    complaints_dir = os.path.abspath(os.path.join(instance_path, 'complaints'))
+    if not complaints_dir.startswith(instance_path):
+        current_app.logger.error("Path traversal attempt in complaint submission")
+        return render_template('report_issue.html', error="An error occurred."), 500
     os.makedirs(complaints_dir, exist_ok=True)
-    
     complaints_file = os.path.join(complaints_dir, 'complaints.jsonl')
     
     try:

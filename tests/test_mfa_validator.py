@@ -168,17 +168,18 @@ class TestRequireMFADecorator:
                 data = result.get_json()
                 assert data['code'] == 'mfa_required'
     
-    def test_allows_access_with_unknown_status(self, app):
-        """Test that access is allowed (with warning) when status unknown."""
+    def test_denies_access_with_unknown_status(self, app):
+        """M-05: Access denied when MFA status unknown (fail-closed)."""
         @require_mfa("test_operation")
         def protected_function():
             return {"status": "success"}
-        
+
         with app.test_request_context():
-            # No user_identity in session
             with patch('utils.mfa_validator.log_mfa_access'):
-                result = protected_function()
-                assert result == {"status": "success"}
+                result, status_code = protected_function()
+                assert status_code == 403
+                data = result.get_json()
+                assert data['code'] == 'mfa_status_unknown'
     
     def test_logs_mfa_access_on_success(self, app):
         """Test that successful MFA access is logged."""

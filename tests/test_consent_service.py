@@ -103,12 +103,12 @@ class TestConsentService:
         assert service.smart is mock_client
     
     def test_check_consent_without_client(self):
-        """Test consent check when client not configured."""
+        """Test consent check when client not configured defaults to DENY (C-02)."""
         service = ConsentService()
         result = service.check_patient_consent('patient-123')
-        
-        # Should return default permit
-        assert result.has_active_consent is True
+
+        # C-02: Should return default DENY when client not configured
+        assert result.has_active_consent is False
         assert result.details.get('default') is True
     
     def test_check_consent_with_no_results(self):

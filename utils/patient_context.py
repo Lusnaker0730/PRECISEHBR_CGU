@@ -159,9 +159,12 @@ def require_patient_context(f: Callable) -> Callable:
             patient_id = request.args.get('patient_id') or request.args.get('patientId')
         
         if not patient_id:
-            # No patient ID in request - let the endpoint handle this
-            # (some endpoints might not require patient_id)
-            return f(*args, **kwargs)
+            # M-01: Strict mode - require patient_id for decorated endpoints
+            current_app.logger.warning("Patient context validation failed: No patient ID in request")
+            return jsonify({
+                'error': 'Patient ID is required',
+                'error_type': 'validation_error'
+            }), 400
         
         # Validate patient context
         is_valid, error_message = validate_patient_context(patient_id)

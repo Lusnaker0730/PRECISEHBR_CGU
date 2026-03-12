@@ -17,6 +17,17 @@ from services.fhir_utils import get_observation_effective_date_from_model
 from services.unit_conversion_service import unit_converter
 
 
+def _is_outpatient_category(med_resource):
+    """Check if a MedicationRequest has 'outpatient' category (client-side filter)."""
+    for cat in med_resource.get('category', []):
+        for coding in cat.get('coding', []):
+            if coding.get('code') == 'outpatient':
+                return True
+        if cat.get('text', '').lower() == 'outpatient':
+            return True
+    return False
+
+
 class TradeoffModelCalculator:
     """Calculator for bleeding-thrombosis tradeoff analysis"""
 
@@ -99,6 +110,30 @@ class TradeoffModelCalculator:
             coding.get('system') == system and coding.get('code') == code
             for coding in codings
         )
+
+    @staticmethod
+    def _resource_has_icd10_prefix(resource, icd10_prefixes):
+        """
+        Check if a resource has an ICD-10-CM or ICD-10-PCS code matching any prefix.
+
+        TWCDI-compliant servers may use ICD-10 instead of SNOMED CT.
+
+        Args:
+            resource: FHIR resource as dict
+            icd10_prefixes: List of ICD-10 code prefixes to match
+
+        Returns:
+            True if any coding matches an ICD-10 prefix
+        """
+        icd10_systems = ('icd-10-cm', 'icd-10-pcs', 'icd-10')
+        for coding in resource.get('code', {}).get('coding', []):
+            system = coding.get('system', '').lower()
+            code = coding.get('code', '')
+            if any(s in system for s in icd10_systems):
+                if any(code == prefix or code.startswith(prefix + '.') or code.startswith(prefix)
+                       for prefix in icd10_prefixes):
+                    return True
+        return False
     
     @classmethod
     def get_tradeoff_data(cls, fhir_server_url, access_token, client_id, patient_id):
@@ -125,6 +160,7 @@ class TradeoffModelCalculator:
         tradeoff_data = cls._get_empty_tradeoff_data()
         tradeoff_config = config_loader.get_tradeoff_config()
         snomed_codes = tradeoff_config.get('snomed_codes', {})
+        icd10_codes = tradeoff_config.get('icd10_codes', {})
         query_limits = tradeoff_config.get('fhir_query_limits', {})
         snomed_system = cls._get_snomed_system()
 
@@ -137,7 +173,8 @@ class TradeoffModelCalculator:
         try:
             condition_limit = query_limits.get('conditions', 200)
             conditions = condition.Condition.where({
-                'patient': patient_id,
+                'subject': f'Patient/{patient_id}',
+                'clinical-status': 'active',
                 '_count': str(condition_limit)
             }).perform(fhir_client.server)
 
@@ -145,11 +182,14 @@ class TradeoffModelCalculator:
                 for entry in conditions.entry:
                     resource_json = entry.resource.as_json()
 
-                    # Check standard condition mappings
+                    # Check standard condition mappings (SNOMED + ICD-10 fallback)
                     for config_key, data_key in condition_mappings.items():
                         code = snomed_codes.get(config_key)
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data[data_key] = True
+                        elif config_key in icd10_codes:
+                            if cls._resource_has_icd10_prefix(resource_json, icd10_codes[config_key]):
+                                tradeoff_data[data_key] = True
 
                     # Check for NSTEMI/STEMI (multiple codes map to same flag)
                     for key in nstemi_stemi_keys:
@@ -157,6 +197,10 @@ class TradeoffModelCalculator:
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data["nstemi_stemi"] = True
                             break
+                        elif key in icd10_codes:
+                            if cls._resource_has_icd10_prefix(resource_json, icd10_codes[key]):
+                                tradeoff_data["nstemi_stemi"] = True
+                                break
 
         except Exception as e:
             logging.warning(f"Error fetching conditions for tradeoff model: {e}")
@@ -193,7 +237,7 @@ class TradeoffModelCalculator:
         try:
             procedure_limit = query_limits.get('procedures', 50)
             procedures = procedure.Procedure.where({
-                'patient': patient_id,
+                'subject': f'Patient/{patient_id}',
                 '_count': str(procedure_limit)
             }).perform(fhir_client.server)
 
@@ -204,6 +248,9 @@ class TradeoffModelCalculator:
                         code = snomed_codes.get(config_key)
                         if code and cls._resource_has_code(resource_json, snomed_system, code):
                             tradeoff_data[data_key] = True
+                        elif config_key in icd10_codes:
+                            if cls._resource_has_icd10_prefix(resource_json, icd10_codes[config_key]):
+                                tradeoff_data[data_key] = True
 
         except Exception as e:
             logging.warning(f"Error fetching procedures for tradeoff model: {e}")
@@ -217,12 +264,15 @@ class TradeoffModelCalculator:
             rxnorm_system = cls._get_rxnorm_system()
 
             med_requests = medicationrequest.MedicationRequest.where({
-                'patient': patient_id,
-                'category': 'outpatient'
+                'subject': f'Patient/{patient_id}',
             }).perform(fhir_client.server)
 
             if med_requests.entry:
                 for entry in med_requests.entry:
+                    # Client-side category filter (TWCDI does not support category search param)
+                    mr_json = entry.resource.as_json()
+                    if not _is_outpatient_category(mr_json):
+                        continue
                     mr = entry.resource
                     if any(cls._resource_has_code(mr.as_json(), rxnorm_system, code)
                            for code in oac_codes):

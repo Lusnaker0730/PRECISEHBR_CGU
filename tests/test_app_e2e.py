@@ -207,13 +207,13 @@ class TestCalculateRiskAPI:
         assert 'error' in data
     
     def test_calculate_risk_validates_patient_id(self, authenticated_client):
-        """Test calculate risk validates patient ID format."""
+        """Test calculate risk rejects unauthorized patient ID (C-04 BOLA)."""
         response = authenticated_client.post(
             '/api/calculate_risk',
             json={'patientId': '<script>alert(1)</script>'},
             content_type='application/json'
         )
-        assert response.status_code == 400
+        assert response.status_code in (400, 403)  # 403 from BOLA, 400 from validation
     
     def test_calculate_risk_with_valid_data(self, authenticated_client):
         """Test calculate risk with valid patient ID."""
@@ -400,9 +400,9 @@ class TestInputValidation:
             json={'patientId': "'; DROP TABLE patients; --"},
             content_type='application/json'
         )
-        # Should reject malicious input
-        assert response.status_code == 400
-    
+        # Should reject malicious input (403 BOLA or 400 validation)
+        assert response.status_code in (400, 403)
+
     def test_path_traversal_in_patient_id(self, authenticated_client):
         """Test path traversal prevention in patient ID."""
         response = authenticated_client.post(
@@ -410,7 +410,7 @@ class TestInputValidation:
             json={'patientId': '../../../etc/passwd'},
             content_type='application/json'
         )
-        assert response.status_code == 400
+        assert response.status_code in (400, 403)
 
 class TestCORSConfiguration:
     """Test CORS configuration."""
@@ -548,7 +548,7 @@ class TestEdgeCases:
             json={'patientId': 'a' * 10000},
             content_type='application/json'
         )
-        assert response.status_code == 400
+        assert response.status_code in (400, 403)
     
     def test_unicode_in_patient_id(self, authenticated_client):
         """Test handling of unicode in patient ID."""
@@ -557,8 +557,8 @@ class TestEdgeCases:
             json={'patientId': '患者-123'},
             content_type='application/json'
         )
-        # Should reject non-ASCII or handle gracefully
-        assert response.status_code in [200, 400]
+        # Should reject non-ASCII or handle gracefully (403 from BOLA check)
+        assert response.status_code in [200, 400, 403]
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
