@@ -455,7 +455,7 @@ def exchange_code():
     except requests.exceptions.HTTPError as e:
         current_app.logger.error(f"Token exchange failed: {e.response.status_code} {e.response.text}")
         log_auth_failure('token_exchange_failed', {'status_code': e.response.status_code})
-        return jsonify({"error": "Failed to exchange code for token.", "details": e.response.text}), e.response.status_code
+        return jsonify({"error": "Failed to exchange code for token."}), e.response.status_code
     except Exception as e:
         current_app.logger.error(f"Unexpected error during token exchange: {e}", exc_info=True)
         log_auth_failure('unexpected_error', {'error_message': str(e)})

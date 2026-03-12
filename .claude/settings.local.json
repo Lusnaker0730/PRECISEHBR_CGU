@@ -67,7 +67,11 @@
       "Bash(cd \"D:/PRECISEHBR/smart_fhir_app\" && python -c \"\nimport json, sys, io\nsys.stdout = io.TextIOWrapper\\(sys.stdout.buffer, encoding='utf-8', errors='replace'\\)\nwith open\\('config/cdss_config.json', encoding='utf-8'\\) as f:\n    cfg = json.load\\(f\\)\nparams = cfg.get\\('precise_hbr_parameters', cfg.get\\('scoring_parameters', {}\\)\\)\nprint\\(json.dumps\\(params, indent=2, ensure_ascii=False\\)\\)\n\" 2>&1)",
       "Bash(cd D:/PRECISEHBR/smart_fhir_app && python -m pytest tests/verify_precise_hbr.py -v 2>&1 | tail -30)",
       "Bash(cd D:/PRECISEHBR/smart_fhir_app && python -m pytest -x --timeout=60 2>&1 | tail -40)",
-      "Bash(cd D:/PRECISEHBR/smart_fhir_app && python -m pytest -x 2>&1 | tail -40)"
+      "Bash(cd D:/PRECISEHBR/smart_fhir_app && python -m pytest -x 2>&1 | tail -40)",
+      "Bash(python -m pytest tests/test_security_comprehensive.py tests/test_auth_security.py tests/test_input_validation.py tests/test_input_validator_module.py tests/test_patient_context.py tests/test_ephi_protection.py tests/test_smart_security.py -v --tb=short 2>&1 | tail -80)",
+      "Bash(python -m pytest tests/test_penetration.py -v --tb=short 2>&1 | tail -100)",
+      "Bash(python -m pytest tests/test_penetration.py -v --tb=short 2>&1 | tail -80)",
+      "Bash(python -m pytest tests/test_security_comprehensive.py tests/test_auth_security.py tests/test_smart_security.py -v --tb=short 2>&1 | tail -15)"
     ]
   }
 }

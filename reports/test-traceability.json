@@ -1,357 +1,606 @@
 {
-  "generated": "2026-03-12T11:53:07.069110+00:00",
-  "total_traced_tests": 357,
-  "passed": 357,
+  "generated": "2026-03-12T14:24:53.907121+00:00",
+  "total_traced_tests": 146,
+  "passed": 146,
   "failed": 0,
   "traceability": [
     {
-      "test": "tests/test_app_basic.py::test_cds_services_endpoint",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_basic.py::test_launch_endpoint_exists",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_basic.py::test_callback_endpoint_exists",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_basic.py::test_cors_headers",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_basic.py::test_security_headers",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_unauthorized_access_blocked",
       "outcome": "passed",
       "traces": {
         "requirement": [
           "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_200",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_contains_services",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditLoggerInitialization::test_audit_logger_creates_directory",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "design": [
-          "SDS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditLoggerInitialization::test_audit_logger_initializes_log_file",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "design": [
-          "SDS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditLoggerInitialization::test_audit_logger_auto_detects_path_local",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "design": [
-          "SDS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditLoggerInitialization::test_audit_logger_auto_detects_path_gae",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "design": [
-          "SDS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_basic",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_with_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_with_resource_info",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_with_outcome",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_with_details",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestAuditEventLogging::test_log_event_with_network_info",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_audit_logger_extended.py::TestTamperResistance::test_hash_chain_integrity",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
         ],
         "risk": [
-          "RISK-008"
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestTamperResistance::test_hash_calculation_deterministic",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_patient_data_access_control",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
         ],
         "risk": [
-          "RISK-008"
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestTamperResistance::test_hash_changes_with_data",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_api_endpoint_authentication",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
         ],
         "risk": [
-          "RISK-008"
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestTamperResistance::test_verify_chain_integrity_success",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_session_cookie_secure_flag",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
         ],
         "risk": [
-          "RISK-008"
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestTamperResistance::test_detect_tampered_entry",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_session_cookie_httponly",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
         ],
         "risk": [
-          "RISK-008"
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditDecorator::test_decorator_logs_ephi_access",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_secret_key_configured",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditDecorator::test_decorator_captures_ip_address",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_sql_injection_in_parameters",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditDecorator::test_decorator_captures_user_agent",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_command_injection_prevention",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditQuery::test_query_by_user_id",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_ldap_injection_prevention",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditQuery::test_query_by_patient_id",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_rate_limiting_exists",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditQuery::test_query_by_event_type",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_session_timeout_configured",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestAuditQuery::test_query_by_action",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_debug_mode_disabled_in_production",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestErrorHandling::test_handles_read_only_filesystem",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_error_messages_not_verbose",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestErrorHandling::test_handles_write_error",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_security_headers_present",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestErrorHandling::test_handles_corrupted_log_file",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_dependencies_not_vulnerable",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestComplianceFeatures::test_timestamp_in_iso_format",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_no_default_credentials",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestComplianceFeatures::test_all_required_fields_present",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_session_regeneration_after_login",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
     {
-      "test": "tests/test_audit_logger_extended.py::TestComplianceFeatures::test_log_header_contains_compliance_info",
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_password_not_in_url",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-010"
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_no_unsigned_data_accepted",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_audit_logging_enabled",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_failed_login_attempts_logged",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestOWASPTop10::test_ssrf_prevention",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_ephi_access_logging",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_unique_user_identification",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_automatic_logoff",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_encryption_in_transit",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_audit_log_retention",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestHIPAACompliance::test_emergency_access_procedure",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAuthenticationSecurity::test_oauth_state_parameter",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAuthenticationSecurity::test_oauth_code_verifier",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAuthenticationSecurity::test_token_not_in_logs",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAuthenticationSecurity::test_session_fixation_prevention",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestInputValidation::test_patient_id_validation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestInputValidation::test_json_input_validation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestInputValidation::test_content_type_validation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestInputValidation::test_file_upload_validation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestInputValidation::test_url_parameter_length_limit",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestDataProtection::test_sensitive_data_not_in_response",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestDataProtection::test_error_messages_sanitized",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestDataProtection::test_cors_configuration",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestDataProtection::test_patient_data_isolation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestCryptography::test_jwt_signature_validation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestCryptography::test_secure_random_generation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAPISecurityTest::test_api_versioning",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAPISecurityTest::test_api_rate_limiting",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAPISecurityTest::test_api_authentication_required",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestAPISecurityTest::test_api_accepts_only_json",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestSecurityConfiguration::test_environment_variables_loaded",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestSecurityConfiguration::test_secure_defaults",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_security_comprehensive.py::TestSecurityConfiguration::test_production_config_different_from_dev",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-006"
+        ],
+        "risk": [
+          "RISK-006"
         ]
       }
     },
@@ -737,3133 +986,7 @@
       }
     },
     {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_check_active_cancer_icd10",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_check_bleeding_diathesis_icd10",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_check_nsaids_nhi",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_check_oral_anticoagulation_nhi",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_check_prior_bleeding_icd10",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_condition_checker_config.py::TestConditionCheckerConfigIntegration::test_config_has_new_fields",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ],
-        "design": [
-          "SDS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigLoader::test_singleton_pattern",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigLoader::test_config_loaded",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigLoader::test_get_version",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigLoader::test_get_scoring_logic",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestPreciseHbrParameters::test_get_precise_hbr_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ],
-        "design": [
-          "SDS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestPreciseHbrParameters::test_get_age_parameter",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ],
-        "design": [
-          "SDS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestPreciseHbrParameters::test_get_hemoglobin_parameter",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ],
-        "design": [
-          "SDS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_bleeding_diathesis",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_prior_bleeding",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_active_cancer",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_liver_cirrhosis",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_thrombocytopenia",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestSnomedCodes::test_get_snomed_codes_invalid_key",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestMedicationKeywords::test_get_medication_keywords",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestMedicationKeywords::test_get_oral_anticoagulants",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestMedicationKeywords::test_get_nsaids_corticosteroids",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestBleedingHistoryKeywords::test_get_bleeding_history_keywords",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestLaboratoryValues::test_get_lab_value_extraction_config",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestLaboratoryValues::test_get_hemoglobin_loinc_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestLaboratoryValues::test_get_creatinine_loinc_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestLaboratoryValues::test_get_platelet_loinc_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestUnitConversionConfig::test_get_unit_conversion_config",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestUnitConversionConfig::test_hemoglobin_conversion_factors",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigReload::test_reload_config",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigValidation::test_config_has_required_sections",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigValidation::test_version_format",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestConfigValidation::test_scoring_method",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestErrorHandling::test_get_nonexistent_snomed_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestErrorHandling::test_config_with_missing_file",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestICD10Codes::test_bleeding_diathesis_has_icd10_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestICD10Codes::test_active_cancer_has_icd10_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestNHICodes::test_oral_anticoagulants_have_nhi_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_config_loader.py::TestNHICodes::test_nsaids_have_nhi_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentStatus::test_status_values_defined",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentStatus::test_status_enum_members",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentProvision::test_provision_values",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentResult::test_create_consent_result",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentResult::test_consent_result_to_dict",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_init_without_client",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_init_with_client",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_set_client",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_check_consent_without_client",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_check_consent_with_no_results",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentService::test_check_consent_with_active_consent",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentFiltering::test_filter_with_active_consent",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentFiltering::test_filter_with_no_consent",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentFiltering::test_filter_with_deny_provision",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestIsResourcePermitted::test_permitted_resource",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestIsResourcePermitted::test_denied_resource",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestIsResourcePermitted::test_no_consent_denies_all",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConvenienceFunctions::test_check_consent_before_access",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentSensitiveResources::test_sensitive_resources_defined",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_consent_service.py::TestConsentSensitiveResources::test_patient_not_in_sensitive",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ],
-        "design": [
-          "SDS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIAccessControl::test_ephi_requires_authentication",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIAccessControl::test_ephi_requires_authorization",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIAccessControl::test_minimum_necessary_principle",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHITransmission::test_https_enforced_in_production",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHITransmission::test_no_phi_in_url_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHITransmission::test_phi_in_request_body_only",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIStorage::test_session_storage_secure",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIStorage::test_no_phi_in_client_cookies",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIStorage::test_session_data_encrypted",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHILogging::test_ephi_access_creates_audit_log",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHILogging::test_audit_log_includes_user_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHILogging::test_audit_log_includes_timestamp",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHILogging::test_audit_log_includes_action",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHILogging::test_phi_redacted_in_general_logs",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIDisclosure::test_no_phi_in_error_messages",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIDisclosure::test_no_phi_in_http_headers",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestePHIDisclosure::test_no_phi_in_referrer",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestDataRetention::test_session_cleanup_after_logout",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestDataRetention::test_temporary_data_cleanup",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestDataRetention::test_audit_log_retention_period",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestBreachNotification::test_security_incident_logging",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestBreachNotification::test_failed_access_attempts_tracked",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestPatientPrivacy::test_patient_consent_tracking",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestPatientPrivacy::test_data_minimization",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestPatientPrivacy::test_right_to_access",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-011"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestSecurityMonitoring::test_unusual_activity_detection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestSecurityMonitoring::test_security_alerts_configured",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestSecurityMonitoring::test_log_analysis_capability",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-010"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestThirdPartyIntegration::test_fhir_server_authentication",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestThirdPartyIntegration::test_api_key_not_in_code",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_ephi_protection.py::TestThirdPartyIntegration::test_external_api_timeout",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_basic",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-004"
-        ],
-        "design": [
-          "SDS-004"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_twcore",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-004"
-        ],
-        "design": [
-          "SDS-004"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestUnitConversion::test_calculate_egfr",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ],
-        "risk": [
-          "RISK-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestUnitConversion::test_get_value_from_observation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-003"
-        ],
-        "risk": [
-          "RISK-003"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_bleeding_diathesis",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_active_cancer",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_oral_anticoagulation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_calculate_bleeding_risk_percentage",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-002"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_get_risk_category_info",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-002"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_get_precise_hbr_display_info",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-002"
-        ],
-        "risk": [
-          "RISK-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_basic",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_detailed",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestMedicationFunctions::test_get_active_medications",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestMedicationFunctions::test_check_medication_interactions",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestHelperFunctions::test_get_score_from_table",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestHelperFunctions::test_get_condition_text",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-001"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestErrorHandling::test_invalid_patient_demographics",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-004"
-        ],
-        "risk": [
-          "RISK-004"
-        ],
-        "design": [
-          "SDS-004"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestErrorHandling::test_invalid_observation_value",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-004"
-        ],
-        "risk": [
-          "RISK-004"
-        ],
-        "design": [
-          "SDS-004"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_fhir_service.py::TestErrorHandling::test_egfr_with_invalid_inputs",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-004"
-        ],
-        "risk": [
-          "RISK-004"
-        ],
-        "design": [
-          "SDS-004"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_aspirin_by_code",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_aspirin_by_name",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_dapt_combination",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_anticoagulant",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_empty_medications",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestMedicationChecking::test_check_malformed_medications",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-012"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCardCreation::test_create_card_very_hbr",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCardCreation::test_create_card_hbr",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCardCreation::test_create_card_low_risk",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCardCreation::test_card_contains_required_fields",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCardCreation::test_card_medication_list_formatting",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ],
-        "design": [
-          "SDS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCDSServicesEndpoint::test_cds_services_discovery_success",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCDSServicesEndpoint::test_cds_services_discovery_file_not_found",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCDSServicesEndpoint::test_cds_services_discovery_invalid_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCDSServicesEndpoint::test_cds_services_returns_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestPreciseHBRHook::test_hook_requires_post",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestPreciseHBRHook::test_hook_handles_missing_context",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestPreciseHBRHook::test_hook_handles_invalid_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestPreciseHBRHook::test_hook_returns_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCORSConfiguration::test_cors_allows_options",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestCORSConfiguration::test_cors_headers_present",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestErrorHandling::test_handles_file_read_error",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestErrorHandling::test_handles_json_decode_error",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_hooks.py::TestIntegration::test_full_hook_workflow",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestXSSPrevention::test_reflected_xss_in_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestXSSPrevention::test_stored_xss_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestXSSPrevention::test_dom_xss_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestSQLInjectionPrevention::test_sql_injection_in_search",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestSQLInjectionPrevention::test_parameterized_queries_used",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestCommandInjectionPrevention::test_shell_injection_in_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestCommandInjectionPrevention::test_no_shell_execution",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestPathTraversalPrevention::test_directory_traversal_in_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestPathTraversalPrevention::test_file_path_sanitization",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestXMLInjectionPrevention::test_xxe_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestXMLInjectionPrevention::test_xml_bomb_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestJSONInjectionPrevention::test_json_injection_in_api",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestJSONInjectionPrevention::test_json_prototype_pollution",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestHeaderInjection::test_crlf_injection_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestHeaderInjection::test_response_splitting_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestLDAPInjectionPrevention::test_ldap_injection_in_search",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestInputSizeValidation::test_maximum_request_size",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestInputSizeValidation::test_maximum_json_depth",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestInputSizeValidation::test_array_size_limit",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestDataTypeValidation::test_type_confusion_prevention",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestDataTypeValidation::test_null_byte_handling",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestEncodingValidation::test_utf8_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestEncodingValidation::test_unicode_normalization",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestBusinessLogicValidation::test_age_range_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestBusinessLogicValidation::test_lab_value_range_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestBusinessLogicValidation::test_date_format_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRateLimitingAndDoS::test_request_rate_limiting",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRateLimitingAndDoS::test_slowloris_protection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRateLimitingAndDoS::test_large_payload_rejection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRegexValidation::test_email_format_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRegexValidation::test_url_format_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestRegexValidation::test_patient_id_format_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestContentTypeValidation::test_json_content_type_required",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestContentTypeValidation::test_content_type_not_spoofed",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestContentTypeValidation::test_multipart_form_data_validation",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestSpecialCharacterHandling::test_unicode_character_handling",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestSpecialCharacterHandling::test_control_character_filtering",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestSpecialCharacterHandling::test_newline_character_handling",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestWhitelistValidation::test_allowed_fhir_resources",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestWhitelistValidation::test_allowed_http_methods",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestOutputEncoding::test_html_output_encoded",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestOutputEncoding::test_json_output_encoded",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validation.py::TestOutputEncoding::test_api_output_encoded",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_valid_https_urls",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_valid_http_urls",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_internal_ips",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_allow_localhost_when_enabled",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_invalid_schemes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_dangerous_characters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_excessive_length",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_empty_or_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestURLValidation::test_reject_missing_hostname",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestPatientIDValidation::test_valid_patient_ids",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestPatientIDValidation::test_accept_uuid_format",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestPatientIDValidation::test_reject_special_characters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestPatientIDValidation::test_reject_empty_or_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestPatientIDValidation::test_reject_excessive_length",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestResourceTypeValidation::test_valid_resource_types",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestResourceTypeValidation::test_reject_invalid_resource_types",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestResourceTypeValidation::test_case_sensitivity",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestJSONStructureValidation::test_valid_json_structures",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestJSONStructureValidation::test_validate_required_fields",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestJSONStructureValidation::test_reject_excessive_nesting",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestJSONStructureValidation::test_reject_non_dict",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestScopeValidation::test_valid_scopes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestScopeValidation::test_reject_invalid_scopes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestScopeValidation::test_reject_empty_or_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestCodeValidation::test_valid_authorization_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestCodeValidation::test_reject_invalid_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestCodeValidation::test_reject_empty_or_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStateValidation::test_valid_state_parameters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStateValidation::test_reject_invalid_states",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStateValidation::test_reject_empty_or_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStringSanitization::test_sanitize_removes_control_characters",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStringSanitization::test_sanitize_truncates_length",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStringSanitization::test_sanitize_handles_none",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestStringSanitization::test_sanitize_preserves_valid_content",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSecurityPatterns::test_detect_path_traversal_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSecurityPatterns::test_detect_sql_injection_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSecurityPatterns::test_detect_xss_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSecurityPatterns::test_detect_command_injection_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestEdgeCases::test_unicode_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestEdgeCases::test_whitespace_in_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestEdgeCases::test_boundary_lengths",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestLOINCCodeValidation::test_valid_loinc_codes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestLOINCCodeValidation::test_reject_invalid_loinc_formats",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestLOINCCodeValidation::test_reject_loinc_injection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestFHIRDateValidation::test_valid_fhir_dates",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestFHIRDateValidation::test_valid_fhir_date_prefixes",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestFHIRDateValidation::test_reject_invalid_date_formats",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamNameValidation::test_allowed_search_params",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamNameValidation::test_allowed_params_with_modifiers",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamNameValidation::test_reject_unknown_params",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamValueValidation::test_valid_search_values",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamValueValidation::test_reject_injection_attempts",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSearchParamValueValidation::test_reject_excessive_length",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestDetectInjectionPatterns::test_detects_sql_injection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestDetectInjectionPatterns::test_detects_template_injection",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestDetectInjectionPatterns::test_detects_path_traversal",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestDetectInjectionPatterns::test_clean_values_pass",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_valid_search_params_dict",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_empty_params_valid",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_reject_too_many_params",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_reject_injection_in_params",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_validates_date_params",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestValidateFHIRSearchParams::test_validates_patient_id",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSanitizeFHIRSearchValue::test_preserves_valid_fhir_syntax",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSanitizeFHIRSearchValue::test_removes_dangerous_chars",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSanitizeFHIRSearchValue::test_truncates_long_values",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_input_validator_module.py::TestSanitizeFHIRSearchValue::test_handles_empty_input",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ],
-        "design": [
-          "SDS-006"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestMFAMethodsConstants::test_mfa_methods_contains_standard_methods",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestMFAMethodsConstants::test_password_methods_defined",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestMFAMethodsConstants::test_mfa_and_password_methods_are_disjoint",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_has_mfa_true_for_mfa_method",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_has_mfa_true_for_otp",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_has_mfa_true_for_hardware_key",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_has_mfa_false_for_password_only",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_unknown_status_for_empty_methods",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_returns_all_mfa_methods_used",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestCheckMFAStatus::test_preserves_all_auth_methods",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestIsMFAAuthenticated::test_returns_true_when_mfa_in_session",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestIsMFAAuthenticated::test_returns_false_when_no_mfa_in_session",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestIsMFAAuthenticated::test_returns_false_when_no_session",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestRequireMFADecorator::test_allows_access_with_mfa",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestRequireMFADecorator::test_denies_access_without_mfa",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestRequireMFADecorator::test_denies_access_with_unknown_status",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestRequireMFADecorator::test_logs_mfa_access_on_success",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestRequireMFADecorator::test_logs_mfa_access_on_denial",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestGetMFASummary::test_returns_mfa_verified_status",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestGetMFASummary::test_returns_password_only_status",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_mfa_validator.py::TestGetMFASummary::test_returns_unknown_status",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-005"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorAlgorithms::test_rejects_none_algorithm",
+      "test": "tests/test_smart_security.py::TestSMARTLaunchSecurity::test_launch_requires_iss_parameter",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3871,11 +994,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorAlgorithms::test_rejects_hs256_algorithm",
+      "test": "tests/test_smart_security.py::TestSMARTLaunchSecurity::test_launch_validates_iss_format",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3883,11 +1009,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorAlgorithms::test_allowed_algorithms_are_asymmetric",
+      "test": "tests/test_smart_security.py::TestSMARTLaunchSecurity::test_launch_parameter_sanitization",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3895,11 +1024,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorClaimsValidation::test_missing_token_raises_error",
+      "test": "tests/test_smart_security.py::TestOAuthSecurity::test_state_parameter_generated",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3907,11 +1039,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorClaimsValidation::test_invalid_token_format_raises_error",
+      "test": "tests/test_smart_security.py::TestOAuthSecurity::test_state_parameter_validated",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3919,11 +1054,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorJWKSDiscovery::test_discovers_jwks_from_oidc_config",
+      "test": "tests/test_smart_security.py::TestOAuthSecurity::test_pkce_code_challenge",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3931,11 +1069,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestOIDCValidatorJWKSDiscovery::test_falls_back_to_smart_config",
+      "test": "tests/test_smart_security.py::TestOAuthSecurity::test_pkce_code_verifier_stored_securely",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3943,11 +1084,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestValidateIdTokenSafe::test_returns_none_for_empty_token",
+      "test": "tests/test_smart_security.py::TestOAuthSecurity::test_authorization_code_single_use",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3955,11 +1099,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestValidateIdTokenSafe::test_returns_none_for_none_token",
+      "test": "tests/test_smart_security.py::TestTokenSecurity::test_token_not_in_url",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3967,11 +1114,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestValidateIdTokenSafe::test_returns_error_for_invalid_token",
+      "test": "tests/test_smart_security.py::TestTokenSecurity::test_token_stored_securely",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3979,11 +1129,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestFhirUserExtraction::test_extracts_fhir_user_from_claims",
+      "test": "tests/test_smart_security.py::TestTokenSecurity::test_token_expiration_checked",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -3991,11 +1144,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestFhirUserExtraction::test_returns_none_when_fhir_user_missing",
+      "test": "tests/test_smart_security.py::TestTokenSecurity::test_refresh_token_security",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -4003,11 +1159,14 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_oidc_validator.py::TestFhirUserExtraction::test_get_user_identity",
+      "test": "tests/test_smart_security.py::TestScopeSecurity::test_scope_validation",
       "outcome": "passed",
       "traces": {
         "requirement": [
@@ -4015,201 +1174,789 @@
         ],
         "risk": [
           "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_patient_id_from_session",
+      "test": "tests/test_smart_security.py::TestScopeSecurity::test_scope_enforcement",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_falls_back_to_fhir_data",
+      "test": "tests/test_smart_security.py::TestScopeSecurity::test_minimal_scope_principle",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_none_when_not_set",
+      "test": "tests/test_smart_security.py::TestFHIRServerSecurity::test_fhir_server_url_validation",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_valid_context_passes",
+      "test": "tests/test_smart_security.py::TestFHIRServerSecurity::test_fhir_server_certificate_validation",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_mismatched_context_fails",
+      "test": "tests/test_smart_security.py::TestFHIRServerSecurity::test_fhir_response_validation",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_missing_patient_id_fails",
+      "test": "tests/test_smart_security.py::TestSessionSecurity::test_session_id_regeneration",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_no_authorized_patient_fails",
+      "test": "tests/test_smart_security.py::TestSessionSecurity::test_session_timeout",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_whitespace_normalization",
+      "test": "tests/test_smart_security.py::TestSessionSecurity::test_session_cookie_attributes",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_passes_with_valid_context",
+      "test": "tests/test_smart_security.py::TestSessionSecurity::test_concurrent_session_handling",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_invalid_context",
+      "test": "tests/test_smart_security.py::TestCSRFProtection::test_csrf_token_in_forms",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_request_without_patient_id",
+      "test": "tests/test_smart_security.py::TestCSRFProtection::test_csrf_validation_on_post",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestVerifyPatientAccess::test_passes_with_valid_access",
+      "test": "tests/test_smart_security.py::TestCSRFProtection::test_csrf_token_uniqueness",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestVerifyPatientAccess::test_raises_on_invalid_access",
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_x_content_type_options",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-005"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-005"
         ],
         "design": [
-          "SDS-006"
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_x_frame_options",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_content_security_policy",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_strict_transport_security",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_x_xss_protection",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestLoggingSecurity::test_sensitive_data_redacted_in_logs",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestLoggingSecurity::test_audit_log_integrity",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestLoggingSecurity::test_log_rotation_configured",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataSanitization::test_html_escaping",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataSanitization::test_json_encoding",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataSanitization::test_url_encoding",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestErrorHandlingSecurity::test_generic_error_messages",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestErrorHandlingSecurity::test_no_stack_traces_in_production",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestErrorHandlingSecurity::test_error_logging_without_sensitive_data",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPKCESecurity::test_code_verifier_generation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPKCESecurity::test_code_challenge_generation",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPKCESecurity::test_code_challenge_method_s256",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestScopesSecurity::test_patient_scopes_only",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestScopesSecurity::test_read_only_scopes",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestScopesSecurity::test_minimal_scopes_requested",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestAuditTrailSecurity::test_all_ephi_access_logged",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestAuditTrailSecurity::test_authentication_attempts_logged",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestAuditTrailSecurity::test_audit_log_immutability",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestAuditTrailSecurity::test_audit_log_includes_required_fields",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataEncryption::test_sensitive_config_encrypted",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataEncryption::test_patient_data_not_in_logs",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestDataEncryption::test_phi_encryption_at_rest",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestComplianceRequirements::test_user_access_logging",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestComplianceRequirements::test_data_export_capability",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestComplianceRequirements::test_complaint_process_exists",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestComplianceRequirements::test_privacy_policy_accessible",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestSecurityBestPractices::test_no_sensitive_data_in_git",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestSecurityBestPractices::test_dependencies_pinned",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestSecurityBestPractices::test_no_hardcoded_secrets",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestSecurityBestPractices::test_secure_random_for_tokens",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPenetrationTestScenarios::test_directory_traversal",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPenetrationTestScenarios::test_http_verb_tampering",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPenetrationTestScenarios::test_parameter_pollution",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPenetrationTestScenarios::test_null_byte_injection",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_smart_security.py::TestPenetrationTestScenarios::test_unicode_bypass_attempts",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-005"
+        ],
+        "risk": [
+          "RISK-005"
+        ],
+        "design": [
+          "SDS-005"
         ]
       }
     }
