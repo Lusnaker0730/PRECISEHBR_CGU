@@ -8,6 +8,10 @@
 ## [Unreleased]
 
 ### 安全性 (Security)
+- **修復深層 BOLA 越權存取漏洞** — 兩項關鍵修復：
+  - `tradeoff_routes.py` `/api/calculate_tradeoff` 端點新增 `validate_patient_context()` 檢查，防止攻擊者在 payload 中替換 patientId 查詢他人資料
+  - `fhir_client_service.py` 新增 FHIR 回傳資源 Ownership 驗證（`_validate_resource_ownership` / `_filter_owned_resources`），檢查每筆 Observation/Condition 的 `subject.reference` 是否指向授權病患，防禦 FHIR Server 異常或中間人攻擊
+- **新增 17 項深層 BOLA 測試** (`tests/test_bola_deep.py` PT-062~PT-075)：Tradeoff 端點越權拒絕/接受、FHIR 資源 Ownership 驗證、混合 ownership 過濾、整合測試
 - **修復 token exchange 資訊洩露漏洞** — `auth_routes.py:458` 移除 `"details": e.response.text`，防止後端錯誤訊息（DB 連線字串、密鑰等）洩露給客戶端
 - **新增 61 項自動化滲透測試** (`tests/test_penetration.py`)，涵蓋 15 個攻擊類別：
   - PT-001: CDS Hooks 惡意 Payload 注入（巨量 payload、深層巢狀 JSON、XSS、SQL 注入、Null byte）

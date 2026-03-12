@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, request, session, jsonify, redirect, url_for
+from flask import Blueprint, current_app, render_template, request, session, jsonify, redirect, url_for
 from services import fhir_data_service
 from fhirclient import client
 import logging
 from utils.web_utils import login_required
+from utils.patient_context import validate_patient_context
+import utils.input_validator as input_validator
 
 # Use Flask's logger
 logger = logging.getLogger('werkzeug')
@@ -29,7 +31,7 @@ def calculate_tradeoff_api():
     try:
         data = request.get_json()
         model = fhir_data_service.get_tradeoff_model_predictors()
-        
+
         # Check if model was loaded successfully
         if model is None:
             logger.error("Failed to load tradeoff model. arc-hbr-model.json may be missing or invalid.")
@@ -45,6 +47,17 @@ def calculate_tradeoff_api():
         patient_id = data.get('patientId')
         if not patient_id:
             return jsonify({'error': 'Patient ID or active factors are required.'}), 400
+
+        # BOLA protection: validate patient context matches OAuth session
+        is_ctx_valid, ctx_err = validate_patient_context(patient_id)
+        if not is_ctx_valid:
+            current_app.logger.warning(f"BOLA violation in tradeoff: {ctx_err}")
+            return jsonify({'error': ctx_err, 'error_type': 'authorization_error'}), 403
+
+        # Validate patient ID format
+        is_valid, error_msg = input_validator.validate_patient_id(patient_id)
+        if not is_valid:
+            return jsonify({'error': f'Invalid patient ID: {error_msg}', 'error_type': 'validation_error'}), 400
 
         fhir_session_data = session['fhir_data']
         raw_data, error = fhir_data_service.get_fhir_data(

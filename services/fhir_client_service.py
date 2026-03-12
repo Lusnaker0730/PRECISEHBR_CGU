@@ -410,20 +410,31 @@ class FHIRClientService:
         if error:
             return None, error
 
+        # Validate Patient resource ownership
+        if not self._validate_resource_ownership(patient_data, patient_id):
+            logging.error(f"Patient resource ownership mismatch for {patient_id}")
+            return None, "Patient data integrity error: resource ownership mismatch."
+
         loinc_codes = config_loader.get_loinc_codes()
         text_search_terms = config_loader.get_text_search_terms()
 
+        conditions = self.get_conditions(patient_id)
+        conditions = self._filter_owned_resources(conditions, patient_id, 'Condition')
+
         raw_data = {
             'patient': patient_data,
-            'conditions': self.get_conditions(patient_id),
+            'conditions': conditions,
             'med_requests': [],
             'procedures': [],
         }
 
         for resource_type, codes in loinc_codes.items():
             text_terms = text_search_terms.get(resource_type, [])
-            raw_data[resource_type] = self._fetch_observation_with_fallback(
+            observations = self._fetch_observation_with_fallback(
                 patient_id, resource_type, codes, text_terms
+            )
+            raw_data[resource_type] = self._filter_owned_resources(
+                observations, patient_id, resource_type
             )
 
         # Check security labels on all retrieved resources
@@ -445,6 +456,92 @@ class FHIRClientService:
 
         return raw_data, None
     
+    def _validate_resource_ownership(self, resource: dict, expected_patient_id: str) -> bool:
+        """
+        Validate that a FHIR resource belongs to the expected patient.
+
+        Checks the 'subject' or 'patient' reference field to ensure the resource
+        is not for a different patient (defense-in-depth against FHIR server bugs
+        or MITM attacks).
+
+        Args:
+            resource: FHIR resource as dict
+            expected_patient_id: The authorized patient ID
+
+        Returns:
+            True if ownership is valid or cannot be determined, False if mismatch
+        """
+        if not resource or not isinstance(resource, dict):
+            return True
+
+        resource_type = resource.get('resourceType', '')
+
+        # Patient resource: check the id directly
+        if resource_type == 'Patient':
+            resource_id = resource.get('id')
+            if resource_id and str(resource_id) != str(expected_patient_id):
+                logging.warning(
+                    f"OWNERSHIP MISMATCH: Patient resource id={resource_id} "
+                    f"does not match expected={expected_patient_id}"
+                )
+                return False
+            return True
+
+        # For other resources, check subject/patient reference
+        ref_value = None
+        for ref_field in ('subject', 'patient'):
+            ref_obj = resource.get(ref_field)
+            if isinstance(ref_obj, dict):
+                ref_value = ref_obj.get('reference', '')
+                break
+            elif isinstance(ref_obj, str):
+                ref_value = ref_obj
+                break
+
+        if not ref_value:
+            # No reference field — cannot validate (e.g., ValueSet); allow through
+            return True
+
+        # Extract patient ID from reference like "Patient/12345"
+        expected_refs = {
+            f"Patient/{expected_patient_id}",
+            expected_patient_id,
+        }
+        if ref_value not in expected_refs:
+            # Handle full URL references like "https://fhir.example.com/Patient/12345"
+            if ref_value.endswith(f"/Patient/{expected_patient_id}"):
+                return True
+            logging.warning(
+                f"OWNERSHIP MISMATCH: {resource_type} resource references "
+                f"'{ref_value}', expected Patient/{expected_patient_id}"
+            )
+            return False
+
+        return True
+
+    def _filter_owned_resources(self, resources: list, patient_id: str, resource_label: str = "") -> list:
+        """
+        Filter a list of resources, removing any that don't belong to the expected patient.
+
+        Args:
+            resources: List of FHIR resource dicts
+            patient_id: Expected patient ID
+            resource_label: Label for logging (e.g. 'Observation', 'Condition')
+
+        Returns:
+            Filtered list with only owned resources
+        """
+        owned = []
+        for r in resources:
+            if self._validate_resource_ownership(r, patient_id):
+                owned.append(r)
+            else:
+                logging.warning(
+                    f"Dropping {resource_label or r.get('resourceType', 'unknown')} "
+                    f"resource {r.get('id', '?')} — ownership mismatch for patient {patient_id}"
+                )
+        return owned
+
     def _collect_all_resources(self, raw_data: dict) -> list:
         """Collect all FHIR resources from raw_data for security analysis."""
         resources = []
