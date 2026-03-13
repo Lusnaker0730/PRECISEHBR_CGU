@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import time
+from typing import Optional
 
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 
+from services.audit_logger import get_audit_logger
 from services.config_loader import config_loader
 from services.fhir_data_service import (
     get_patient_demographics,
@@ -204,6 +206,13 @@ def _build_fallback_card(reason='timeout'):
             "The system will automatically retry shortly. Please use the "
             "full PRECISE-HBR Calculator or assess bleeding risk manually."
         )
+    elif reason == 'access_denied':
+        summary = "PRECISE-HBR: Patient data access restricted (Break the Glass)"
+        detail = (
+            "This patient's clinical data is protected and requires elevated access. "
+            "Please complete Break the Glass (BTG) authorization in the EHR, "
+            "then re-open the patient's chart to trigger a new assessment."
+        )
     else:
         summary = "PRECISE-HBR: Assessment could not be completed"
         detail = (
@@ -217,6 +226,48 @@ def _build_fallback_card(reason='timeout'):
         "detail": detail,
         "source": source,
     }
+
+
+def _extract_cds_user(hook_request: Optional[dict]) -> Optional[str]:
+    """Extract practitioner identity from CDS Hooks fhirAuthorization or context.
+
+    CDS Hooks spec: fhirAuthorization.userId is a FHIR reference like
+    'Practitioner/12345'. Some EHRs also put userId in context.
+    """
+    if not hook_request:
+        return None
+    fhir_auth = hook_request.get('fhirAuthorization', {})
+    if fhir_auth and fhir_auth.get('userId'):
+        return fhir_auth['userId']
+    return hook_request.get('context', {}).get('userId')
+
+
+def _get_cds_ip() -> str:
+    """Get real client IP for CDS Hooks (X-Forwarded-For aware)."""
+    forwarded = request.headers.get('X-Forwarded-For')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr or ''
+
+
+def _log_cds_event(
+    action: str,
+    hook_request: Optional[dict] = None,
+    patient_id: Optional[str] = None,
+    outcome: str = 'success',
+    details: Optional[dict] = None,
+) -> None:
+    """Convenience: log a CDS Hooks audit event."""
+    get_audit_logger().log_event(
+        event_type='CDS_DECISION',
+        action=action,
+        patient_id=patient_id,
+        fhir_user=_extract_cds_user(hook_request),
+        outcome=outcome,
+        ip_address=_get_cds_ip(),
+        user_agent=request.headers.get('User-Agent'),
+        details=details or {},
+    )
 
 
 class _DeadlineExceeded(Exception):
@@ -252,6 +303,11 @@ def cds_services_discovery():
         config_path = os.path.join(os.getcwd(), 'config', 'cds-services.json')
         with open(config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
+        _log_cds_event(
+            action='service_discovery',
+            outcome='success',
+            details={'endpoint': '/cds-services'},
+        )
         return jsonify(config_data)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         config_path = os.path.join(os.getcwd(), 'config', 'cds-services.json')
@@ -309,6 +365,18 @@ def handle_precise_hbr_bleeding_risk_hook():
             medication_resources)
 
         if not has_high_risk_meds:
+            _log_cds_event(
+                action='precise_hbr_bleeding_risk',
+                hook_request=hook_request,
+                patient_id=patient_id,
+                outcome='success',
+                details={
+                    'hook': 'medication-prescribe',
+                    'cards_returned': 0,
+                    'reason': 'no_high_risk_medications',
+                    'elapsed_seconds': round(time.monotonic() - start_time, 3),
+                },
+            )
             return jsonify({"cards": []})
 
         _check_deadline(start_time, 'medication_check')
@@ -333,6 +401,19 @@ def handle_precise_hbr_bleeding_risk_hook():
         if missing_fields:
             # SAFETY IMPROVEMENT: Do not calculate potentially misleading score
             logging.warning(f"CDS Hook skipped due to missing data: {missing_fields}")
+            _log_cds_event(
+                action='precise_hbr_bleeding_risk',
+                hook_request=hook_request,
+                patient_id=patient_id,
+                outcome='success',
+                details={
+                    'hook': 'medication-prescribe',
+                    'cards_returned': 0,
+                    'reason': 'missing_fields',
+                    'missing_fields': missing_fields,
+                    'elapsed_seconds': round(time.monotonic() - start_time, 3),
+                },
+            )
             return jsonify({"cards": []})  # silence preferred over noise if uncertain
 
         # Calculate score using pure calculator (or legacy wrapper)
@@ -376,19 +457,68 @@ def handle_precise_hbr_bleeding_risk_hook():
                 patient_name, total_score, risk_category,
                 bleeding_risk_percentage, high_risk_medications
             )
+            _log_cds_event(
+                action='precise_hbr_bleeding_risk',
+                hook_request=hook_request,
+                patient_id=patient_id,
+                outcome='success',
+                details={
+                    'hook': 'medication-prescribe',
+                    'score': total_score,
+                    'risk_category': str(risk_category),
+                    'cards_returned': 1,
+                    'elapsed_seconds': round(time.monotonic() - start_time, 3),
+                },
+            )
             return jsonify({"cards": [warning_card]})
         else:
+            _log_cds_event(
+                action='precise_hbr_bleeding_risk',
+                hook_request=hook_request,
+                patient_id=patient_id,
+                outcome='success',
+                details={
+                    'hook': 'medication-prescribe',
+                    'score': total_score,
+                    'cards_returned': 0,
+                    'reason': 'below_threshold',
+                    'elapsed_seconds': round(time.monotonic() - start_time, 3),
+                },
+            )
             return jsonify({"cards": []})
 
     except _DeadlineExceeded as de:
         elapsed = time.monotonic() - start_time
         logging.warning(f"CDS Hook deadline exceeded: {de} ({elapsed:.2f}s)")
+        _log_cds_event(
+            action='precise_hbr_bleeding_risk',
+            hook_request=hook_request if 'hook_request' in locals() else None,
+            patient_id=patient_id if 'patient_id' in locals() else None,
+            outcome='timeout',
+            details={
+                'hook': 'medication-prescribe',
+                'stage': str(de),
+                'elapsed_seconds': round(elapsed, 3),
+            },
+        )
         return jsonify({"cards": [_build_fallback_card('timeout')]})
 
     except Exception as e:
+        elapsed = time.monotonic() - start_time
         logging.error(
             f"Error in PRECISE-HBR CDS Hook: {e}",
             exc_info=True)
+        _log_cds_event(
+            action='precise_hbr_bleeding_risk',
+            hook_request=hook_request if 'hook_request' in locals() else None,
+            patient_id=patient_id if 'patient_id' in locals() else None,
+            outcome='error',
+            details={
+                'hook': 'medication-prescribe',
+                'error': str(e),
+                'elapsed_seconds': round(elapsed, 3),
+            },
+        )
         return jsonify({"cards": [_build_fallback_card('error')]}), 500
 
 
@@ -484,8 +614,21 @@ def precise_hbr_patient_view():
                     }
                 ]
             }
+            _log_cds_event(
+                action='precise_hbr_patient_view',
+                hook_request=data,
+                patient_id=patient_id,
+                outcome='success',
+                details={
+                    'hook': 'patient-view',
+                    'cards_returned': 1,
+                    'reason': 'missing_fields',
+                    'missing_fields': missing_fields,
+                    'elapsed_seconds': round(time.monotonic() - start_time, 3),
+                },
+            )
             return jsonify({"cards": [warning_card]})
-            
+
         # 2. Calculate if data complete
         total_score, _ = precise_hbr_calculator.calculate_pure_score(inputs)
         
@@ -552,13 +695,49 @@ def precise_hbr_patient_view():
                 "links": []
             }
         
+        _log_cds_event(
+            action='precise_hbr_patient_view',
+            hook_request=data,
+            patient_id=patient_id,
+            outcome='success',
+            details={
+                'hook': 'patient-view',
+                'score': total_score,
+                'risk_category': str(full_label),
+                'cards_returned': 1,
+                'elapsed_seconds': round(time.monotonic() - start_time, 3),
+            },
+        )
         return jsonify({"cards": [card]})
 
     except _DeadlineExceeded as de:
         elapsed = time.monotonic() - start_time
         logging.warning(f"Patient-view CDS Hook deadline exceeded: {de} ({elapsed:.2f}s)")
+        _log_cds_event(
+            action='precise_hbr_patient_view',
+            hook_request=data if 'data' in locals() else None,
+            patient_id=patient_id if 'patient_id' in locals() else None,
+            outcome='timeout',
+            details={
+                'hook': 'patient-view',
+                'stage': str(de),
+                'elapsed_seconds': round(elapsed, 3),
+            },
+        )
         return jsonify({"cards": [_build_fallback_card('timeout')]})
 
     except Exception as e:
+        elapsed = time.monotonic() - start_time
         logging.error(f"Error in patient-view CDS Hook: {e}", exc_info=True)
+        _log_cds_event(
+            action='precise_hbr_patient_view',
+            hook_request=data if 'data' in locals() else None,
+            patient_id=patient_id if 'patient_id' in locals() else None,
+            outcome='error',
+            details={
+                'hook': 'patient-view',
+                'error': str(e),
+                'elapsed_seconds': round(elapsed, 3),
+            },
+        )
         return jsonify({"cards": [_build_fallback_card('error')]}), 500

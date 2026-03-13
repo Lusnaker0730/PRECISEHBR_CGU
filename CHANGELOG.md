@@ -66,6 +66,13 @@
 - **更新 test-traceability 報告與 regulatory-issue-mapping**
 
 ### 可靠性 (Reliability)
+- **Break the Glass (BTG) 403 完整處理鏈** — Epic VIP 病患觸發 BTG 時的優雅降級：
+  - `fhir_client_service.py`：所有資源擷取方法（Observation/Condition/Procedure/MedicationRequest）偵測 403 Forbidden，記錄至 `_access_denied_resources` 而非靜默吞掉回傳空 list。403 不觸發斷路器（client error）
+  - `api_routes.py`：偵測 `_access_denied_resources` 或 `get_patient()` 回傳的 403 錯誤訊息，回傳 HTTP 403 + `access_denied_btg` 錯誤類型 + 可操作的 BTG 提示訊息（「請在 EHR 完成 Break the Glass 授權後重試」）
+  - `precise_hbr_calculator.py`：當 raw_data 含 `_access_denied_resources` 時產生 `severity: critical` 資料警告，明確告知「分數基於不完整資料，可能低估出血風險」
+  - `hooks.py`：`_build_fallback_card()` 新增 `access_denied` 降級原因，CDS Hooks 回傳 BTG 專用提示卡片
+  - **修復前**：403 → 靜默吞掉 → 空 list → 分數看似正常但基於不完整資料 → 醫師不知情
+  - **修復後**：403 → 偵測 → API 回傳 403 + BTG 提示 → UI 可顯示「此病患資料受保護」
 - **Circuit Breaker 斷路器** — 防止 FHIR server 持續不可用時的雪崩效應：
   - `services/circuit_breaker.py`：輕量級 3 態斷路器（CLOSED → OPEN → HALF_OPEN → CLOSED），per-server 隔離
   - `CircuitBreakerRegistry`：全域 singleton 註冊表，跨請求共享斷路器狀態（`FHIRClientService` 每次請求實例化，但斷路器狀態持久化）
@@ -75,8 +82,24 @@
   - `hooks.py` 新增 `CDS_DEADLINE_SECONDS = 3.0` 總預算，各處理階段檢查 deadline
   - 超時時回傳 **Fallback Card**（`_build_fallback_card()`），告知醫師「評估延遲，請使用完整計算器」，而非讓請求掛住
   - 錯誤時也回傳 Fallback Card 而非空卡片，確保醫師知道系統有嘗試評估
-  - 支援 3 種降級原因：`timeout`（deadline 到期）、`circuit_open`（FHIR server 暫時不可用）、`error`（未預期錯誤）
+  - 支援 4 種降級原因：`timeout`（deadline 到期）、`circuit_open`（FHIR server 暫時不可用）、`access_denied`（BTG 403）、`error`（未預期錯誤）
 - **27 項新增測試**（`tests/test_circuit_breaker.py`）：狀態機轉換、metrics、Registry 隔離、執行緒安全、Fallback Card 結構驗證、CDS deadline 機制、端點整合
+
+### 重構 (Refactoring) — FHIR 正規化層
+- **新增 `services/fhir_normalizer.py`** — FHIR-agnostic 正規化資料模型（IEC 62304 §5.3 架構邊界）：
+  - `NormalizedPatientData` dataclass：將 FHIR dict 轉換為乾淨的 Python dataclass，計算核心不再直接存取 FHIR dict
+  - `NormalizedCondition`/`NormalizedMedication`/`NormalizedLabResult`：獨立的正規化類別
+  - `FHIRNormalizer`：統一的 FHIR → canonical model 轉換器
+- **`precise_hbr_calculator.py` 新增正規化入口**：
+  - `extract_inputs_normalized()`：從 `NormalizedPatientData` 擷取計算輸入，零 FHIR dict 存取
+  - `calculate_score_normalized()`：完整分數計算的正規化版本
+  - `_build_result()`：共用結果建構邏輯，legacy 與 normalized 路徑共享
+- **`condition_checker.py` 新增正規化方法**：
+  - `check_prior_bleeding_normalized()`、`check_oral_anticoagulation_normalized()`、`check_arc_hbr_factors_normalized()`：消費 canonical model dataclass
+
+### 稽核日誌增強 (Audit Logging)
+- **CDS Hooks 稽核日誌** — `hooks.py` 所有 CDS Hooks 端點新增結構化稽核記錄（`_log_cds_event()`），記錄 5W（Who/What/Whom/When/Where）+ 處理時間 + 卡片數量
+- **`audit_logger.py` 增強**：GCP Cloud Logging 結構化輸出、X-Forwarded-For 感知 IP 擷取、`_extract_cds_user()` 從 `fhirAuthorization.userId` 擷取 Practitioner 身份
 
 ### 功能改進 (Features)
 - **Unit Conversion Fail-Safe — 未知/缺失單位拒絕猜測機制** — 當 EHR 回傳的檢驗值單位無法辨認（如 `mg/L` 代替 `g/dL`）或完全缺失時：

@@ -5,11 +5,14 @@ Tests audit logging functionality, tamper-resistance, and compliance features.
 
 import os
 import json
+import re
 import pytest
 import tempfile
 import shutil
 from unittest.mock import Mock, patch, mock_open
-from services.audit_logger import AuditLogger, audit_ephi_access
+from services.audit_logger import (
+    AuditLogger, audit_ephi_access, _get_request_context, _get_trace_context
+)
 
 
 @pytest.mark.requirement("SRS-010")
@@ -464,23 +467,27 @@ class TestComplianceFeatures:
         audit_path = os.path.join(temp_audit_dir, 'audit', 'test.jsonl')
         return AuditLogger(audit_file_path=audit_path)
     
-    def test_timestamp_in_iso_format(self, audit_logger):
-        """Test that timestamps are in ISO 8601 format."""
+    def test_timestamp_in_iso_format_with_milliseconds(self, audit_logger):
+        """Test that timestamps are in ISO 8601 format with millisecond precision."""
         entry = audit_logger.log_event('TEST', 'test_action', user_id='user1')
-        
-        # Should be ISO format with Z suffix
+
+        # Should be ISO format with Z suffix and milliseconds
         assert entry['timestamp'].endswith('Z')
         assert 'T' in entry['timestamp']
-    
+        # Verify millisecond precision: pattern like 2026-03-13T08:15:30.123Z
+        assert re.match(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', entry['timestamp'])
+
     def test_all_required_fields_present(self, audit_logger):
-        """Test that all required fields are present in audit entry."""
+        """Test that all required fields are present in audit entry (5W)."""
         entry = audit_logger.log_event('TEST', 'test_action', user_id='user1')
-        
+
         required_fields = [
             'timestamp', 'event_type', 'action', 'user_id',
-            'outcome', 'entry_hash', 'previous_hash'
+            'fhir_user', 'patient_id',
+            'outcome', 'entry_hash', 'previous_hash',
+            'ip_address', 'user_agent',
         ]
-        
+
         for field in required_fields:
             assert field in entry
     
@@ -495,6 +502,204 @@ class TestComplianceFeatures:
         assert 'compliance_standard' in header
         assert '45 CFR 170.315' in header['compliance_standard']
         assert header['hash_algorithm'] == 'SHA-256'
+
+
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.risk("RISK-008")
+class TestAudit5WCompliance:
+    """Test 5W audit fields: Who, What, Whom, When, Where."""
+
+    @pytest.fixture
+    def temp_audit_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @pytest.fixture
+    def audit_logger(self, temp_audit_dir):
+        audit_path = os.path.join(temp_audit_dir, 'audit', 'test.jsonl')
+        return AuditLogger(audit_file_path=audit_path)
+
+    @pytest.fixture
+    def app(self):
+        from flask import Flask
+        app = Flask(__name__)
+        app.config['SECRET_KEY'] = 'test-secret'
+        app.config['TESTING'] = True
+        return app
+
+    def test_fhir_user_recorded_in_log_event(self, audit_logger):
+        """Who: fhir_user (Practitioner reference) is stored in audit entry."""
+        entry = audit_logger.log_event(
+            event_type='ePHI_ACCESS',
+            action='calculate_risk',
+            user_id='session-abc',
+            fhir_user='Practitioner/12345',
+            patient_id='patient-001',
+        )
+        assert entry['fhir_user'] == 'Practitioner/12345'
+
+    def test_fhir_user_none_when_not_provided(self, audit_logger):
+        """Who: fhir_user defaults to None for backward compatibility."""
+        entry = audit_logger.log_event(
+            event_type='TEST', action='test', user_id='user1'
+        )
+        assert entry['fhir_user'] is None
+
+    def test_get_request_context_extracts_forwarded_ip(self, app):
+        """Where: X-Forwarded-For header yields real client IP."""
+        with app.test_request_context(
+            headers={'X-Forwarded-For': '203.0.113.50, 10.0.0.1'}
+        ):
+            ip, ua, fhir_user = _get_request_context()
+            assert ip == '203.0.113.50'
+
+    def test_get_request_context_fallback_to_remote_addr(self, app):
+        """Where: Falls back to remote_addr when no X-Forwarded-For."""
+        with app.test_request_context(
+            environ_base={'REMOTE_ADDR': '192.168.1.100'}
+        ):
+            ip, ua, fhir_user = _get_request_context()
+            assert ip == '192.168.1.100'
+
+    def test_get_request_context_extracts_fhir_user_from_session(self, app):
+        """Who: fhir_user extracted from Flask session."""
+        with app.test_request_context():
+            from flask import session
+            session['fhir_user'] = 'Practitioner/99999'
+            ip, ua, fhir_user = _get_request_context()
+            assert fhir_user == 'Practitioner/99999'
+
+    def test_get_trace_context_extracts_trace_id(self, app):
+        """Where: GCP trace ID extracted from X-Cloud-Trace-Context."""
+        with app.test_request_context(
+            headers={'X-Cloud-Trace-Context': 'abc123def456/789;o=1'}
+        ):
+            ctx = _get_trace_context()
+            assert ctx['trace_id'] == 'abc123def456'
+            assert ctx['trace_header'] == 'abc123def456/789;o=1'
+
+    def test_get_trace_context_empty_without_header(self, app):
+        """Where: No trace context when header is absent."""
+        with app.test_request_context():
+            ctx = _get_trace_context()
+            assert ctx == {}
+
+    def test_trace_context_merged_into_details(self, audit_logger, app):
+        """Where: Trace context automatically merged into log entry details."""
+        with app.test_request_context(
+            headers={'X-Cloud-Trace-Context': 'trace-id-abc/span-1;o=1'}
+        ):
+            entry = audit_logger.log_event(
+                event_type='TEST', action='test', user_id='u1',
+                details={'custom': 'value'},
+            )
+            assert entry['details']['trace_id'] == 'trace-id-abc'
+            assert entry['details']['custom'] == 'value'
+
+    def test_decorator_passes_fhir_user(self, app):
+        """Who: audit_ephi_access decorator captures fhir_user from session."""
+        with app.test_request_context(
+            headers={'X-Forwarded-For': '10.20.30.40'}
+        ):
+            from flask import session
+            session['user_id'] = 'test-user'
+            session['fhir_user'] = 'Practitioner/777'
+
+            logged_entries = []
+            original_log_event = AuditLogger.log_event
+
+            def capture_log_event(self_logger, **kwargs):
+                logged_entries.append(kwargs)
+                return {'entry_hash': 'mock'}
+
+            with patch.object(AuditLogger, 'log_event', capture_log_event):
+                @audit_ephi_access(action='test_action', resource_type='Patient')
+                def test_fn():
+                    return 'ok'
+                test_fn()
+
+            assert len(logged_entries) == 1
+            assert logged_entries[0]['fhir_user'] == 'Practitioner/777'
+            assert logged_entries[0]['ip_address'] == '10.20.30.40'
+
+
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.risk("RISK-008")
+class TestGCPStructuredLogging:
+    """Test GCP Cloud Logging structured output for WORM durability."""
+
+    @pytest.fixture
+    def temp_audit_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @pytest.fixture
+    def audit_logger(self, temp_audit_dir):
+        audit_path = os.path.join(temp_audit_dir, 'audit', 'test.jsonl')
+        return AuditLogger(audit_file_path=audit_path)
+
+    def test_structured_log_emitted_on_gae(self, audit_logger, capsys):
+        """On GAE, audit entries are also printed as structured JSON to stdout."""
+        with patch.dict(os.environ, {'GAE_ENV': 'standard'}):
+            audit_logger.log_event(
+                event_type='ePHI_ACCESS',
+                action='view_patient',
+                user_id='user1',
+                patient_id='pat-001',
+            )
+
+        captured = capsys.readouterr()
+        assert captured.out.strip()  # something was printed
+        structured = json.loads(captured.out.strip())
+        assert structured['severity'] == 'NOTICE'
+        assert structured['audit_event'] == 'true'
+        assert structured['event_type'] == 'ePHI_ACCESS'
+        assert structured['patient_id'] == 'pat-001'
+
+    def test_no_structured_log_outside_gae(self, audit_logger, capsys):
+        """Outside GAE, no structured JSON is printed to stdout."""
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('GAE_ENV', None)
+            audit_logger.log_event(
+                event_type='TEST', action='test', user_id='u1'
+            )
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == ''
+
+    def test_structured_log_includes_trace_link(self, audit_logger, capsys):
+        """On GAE with trace context, structured log includes trace link."""
+        from flask import Flask
+        app = Flask(__name__)
+        app.config['SECRET_KEY'] = 'test'
+        with app.test_request_context(
+            headers={'X-Cloud-Trace-Context': 'my-trace-id/span;o=1'}
+        ):
+            with patch.dict(os.environ, {
+                'GAE_ENV': 'standard',
+                'GOOGLE_CLOUD_PROJECT': 'my-project',
+            }):
+                audit_logger.log_event(
+                    event_type='TEST', action='test', user_id='u1'
+                )
+
+        captured = capsys.readouterr()
+        structured = json.loads(captured.out.strip())
+        assert structured['logging.googleapis.com/trace'] == 'projects/my-project/traces/my-trace-id'
+
+    def test_hash_chain_still_valid_with_fhir_user(self, temp_audit_dir):
+        """Hash chain integrity is maintained with the new fhir_user field."""
+        audit_path = os.path.join(temp_audit_dir, 'audit', 'test.jsonl')
+        logger = AuditLogger(audit_file_path=audit_path)
+
+        logger.log_event('E1', 'a1', user_id='u1', fhir_user='Practitioner/1')
+        logger.log_event('E2', 'a2', user_id='u2', fhir_user=None)
+        logger.log_event('E3', 'a3', user_id='u3', fhir_user='Practitioner/3')
+
+        is_valid, error = logger.verify_log_integrity()
+        assert is_valid is True, f"Hash chain broken: {error}"
 
 
 if __name__ == '__main__':

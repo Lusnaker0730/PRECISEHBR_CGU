@@ -444,8 +444,28 @@
                     });
 
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `Server responded with status ${response.status}`);
+                        let requiresReauth = false;
+                        let errorMsg = `Server responded with status ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMsg = errorData.error || errorMsg;
+                            requiresReauth = errorData.requires_reauth === true;
+                        } catch (e) { /* not JSON */ }
+
+                        if (response.status === 401 || requiresReauth) {
+                            document.getElementById('loading-overlay').style.display = 'none';
+                            document.getElementById('main-content').classList.remove('content-hidden');
+                            document.getElementById('main-content').innerHTML = `
+                                <div class="container mt-5">
+                                    <div class="alert alert-warning text-center">
+                                        <h4><i class="bi bi-lock-fill"></i> Session Expired</h4>
+                                        <p>Your authentication session has expired. Please re-launch the application from your EHR.</p>
+                                        <a href="/" class="btn btn-primary"><i class="bi bi-arrow-repeat"></i> Re-launch Application</a>
+                                    </div>
+                                </div>`;
+                            return;
+                        }
+                        throw new Error(errorMsg);
                     }
 
                     modelData = await response.json();
@@ -605,11 +625,24 @@
 
                     if (!response.ok) {
                         let errorMessage = `Server error: ${response.status}`;
+                        let requiresReauth = false;
                         try {
                             const errorData = await response.json();
                             errorMessage = errorData.error || errorMessage;
+                            requiresReauth = errorData.requires_reauth === true;
                         } catch (e) {
                             // Response wasn't JSON
+                        }
+                        if (response.status === 401 || requiresReauth) {
+                            document.getElementById('main-content').innerHTML = `
+                                <div class="container mt-5">
+                                    <div class="alert alert-warning text-center">
+                                        <h4><i class="bi bi-lock-fill"></i> Session Expired</h4>
+                                        <p>Your session has expired. Please re-launch the application from your EHR.</p>
+                                        <a href="/" class="btn btn-primary"><i class="bi bi-arrow-repeat"></i> Re-launch Application</a>
+                                    </div>
+                                </div>`;
+                            return;
                         }
                         throw new Error(errorMessage);
                     }

@@ -69,6 +69,8 @@ class FHIRClientService:
             failure_threshold=self.CB_FAILURE_THRESHOLD,
             recovery_timeout=self.CB_RECOVERY_TIMEOUT,
         )
+        # Track resources that returned 403 (Break the Glass / VIP patients)
+        self._access_denied_resources = []
     
     def _create_client(self):
         """
@@ -165,6 +167,20 @@ class FHIRClientService:
 
             return None, f'Failed to retrieve patient data. Error type: {type(e).__name__}'
     
+    @staticmethod
+    def _is_access_denied(exception):
+        """Check if an exception indicates a 403 Forbidden (Break the Glass)."""
+        error_msg = str(exception).lower()
+        return '403' in error_msg or 'forbidden' in error_msg
+
+    def _record_access_denied(self, resource_type, patient_id=''):
+        """Record that a resource type returned 403 Access Denied."""
+        self._access_denied_resources.append(resource_type)
+        logging.warning(
+            f'FHIR 403 Access Denied for {resource_type} (patient {patient_id}). '
+            f'Possible Break the Glass (BTG) restriction.'
+        )
+
     def _extract_sorted_observations(self, search_result):
         """
         Extract and sort observations from a FHIR search result.
@@ -228,8 +244,11 @@ class FHIRClientService:
             logging.warning('Timeout fetching observations by LOINC')
             return []
         except Exception as e:
-            self._cb.record_failure()
-            logging.warning(f'Error fetching observations by LOINC: {type(e).__name__}')
+            if self._is_access_denied(e):
+                self._record_access_denied('Observation', patient_id)
+            else:
+                self._cb.record_failure()
+                logging.warning(f'Error fetching observations by LOINC: {type(e).__name__}')
             return []
 
     def get_observations_by_text(self, patient_id, text_terms, count=5):
@@ -268,6 +287,9 @@ class FHIRClientService:
                 logging.debug(f'Timeout for text search "{term}"')
                 continue
             except Exception as e:
+                if self._is_access_denied(e):
+                    self._record_access_denied('Observation', patient_id)
+                    return []
                 self._cb.record_failure()
                 logging.debug(f'Text search failed for "{term}": {type(e).__name__}')
 
@@ -323,12 +345,15 @@ class FHIRClientService:
             logging.warning('Timeout fetching conditions - continuing without condition data')
             return []
         except Exception as e:
-            self._cb.record_failure()
-            error_str = str(e).lower()
-            if '504' in error_str or 'timeout' in error_str:
-                logging.error(f'Timeout fetching conditions: {type(e).__name__}')
+            if self._is_access_denied(e):
+                self._record_access_denied('Condition', patient_id)
             else:
-                logging.error(f'Error fetching conditions: {type(e).__name__}')
+                self._cb.record_failure()
+                error_str = str(e).lower()
+                if '504' in error_str or 'timeout' in error_str:
+                    logging.error(f'Timeout fetching conditions: {type(e).__name__}')
+                else:
+                    logging.error(f'Error fetching conditions: {type(e).__name__}')
             return []
 
     def get_procedures(self, patient_id, count=50):
@@ -360,8 +385,11 @@ class FHIRClientService:
             return procedures_list
 
         except Exception as e:
-            self._cb.record_failure()
-            logging.warning(f'Error fetching procedures: {type(e).__name__}')
+            if self._is_access_denied(e):
+                self._record_access_denied('Procedure', patient_id)
+            else:
+                self._cb.record_failure()
+                logging.warning(f'Error fetching procedures: {type(e).__name__}')
             return []
 
     def get_medication_requests(self, patient_id, category=None):
@@ -398,8 +426,11 @@ class FHIRClientService:
             return med_list
 
         except Exception as e:
-            self._cb.record_failure()
-            logging.warning(f'Error fetching medication requests: {type(e).__name__}')
+            if self._is_access_denied(e):
+                self._record_access_denied('MedicationRequest', patient_id)
+            else:
+                self._cb.record_failure()
+                logging.warning(f'Error fetching medication requests: {type(e).__name__}')
             return []
 
     @staticmethod
@@ -514,6 +545,15 @@ class FHIRClientService:
             'restricted_count': security_summary['restricted_count'],
             'very_restricted_count': security_summary['very_restricted_count'],
         }
+
+        # Propagate Break the Glass / 403 Access Denied info
+        if self._access_denied_resources:
+            # Deduplicate while preserving order
+            denied = list(dict.fromkeys(self._access_denied_resources))
+            raw_data['_access_denied_resources'] = denied
+            logging.warning(
+                f'Break the Glass: {len(denied)} resource type(s) returned 403: {denied}'
+            )
 
         return raw_data, None
     
