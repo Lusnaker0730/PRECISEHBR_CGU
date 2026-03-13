@@ -7,6 +7,7 @@ import os
 import datetime
 
 # Internal imports
+from version import __version__
 from services.app_config import Config
 from extensions import limiter, csrf
 from utils.logging_filter import setup_ephi_logging_filter
@@ -122,7 +123,7 @@ def create_app():
                 'status': 'healthy',
                 'timestamp': datetime.datetime.utcnow().isoformat(),
                 'service': 'PRECISE-HBR SMART on FHIR',
-                'version': '1.0.0'
+                'version': __version__
             }
             return jsonify(health_status), 200
         except Exception as e:

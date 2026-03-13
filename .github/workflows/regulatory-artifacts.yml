@@ -45,6 +45,13 @@ jobs:
     - name: Create test directories
       run: mkdir -p instance/flask_session reports
 
+    - name: Extract version from version.py
+      id: version
+      run: |
+        APP_VERSION=$(python -c "exec(open('version.py').read()); print(__version__)")
+        echo "app_version=${APP_VERSION}" >> $GITHUB_OUTPUT
+        echo "Detected version: ${APP_VERSION}"
+
     - name: Run Unit Tests (IEC 62304 - Software Unit Verification)
       run: |
         pytest tests/ \
@@ -114,7 +121,7 @@ jobs:
     - name: Generate Validation Summary
       if: always()
       run: |
-        VERSION="${{ github.event.inputs.release_version || github.ref_name }}"
+        VERSION="${{ steps.version.outputs.app_version || github.event.inputs.release_version || github.ref_name }}"
         cat > reports/validation-summary.md << SUMMARY_EOF
         # Software Validation Summary Report
         ## PRECISE-HBR SMART on FHIR Application
@@ -153,7 +160,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: regulatory-artifacts-${{ github.sha }}
+        name: regulatory-artifacts-v${{ steps.version.outputs.app_version }}-${{ github.sha }}
         path: reports/
         retention-days: 2555  # ~7 years (TFDA record retention)
 
