@@ -475,19 +475,26 @@ class TestInjectionAttacks:
 class TestSSRFPrevention:
     """PT-007: Server-Side Request Forgery 防護測試。"""
 
+    @pytest.mark.timeout(10)
     def test_ssrf_private_ip_in_iss(self, client):
         """私有 IP 的 ISS URL 應被阻擋。"""
+        from unittest.mock import patch
         ssrf_urls = [
             'http://10.0.0.1/fhir',
             'http://192.168.1.1/fhir',
             'http://172.16.0.1/fhir',
         ]
-        for url in ssrf_urls:
-            resp = client.get(f'/launch?iss={url}')
-            # 400 = validate_url blocks it, 500 = fails SMART config fetch (still blocked)
-            assert resp.status_code in (400, 500), f"SSRF not blocked: {url}"
-            # Verify no successful redirect to private IP
-            assert resp.status_code != 302
+        # Mock requests.get in auth_routes to prevent actual network calls to
+        # private IPs (which hang in CI without private network routes)
+        import requests as _req
+        with patch('routes.auth_routes.requests.get',
+                   side_effect=_req.exceptions.ConnectionError("Mocked: private IP unreachable")):
+            for url in ssrf_urls:
+                resp = client.get(f'/launch?iss={url}')
+                # 400 = validate_url blocks it, 500 = fails SMART config fetch (still blocked)
+                assert resp.status_code in (400, 500), f"SSRF not blocked: {url}"
+                # Verify no successful redirect to private IP
+                assert resp.status_code != 302
 
     def test_ssrf_private_ip_127(self, client):
         """127.0.0.1 在測試模式下可能被允許（allow_localhost=True），但不應成功取得 SMART config。"""
