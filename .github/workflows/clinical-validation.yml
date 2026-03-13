@@ -1,0 +1,155 @@
+name: Clinical Validation (Golden Dataset)
+
+# =============================================================================
+# IEC 62304 §5.5 — Software Unit Verification
+# ISO 14971 — Risk Control Measure Verification
+#
+# This workflow is MANDATORY for any change to clinical parameters,
+# scoring algorithms, or risk classification logic (Class C changes).
+# It runs the golden dataset verification to ensure score calculation
+# integrity is preserved.
+#
+# Configure as a REQUIRED status check in GitHub branch protection rules
+# for the main/PRECISE-HBR branch to enforce this gate.
+# =============================================================================
+
+on:
+  push:
+    branches: [ main, PRECISE-HBR, develop ]
+    paths:
+      - 'config/cdss_config.json'
+      - 'services/precise_hbr_calculator.py'
+      - 'services/risk_classifier.py'
+      - 'services/condition_checker.py'
+      - 'services/unit_conversion_service.py'
+      - 'services/config_loader.py'
+      - 'tests/verify_precise_hbr.py'
+  pull_request:
+    branches: [ main, PRECISE-HBR ]
+    paths:
+      - 'config/cdss_config.json'
+      - 'services/precise_hbr_calculator.py'
+      - 'services/risk_classifier.py'
+      - 'services/condition_checker.py'
+      - 'services/unit_conversion_service.py'
+      - 'services/config_loader.py'
+      - 'tests/verify_precise_hbr.py'
+  # Allow manual trigger for ad-hoc validation
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  golden-dataset-validation:
+    name: "CRITICAL: Golden Dataset Verification (Class C)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-html
+
+    - name: Create test directories
+      run: mkdir -p instance/flask_session reports
+
+    - name: Detect changed files
+      id: changes
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          CHANGED=$(gh pr diff ${{ github.event.pull_request.number }} --name-only 2>/dev/null || echo "")
+        else
+          CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
+        fi
+        echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGED" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        if echo "$CHANGED" | grep -q "config/cdss_config.json"; then
+          echo "config_changed=true" >> $GITHUB_OUTPUT
+          echo "::warning::config/cdss_config.json was modified — this is a Class C change"
+        else
+          echo "config_changed=false" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Run Golden Dataset Verification
+      run: |
+        echo "============================================"
+        echo "  PRECISE-HBR Golden Dataset Verification"
+        echo "  IEC 62304 §5.5 / ISO 14971 RISK-001"
+        echo "============================================"
+        pytest tests/verify_precise_hbr.py \
+          -v --tb=long \
+          --junitxml=reports/golden-dataset-results.xml \
+          --html=reports/golden-dataset-report.html --self-contained-html
+      env:
+        FLASK_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+        SMART_CLIENT_ID: test-client-id
+        SMART_REDIRECT_URI: http://localhost:8080/callback
+        TESTING: "true"
+
+    - name: Run Risk Classifier Tests
+      run: |
+        pytest tests/test_risk_classifier.py \
+          -v --tb=short \
+          --junitxml=reports/risk-classifier-results.xml
+      env:
+        FLASK_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+        SMART_CLIENT_ID: test-client-id
+        SMART_REDIRECT_URI: http://localhost:8080/callback
+        TESTING: "true"
+
+    - name: Run Config Loader Integrity Tests
+      run: |
+        pytest tests/test_config_loader.py tests/test_config.py \
+          -v --tb=short \
+          --junitxml=reports/config-integrity-results.xml
+      env:
+        FLASK_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+        SMART_CLIENT_ID: test-client-id
+        SMART_REDIRECT_URI: http://localhost:8080/callback
+        TESTING: "true"
+
+    - name: Validation Summary
+      if: always()
+      run: |
+        echo "## 🏥 Clinical Validation Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.changes.outputs.config_changed }}" = "true" ]; then
+          echo "### ⚠️ Class C Change Detected" >> $GITHUB_STEP_SUMMARY
+          echo "\`config/cdss_config.json\` was modified. This file contains clinical scoring parameters." >> $GITHUB_STEP_SUMMARY
+          echo "Per IEC 62304, changes to Class C software require full verification." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Suite | Purpose | IEC 62304 |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Golden Dataset | Score calculation integrity | §5.5 Unit Verification |" >> $GITHUB_STEP_SUMMARY
+        echo "| Risk Classifier | Risk category thresholds | §5.5 Unit Verification |" >> $GITHUB_STEP_SUMMARY
+        echo "| Config Integrity | Configuration loading | §5.8 Configuration Mgmt |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Reports uploaded as workflow artifacts (retained 2555 days per TFDA)." >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload validation reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: clinical-validation-reports
+        path: reports/
+        retention-days: 2555

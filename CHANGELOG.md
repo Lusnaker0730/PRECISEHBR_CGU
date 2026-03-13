@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+### CI/CD 基礎建設 (Infrastructure)
+- **新增 `clinical-validation.yml` CI 工作流程** — 當 `config/cdss_config.json` 或計算核心（`precise_hbr_calculator.py`、`risk_classifier.py`、`condition_checker.py`、`unit_conversion_service.py`）被修改時，自動觸發 Golden Dataset 驗證（`verify_precise_hbr.py`）+ 風險分類測試 + 設定完整性測試。報告保留 2555 天（TFDA 合規）。設為 GitHub branch protection required check 即可強制 Class C 變更必須通過驗證
+- **修正 `test.yml` paths filter** — 加入 `config/**`，確保臨床參數變更也會觸發測試套件
+- **更新 PR 範本** — Class C 變更提醒區段，列出會觸發 Golden Dataset 驗證的檔案清單
+
 ### 安全性 (Security)
 - **修復深層 BOLA 越權存取漏洞** — 兩項關鍵修復：
   - `tradeoff_routes.py` `/api/calculate_tradeoff` 端點新增 `validate_patient_context()` 檢查，防止攻擊者在 payload 中替換 patientId 查詢他人資料

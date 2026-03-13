@@ -44,6 +44,13 @@
 - [ ] Class B change - Could cause non-serious injury
 - [ ] Class C change - Could cause serious injury or death
 
+> **⚠️ Class C 變更提醒：** 若本 PR 修改了以下檔案，屬於 Class C 變更，`clinical-validation.yml` 會自動觸發 Golden Dataset 驗證，此 check 必須通過才能合併：
+> - `config/cdss_config.json`（臨床參數：LOINC、SNOMED、計分權重）
+> - `services/precise_hbr_calculator.py`（分數計算核心）
+> - `services/risk_classifier.py`（風險分類閾值）
+> - `services/condition_checker.py`（臨床狀態偵測）
+> - `services/unit_conversion_service.py`（實驗室值轉換/eGFR）
+
 ## Related Issues
 
 <!-- Link to related issues using #issue_number -->
