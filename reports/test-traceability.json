@@ -1,10 +1,10 @@
 {
-  "generated": "2026-03-13T06:37:01.399966+00:00",
-  "total_tests": 948,
-  "total_traced_tests": 841,
+  "generated": "2026-03-13T06:44:39.028280+00:00",
+  "total_tests": 976,
+  "total_traced_tests": 869,
   "total_untraced_tests": 107,
-  "traceability_coverage_pct": 88.7,
-  "passed": 841,
+  "traceability_coverage_pct": 89.0,
+  "passed": 869,
   "failed": 0,
   "traceability": [
     {
@@ -3638,6 +3638,441 @@
       }
     },
     {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_direct_unit",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_unit_conversion",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_unknown_unit",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_missing_unit",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_empty_obs_list",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_direct_egfr",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_creatinine_fallback",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_no_egfr_no_creatinine",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_creatinine_fallback_needs_demographics",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeConditions::test_condition_with_icd10",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeConditions::test_condition_text_lowercased",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeConditions::test_empty_condition",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeMedications::test_medication_with_rxnorm",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeMedications::test_medication_text_lowercased",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizeMedications::test_empty_medication",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestFullNormalize::test_normalize_produces_patient_data",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestFullNormalize::test_normalize_empty_data",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_prior_bleeding_keyword_match",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_prior_bleeding_no_match",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_oral_anticoag_keyword",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_oral_anticoag_no_match",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_thrombocytopenia_low_platelets",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_thrombocytopenia_normal_platelets",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_basic_equivalence",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_missing_data",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_creatinine_fallback",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_conditions",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_anticoag",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_all_missing",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ],
+        "risk": [
+          "RISK-001"
+        ],
+        "design": [
+          "SDS-001"
+        ]
+      }
+    },
+    {
       "test": "tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_basic",
       "outcome": "passed",
       "traces": {
@@ -6470,18 +6905,6 @@
       }
     },
     {
-      "test": "tests/test_penetration.py::TestInjectionAttacks::test_ssti_in_complaint_form",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-006"
-        ]
-      }
-    },
-    {
       "test": "tests/test_penetration.py::TestInjectionAttacks::test_crlf_injection_in_headers",
       "outcome": "passed",
       "traces": {
@@ -6710,7 +7133,7 @@
       }
     },
     {
-      "test": "tests/test_penetration.py::TestSecurityHeaders::test_x_frame_options",
+      "test": "tests/test_penetration.py::TestSecurityHeaders::test_frame_ancestors_csp",
       "outcome": "passed",
       "traces": {
         "risk": [
@@ -8405,7 +8828,7 @@
       }
     },
     {
-      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_x_frame_options",
+      "test": "tests/test_smart_security.py::TestHeadersSecurity::test_frame_ancestors_csp",
       "outcome": "passed",
       "traces": {
         "requirement": [

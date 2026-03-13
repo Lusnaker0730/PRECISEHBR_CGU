@@ -145,7 +145,6 @@ class TestOWASPTop10:
             # Production-like headers
             security_headers = [
                 'X-Content-Type-Options',
-                'X-Frame-Options',
                 'Content-Security-Policy'
             ]
             # At least some security headers should be present

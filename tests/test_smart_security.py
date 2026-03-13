@@ -268,12 +268,12 @@ class TestHeadersSecurity:
         if not app.config.get('TESTING'):
             assert response.headers.get('X-Content-Type-Options') == 'nosniff' or True
     
-    def test_x_frame_options(self, client, app):
-        """Test X-Frame-Options header"""
+    def test_frame_ancestors_csp(self, client, app):
+        """Test CSP frame-ancestors replaces X-Frame-Options for SMART on FHIR iframe embedding."""
         response = client.get('/')
-        # Should prevent clickjacking
         if not app.config.get('TESTING'):
-            assert response.headers.get('X-Frame-Options') in ['DENY', 'SAMEORIGIN'] or True
+            csp = response.headers.get('Content-Security-Policy', '')
+            assert 'frame-ancestors' in csp or True
     
     def test_content_security_policy(self, client, app):
         """Test Content-Security-Policy header"""

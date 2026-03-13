@@ -1,11 +1,11 @@
 # Test Traceability Report (IEC 62304)
-Generated: 2026-03-13T06:37:01.399966+00:00
+Generated: 2026-03-13T06:44:39.028280+00:00
 
 ## Summary
-- Total tests: 948
-- Traced tests: 841 (88.7%)
+- Total tests: 976
+- Traced tests: 869 (89.0%)
 - **Untraced tests: 107**
-- Passed: 841, Failed: 0
+- Passed: 869, Failed: 0
 
 ## Traced Tests
 
@@ -306,6 +306,35 @@ Generated: 2026-03-13T06:37:01.399966+00:00
 | `tests/test_facade_deprecation.py::TestFacadeBackwardCompatibility::test_get_score_from_table_matches_classifier` | passed | SRS-003 | - | SDS-003 |
 | `tests/test_facade_deprecation.py::TestFacadeBackwardCompatibility::test_check_arc_hbr_factors_matches_checker` | passed | SRS-003 | - | SDS-003 |
 | `tests/test_facade_deprecation.py::TestFacadeBackwardCompatibility::test_get_active_medications_matches_checker` | passed | SRS-003 | - | SDS-003 |
+| `tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_direct_unit` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_unit_conversion` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_unknown_unit` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_hemoglobin_missing_unit` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeLabValues::test_empty_obs_list` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_direct_egfr` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_creatinine_fallback` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_no_egfr_no_creatinine` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeEGFR::test_creatinine_fallback_needs_demographics` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeConditions::test_condition_with_icd10` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeConditions::test_condition_text_lowercased` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeConditions::test_empty_condition` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeMedications::test_medication_with_rxnorm` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeMedications::test_medication_text_lowercased` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizeMedications::test_empty_medication` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestFullNormalize::test_normalize_produces_patient_data` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestFullNormalize::test_normalize_empty_data` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_prior_bleeding_keyword_match` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_prior_bleeding_no_match` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_oral_anticoag_keyword` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_oral_anticoag_no_match` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_thrombocytopenia_low_platelets` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestNormalizedConditionChecker::test_thrombocytopenia_normal_platelets` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_basic_equivalence` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_missing_data` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_creatinine_fallback` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_conditions` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_with_anticoag` | passed | SRS-001 | RISK-001 | SDS-001 |
+| `tests/test_fhir_normalizer.py::TestScoreEquivalence::test_equivalence_all_missing` | passed | SRS-001 | RISK-001 | SDS-001 |
 | `tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_basic` | passed | SRS-004 | - | SDS-004 |
 | `tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_twcore` | passed | SRS-004 | - | SDS-004 |
 | `tests/test_fhir_service.py::TestUnitConversion::test_calculate_egfr` | passed | SRS-003 | RISK-003 | - |
@@ -532,7 +561,6 @@ Generated: 2026-03-13T06:37:01.399966+00:00
 | `tests/test_penetration.py::TestAuthBypass::test_refresh_without_session` | passed | SRS-005 | RISK-005 | - |
 | `tests/test_penetration.py::TestAuthBypass::test_refresh_rate_limiting` | passed | SRS-005 | RISK-005 | - |
 | `tests/test_penetration.py::TestInjectionAttacks::test_xss_in_iss_parameter` | passed | SRS-006 | RISK-006 | - |
-| `tests/test_penetration.py::TestInjectionAttacks::test_ssti_in_complaint_form` | passed | SRS-006 | RISK-006 | - |
 | `tests/test_penetration.py::TestInjectionAttacks::test_crlf_injection_in_headers` | passed | SRS-006 | RISK-006 | - |
 | `tests/test_penetration.py::TestInjectionAttacks::test_host_header_injection` | passed | SRS-006 | RISK-006 | - |
 | `tests/test_penetration.py::TestInjectionAttacks::test_path_traversal_in_complaints` | passed | SRS-006 | RISK-006 | - |
@@ -553,7 +581,7 @@ Generated: 2026-03-13T06:37:01.399966+00:00
 | `tests/test_penetration.py::TestPatientIDValidation::test_extremely_long_patient_id` | passed | SRS-006 | RISK-009 | - |
 | `tests/test_penetration.py::TestSecurityHeaders::test_csp_header` | passed | - | RISK-006 | - |
 | `tests/test_penetration.py::TestSecurityHeaders::test_hsts_header` | passed | - | RISK-006 | - |
-| `tests/test_penetration.py::TestSecurityHeaders::test_x_frame_options` | passed | - | RISK-006 | - |
+| `tests/test_penetration.py::TestSecurityHeaders::test_frame_ancestors_csp` | passed | - | RISK-006 | - |
 | `tests/test_penetration.py::TestSecurityHeaders::test_x_content_type_options` | passed | - | RISK-006 | - |
 | `tests/test_penetration.py::TestSecurityHeaders::test_cache_control_on_api` | passed | - | RISK-006 | - |
 | `tests/test_penetration.py::TestSecurityHeaders::test_referrer_policy` | passed | - | RISK-006 | - |
@@ -690,7 +718,7 @@ Generated: 2026-03-13T06:37:01.399966+00:00
 | `tests/test_smart_security.py::TestCSRFProtection::test_csrf_validation_on_post` | passed | SRS-005 | RISK-005 | SDS-005 |
 | `tests/test_smart_security.py::TestCSRFProtection::test_csrf_token_uniqueness` | passed | SRS-005 | RISK-005 | SDS-005 |
 | `tests/test_smart_security.py::TestHeadersSecurity::test_x_content_type_options` | passed | SRS-005 | RISK-005 | SDS-005 |
-| `tests/test_smart_security.py::TestHeadersSecurity::test_x_frame_options` | passed | SRS-005 | RISK-005 | SDS-005 |
+| `tests/test_smart_security.py::TestHeadersSecurity::test_frame_ancestors_csp` | passed | SRS-005 | RISK-005 | SDS-005 |
 | `tests/test_smart_security.py::TestHeadersSecurity::test_content_security_policy` | passed | SRS-005 | RISK-005 | SDS-005 |
 | `tests/test_smart_security.py::TestHeadersSecurity::test_strict_transport_security` | passed | SRS-005 | RISK-005 | SDS-005 |
 | `tests/test_smart_security.py::TestHeadersSecurity::test_x_xss_protection` | passed | SRS-005 | RISK-005 | SDS-005 |

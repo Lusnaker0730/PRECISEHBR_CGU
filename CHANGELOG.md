@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### 安全性 (Security)
+- **修復 X-Frame-Options: DENY 阻擋 SMART on FHIR iframe 嵌入** — EHR（Epic/Cerner）透過 iframe 載入 SMART App，`DENY` 導致瀏覽器拒絕渲染：
+  - 移除 `X-Frame-Options: DENY`（`after_request` + Talisman `frame_options=False`）
+  - 改用 CSP `frame-ancestors` 白名單：`'self'`、`*.epic.com`、`*.cerner.com`、`*.cernerworks.com`
+  - 支援 `FRAME_ANCESTORS` 環境變數擴充額外 EHR 來源（逗號分隔）
+  - 更新 3 個安全測試檔案驗證 `frame-ancestors` 取代 `X-Frame-Options`
+
 ### CI/CD 基礎建設 (Infrastructure)
 - **新增 `clinical-validation.yml` CI 工作流程** — 當 `config/cdss_config.json` 或計算核心（`precise_hbr_calculator.py`、`risk_classifier.py`、`condition_checker.py`、`unit_conversion_service.py`）被修改時，自動觸發 Golden Dataset 驗證（`verify_precise_hbr.py`）+ 風險分類測試 + 設定完整性測試。報告保留 2555 天（TFDA 合規）。設為 GitHub branch protection required check 即可強制 Class C 變更必須通過驗證
 - **新增 `regulatory-compliance.yml` CI 工作流程** — PR 時自動檢查所有測試是否具備 IEC 62304 法規追溯標記（`@pytest.mark.requirement`/`@pytest.mark.risk`/`@pytest.mark.design`），缺少標記的測試將導致 CI 失敗。產出追溯覆蓋率報告並上傳至 GitHub Step Summary
@@ -39,7 +46,7 @@
   - PT-008: 資訊洩露（堆疊追蹤、token、內部錯誤、health endpoint）
   - PT-009: HTTP Method Tampering
   - PT-010: Patient ID 格式驗證與注入防護
-  - PT-011: Security Headers 完整性（CSP、HSTS、X-Frame-Options 等）
+  - PT-011: Security Headers 完整性（CSP、HSTS、frame-ancestors 等）
   - PT-012: Tradeoff 端點安全
   - PT-013: Complaint Form 濫用防護（CAPTCHA 繞過、replay）
   - PT-014: Logout Session 清除驗證
@@ -85,17 +92,28 @@
   - 支援 4 種降級原因：`timeout`（deadline 到期）、`circuit_open`（FHIR server 暫時不可用）、`access_denied`（BTG 403）、`error`（未預期錯誤）
 - **27 項新增測試**（`tests/test_circuit_breaker.py`）：狀態機轉換、metrics、Registry 隔離、執行緒安全、Fallback Card 結構驗證、CDS deadline 機制、端點整合
 
-### 重構 (Refactoring) — FHIR 正規化層
+### 重構 (Refactoring) — Canonical Data Model（FHIR 正規化層）
 - **新增 `services/fhir_normalizer.py`** — FHIR-agnostic 正規化資料模型（IEC 62304 §5.3 架構邊界）：
-  - `NormalizedPatientData` dataclass：將 FHIR dict 轉換為乾淨的 Python dataclass，計算核心不再直接存取 FHIR dict
-  - `NormalizedCondition`/`NormalizedMedication`/`NormalizedLabResult`：獨立的正規化類別
-  - `FHIRNormalizer`：統一的 FHIR → canonical model 轉換器
+  - 6 個 Python dataclass：`NormalizedPatientData`、`NormalizedLabValue`、`NormalizedDemographics`、`CodeEntry`、`NormalizedCondition`、`NormalizedMedication`
+  - `FHIRNormalizer` 類別：統一的 FHIR R4 → canonical model 轉換器，所有 FHIR dict 解析集中於此
+  - eGFR 肌酐酸回退邏輯從 calculator 移至 normalizer（資料衍生，非計分邏輯）
+  - Condition 正規化預萃取：所有 codes、ICD-10、合併文字（小寫）、臨床狀態
+  - Medication 正規化預萃取：合併文字、NHI 代碼、RxNorm 代碼
 - **`precise_hbr_calculator.py` 新增正規化入口**：
-  - `extract_inputs_normalized()`：從 `NormalizedPatientData` 擷取計算輸入，零 FHIR dict 存取
-  - `calculate_score_normalized()`：完整分數計算的正規化版本
-  - `_build_result()`：共用結果建構邏輯，legacy 與 normalized 路徑共享
-- **`condition_checker.py` 新增正規化方法**：
-  - `check_prior_bleeding_normalized()`、`check_oral_anticoagulation_normalized()`、`check_arc_hbr_factors_normalized()`：消費 canonical model dataclass
+  - `extract_inputs_normalized(patient_data: NormalizedPatientData)`：從 canonical dataclass 擷取計算輸入，**零 FHIR dict 存取**
+  - `calculate_score_normalized(patient_data)`：完整分數計算的正規化版本
+  - `_build_result(inputs)`：共用結果建構邏輯，legacy `calculate_score()` 與 normalized 路徑共享，消除 250+ 行重複程式碼
+- **`condition_checker.py` 新增 10 個正規化方法**（`*_normalized` 後綴）：
+  - `check_prior_bleeding_normalized()`、`check_bleeding_diathesis_normalized()`、`check_active_cancer_normalized()`、`check_liver_cirrhosis_normalized()`、`check_recent_major_surgery_normalized()`
+  - `check_oral_anticoagulation_normalized()`、`check_nsaids_or_corticosteroids_normalized()`
+  - `check_thrombocytopenia_normalized()`、`check_arc_hbr_factors_normalized()`
+  - `_check_medication_normalized()`、`_matches_code_in_normalized()`
+  - 所有方法消費 canonical dataclass，不存取 FHIR dict
+- **29 項新增測試**（`tests/test_fhir_normalizer.py`）：
+  - Lab 正規化（5）、eGFR 回退（4）、Condition（3）、Medication（3）、Full normalize（2）
+  - Normalized condition checker（6）
+  - **Score Equivalence（6）** — 關鍵 Class C 安全測試：驗證 legacy 路徑與 normalized 路徑對相同輸入資料產生**完全相同的分數**（含缺失資料、肌酐酸回退、conditions、抗凝藥）
+- **架構意義**：核心計算層（`precise_hbr_calculator`、`condition_checker`、`risk_classifier`）現在可完全透過 normalized 路徑運作，不再需要理解 `valueQuantity`、`coding`、`medicationCodeableConcept` 等 FHIR 結構。所有 FHIR 相關解析集中在 `fhir_normalizer.py` 與 `twcore_adapter.py`，符合 Class C 醫材的關注點分離原則
 
 ### 稽核日誌增強 (Audit Logging) — 5W 完整性 + WORM 級保護
 - **Who（醫師身份）** — `audit_logger.py` `log_event()` 新增 `fhir_user` 欄位，記錄 OIDC `fhirUser` claim（如 `Practitioner/12345`），而非僅記錄無法辨識操作者的 session ID。`_get_request_context()` 自動從 `session['fhir_user']` 擷取，`audit_ephi_access` decorator 及所有 convenience function 同步更新

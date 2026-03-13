@@ -759,11 +759,13 @@ class TestSecurityHeaders:
         hsts = resp.headers.get('Strict-Transport-Security', '')
         assert 'max-age=' in hsts
 
-    def test_x_frame_options(self, client):
-        """X-Frame-Options 應為 DENY 或 SAMEORIGIN。"""
+    def test_frame_ancestors_csp(self, client):
+        """CSP frame-ancestors 應取代 X-Frame-Options 以支援 SMART on FHIR iframe 嵌入。"""
         resp = client.get('/')
-        xfo = resp.headers.get('X-Frame-Options', '')
-        assert xfo.upper() in ('DENY', 'SAMEORIGIN')
+        csp = resp.headers.get('Content-Security-Policy', '')
+        assert 'frame-ancestors' in csp
+        # X-Frame-Options should NOT be set (conflicts with CSP frame-ancestors)
+        assert 'X-Frame-Options' not in resp.headers
 
     def test_x_content_type_options(self, client):
         """X-Content-Type-Options 應為 nosniff。"""
