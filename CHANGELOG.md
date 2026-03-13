@@ -97,9 +97,20 @@
 - **`condition_checker.py` 新增正規化方法**：
   - `check_prior_bleeding_normalized()`、`check_oral_anticoagulation_normalized()`、`check_arc_hbr_factors_normalized()`：消費 canonical model dataclass
 
-### 稽核日誌增強 (Audit Logging)
-- **CDS Hooks 稽核日誌** — `hooks.py` 所有 CDS Hooks 端點新增結構化稽核記錄（`_log_cds_event()`），記錄 5W（Who/What/Whom/When/Where）+ 處理時間 + 卡片數量
-- **`audit_logger.py` 增強**：GCP Cloud Logging 結構化輸出、X-Forwarded-For 感知 IP 擷取、`_extract_cds_user()` 從 `fhirAuthorization.userId` 擷取 Practitioner 身份
+### 稽核日誌增強 (Audit Logging) — 5W 完整性 + WORM 級保護
+- **Who（醫師身份）** — `audit_logger.py` `log_event()` 新增 `fhir_user` 欄位，記錄 OIDC `fhirUser` claim（如 `Practitioner/12345`），而非僅記錄無法辨識操作者的 session ID。`_get_request_context()` 自動從 `session['fhir_user']` 擷取，`audit_ephi_access` decorator 及所有 convenience function 同步更新
+- **When（毫秒級時間戳）** — 時間戳從秒級 `utcnow().isoformat()` 升級為毫秒級 `datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'`，解決併發請求相同時間戳無法排序的問題，同時修復 Python 3.12 `utcnow()` deprecation
+- **Where（真實來源 IP + GCP Trace）** — `_get_request_context()` 從 `X-Forwarded-For` header 擷取真實 client IP（GAE/nginx load balancer 環境下 `remote_addr` 是 LB IP）。新增 `_get_trace_context()` 擷取 `X-Cloud-Trace-Context` 做 GCP 跨服務追蹤，trace ID 自動合併至 audit entry details
+- **What（CDS Hooks 稽核覆蓋）** — `hooks.py` 三個 CDS Hooks 端點全部新增結構化稽核記錄：
+  - `cds_services_discovery` — service discovery 存取記錄
+  - `handle_precise_hbr_bleeding_risk_hook` — 記錄分數、風險等級、卡片數、耗時、timeout/error
+  - `precise_hbr_patient_view` — 同上含 missing fields 記錄
+  - 新增 `_extract_cds_user()` 從 CDS Hooks `fhirAuthorization.userId` 擷取操作醫師（CDS Hooks 無 Flask session）
+  - 新增 `_log_cds_event()` 統一 CDS audit 記錄，含 `_get_cds_ip()` X-Forwarded-For 感知
+- **GCP WORM 級保護** — `_write_structured_log()` 在 GAE 環境自動將 audit entry 以 structured JSON 輸出至 stdout（Cloud Logging 自動擷取）。搭配 Log Sink（filter: `jsonPayload.audit_event="true"`）+ Cloud Storage Bucket（Retention Policy + Bucket Lock）即可達成 WORM 保護，連 DevOps 都無法竄改。structured log 含 `logging.googleapis.com/trace` 與 `logging.googleapis.com/labels` 供 Cloud Logging 查詢與篩選
+- **13 項新增測試**（`tests/test_audit_logger_extended.py`）：
+  - `TestAudit5WCompliance`（9 項）：fhir_user 記錄/預設值、X-Forwarded-For 擷取/fallback、session fhir_user、trace context 擷取/合併、decorator 整合
+  - `TestGCPStructuredLogging`（4 項）：GAE stdout JSON 輸出、非 GAE 無輸出、trace link 格式、hash chain 向後相容驗證
 
 ### 功能改進 (Features)
 - **Unit Conversion Fail-Safe — 未知/缺失單位拒絕猜測機制** — 當 EHR 回傳的檢驗值單位無法辨認（如 `mg/L` 代替 `g/dL`）或完全缺失時：
