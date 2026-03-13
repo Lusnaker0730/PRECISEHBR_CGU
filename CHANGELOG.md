@@ -65,6 +65,19 @@
   - `scripts/add_pytest_markers.py` — 自動為測試加入法規標記
 - **更新 test-traceability 報告與 regulatory-issue-mapping**
 
+### 可靠性 (Reliability)
+- **Circuit Breaker 斷路器** — 防止 FHIR server 持續不可用時的雪崩效應：
+  - `services/circuit_breaker.py`：輕量級 3 態斷路器（CLOSED → OPEN → HALF_OPEN → CLOSED），per-server 隔離
+  - `CircuitBreakerRegistry`：全域 singleton 註冊表，跨請求共享斷路器狀態（`FHIRClientService` 每次請求實例化，但斷路器狀態持久化）
+  - `fhir_client_service.py`：所有 FHIR 外部呼叫（get_patient / get_observations / get_conditions / get_procedures / get_medication_requests）整合斷路器檢查，連續 5 次失敗後 fast-fail 30 秒
+  - 僅 server-side 錯誤（timeout / 500）觸發斷路器，client 錯誤（401/403/404）不計入
+- **CDS Hooks Deadline 強制機制** — EHR 要求 < 500ms 回應：
+  - `hooks.py` 新增 `CDS_DEADLINE_SECONDS = 3.0` 總預算，各處理階段檢查 deadline
+  - 超時時回傳 **Fallback Card**（`_build_fallback_card()`），告知醫師「評估延遲，請使用完整計算器」，而非讓請求掛住
+  - 錯誤時也回傳 Fallback Card 而非空卡片，確保醫師知道系統有嘗試評估
+  - 支援 3 種降級原因：`timeout`（deadline 到期）、`circuit_open`（FHIR server 暫時不可用）、`error`（未預期錯誤）
+- **27 項新增測試**（`tests/test_circuit_breaker.py`）：狀態機轉換、metrics、Registry 隔離、執行緒安全、Fallback Card 結構驗證、CDS deadline 機制、端點整合
+
 ### 功能改進 (Features)
 - **Unit Conversion Fail-Safe — 未知/缺失單位拒絕猜測機制** — 當 EHR 回傳的檢驗值單位無法辨認（如 `mg/L` 代替 `g/dL`）或完全缺失時：
   - **後端**：`UnitConversionService.get_value_with_status()` 新增 5 種狀態碼（`ok`/`no_data`/`no_value`/`missing_unit`/`unknown_unit`），區分「FHIR 無資料」vs「有資料但單位無法轉換」

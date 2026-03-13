@@ -3,12 +3,14 @@ FHIR Client Service
 Handles all FHIR server interactions and data retrieval
 """
 import logging
+import time
 
 import requests
 from requests.adapters import HTTPAdapter
 from fhirclient import client
 from fhirclient.models import condition, medicationrequest, observation, patient, procedure
 
+from services.circuit_breaker import circuit_breaker_registry
 from services.config_loader import config_loader
 from services.fhir_utils import sort_bundle_entries_by_date
 from utils.input_validator import validate_loinc_code
@@ -43,6 +45,11 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 class FHIRClientService:
     """Service for interacting with FHIR servers."""
 
+    # Circuit breaker defaults — tuned for clinical CDS context
+    # 5 consecutive failures → open circuit for 30s
+    CB_FAILURE_THRESHOLD = 5
+    CB_RECOVERY_TIMEOUT = 30.0
+
     def __init__(self, fhir_server_url, access_token, client_id):
         """
         Initialize FHIR client service.
@@ -56,6 +63,12 @@ class FHIRClientService:
         self.access_token = access_token
         self.client_id = client_id
         self.smart = self._create_client()
+        # Per-server circuit breaker (state persists across request instances)
+        self._cb = circuit_breaker_registry.get_or_create(
+            name=fhir_server_url,
+            failure_threshold=self.CB_FAILURE_THRESHOLD,
+            recovery_timeout=self.CB_RECOVERY_TIMEOUT,
+        )
     
     def _create_client(self):
         """
@@ -109,23 +122,36 @@ class FHIRClientService:
         Returns:
             Tuple of (patient_resource, error_message)
         """
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            logging.warning(f'Circuit breaker OPEN for {self.fhir_server_url} — skipping patient fetch')
+            return None, 'Health records server is temporarily unavailable. Please try again shortly.'
+
         try:
             logging.info(f'Fetching patient {patient_id}')
             patient_resource = patient.Patient.read(patient_id, self.smart.server)
+            self._cb.record_success()
             return patient_resource.as_json(), None
 
         except requests.exceptions.ConnectTimeout:
+            self._cb.record_failure()
             logging.error('Connection timeout fetching patient')
             return None, 'Connection to health records timed out. Please try again.'
         except requests.exceptions.ReadTimeout:
+            self._cb.record_failure()
             logging.error('Read timeout fetching patient')
             return None, 'Health records server is slow to respond. Please try again.'
         except requests.exceptions.Timeout:
+            self._cb.record_failure()
             logging.error('Timeout fetching patient')
             return None, 'Request timed out. The health records server may be busy.'
         except Exception as e:
             error_msg = str(e)
             logging.error(f'Error fetching patient: {type(e).__name__}')
+
+            # Only record failure for server-side errors, not client errors (401/403/404)
+            if not any(code in error_msg for code in ('401', '403', '404')):
+                self._cb.record_failure()
 
             error_responses = {
                 '401': 'Authentication failed. Please re-launch the application from your EHR.',
@@ -182,6 +208,11 @@ class FHIRClientService:
             return []
         count = min(max(1, count), MAX_FHIR_SEARCH_COUNT)
 
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            logging.warning(f'Circuit breaker OPEN — skipping observation fetch')
+            return []
+
         try:
             search_params = {
                 'patient': patient_id,
@@ -189,12 +220,15 @@ class FHIRClientService:
                 '_count': str(count)
             }
             result = observation.Observation.where(search_params).perform(self.smart.server)
+            self._cb.record_success()
             return self._extract_sorted_observations(result)
 
         except requests.exceptions.Timeout:
+            self._cb.record_failure()
             logging.warning('Timeout fetching observations by LOINC')
             return []
         except Exception as e:
+            self._cb.record_failure()
             logging.warning(f'Error fetching observations by LOINC: {type(e).__name__}')
             return []
 
@@ -210,6 +244,10 @@ class FHIRClientService:
         Returns:
             List of observation resources (most recent first)
         """
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            return []
+
         for term in text_terms:
             try:
                 search_params = {
@@ -221,13 +259,16 @@ class FHIRClientService:
                 observations = self._extract_sorted_observations(result)
 
                 if observations:
+                    self._cb.record_success()
                     logging.info(f'Found observations via text search: {term}')
                     return observations
 
             except requests.exceptions.Timeout:
+                self._cb.record_failure()
                 logging.debug(f'Timeout for text search "{term}"')
                 continue
             except Exception as e:
+                self._cb.record_failure()
                 logging.debug(f'Text search failed for "{term}": {type(e).__name__}')
 
         return []
@@ -260,6 +301,11 @@ class FHIRClientService:
         Returns:
             List of condition resources
         """
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            logging.warning('Circuit breaker OPEN — skipping conditions fetch')
+            return []
+
         try:
             result = condition.Condition.where({
                 'subject': f'Patient/{patient_id}',
@@ -268,13 +314,16 @@ class FHIRClientService:
             }).perform(self.smart.server)
 
             conditions_list = self._extract_resources(result)
+            self._cb.record_success()
             logging.info(f'Fetched {len(conditions_list)} condition(s)')
             return conditions_list
 
         except requests.exceptions.Timeout:
+            self._cb.record_failure()
             logging.warning('Timeout fetching conditions - continuing without condition data')
             return []
         except Exception as e:
+            self._cb.record_failure()
             error_str = str(e).lower()
             if '504' in error_str or 'timeout' in error_str:
                 logging.error(f'Timeout fetching conditions: {type(e).__name__}')
@@ -295,6 +344,10 @@ class FHIRClientService:
         Returns:
             List of procedure resources
         """
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            return []
+
         try:
             result = procedure.Procedure.where({
                 'subject': f'Patient/{patient_id}',
@@ -302,10 +355,12 @@ class FHIRClientService:
             }).perform(self.smart.server)
 
             procedures_list = self._extract_resources(result)
+            self._cb.record_success()
             logging.info(f'Fetched {len(procedures_list)} procedure(s)')
             return procedures_list
 
         except Exception as e:
+            self._cb.record_failure()
             logging.warning(f'Error fetching procedures: {type(e).__name__}')
             return []
 
@@ -324,6 +379,10 @@ class FHIRClientService:
         Returns:
             List of medication request resources
         """
+        if not self._cb.allow_request():
+            self._cb.record_rejected()
+            return []
+
         try:
             search_params = {'subject': f'Patient/{patient_id}'}
 
@@ -334,10 +393,12 @@ class FHIRClientService:
             if category:
                 med_list = self._filter_by_category(med_list, category)
 
+            self._cb.record_success()
             logging.info(f'Fetched {len(med_list)} medication request(s)')
             return med_list
 
         except Exception as e:
+            self._cb.record_failure()
             logging.warning(f'Error fetching medication requests: {type(e).__name__}')
             return []
 
