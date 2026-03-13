@@ -66,6 +66,13 @@
 - **更新 test-traceability 報告與 regulatory-issue-mapping**
 
 ### 功能改進 (Features)
+- **Unit Conversion Fail-Safe — 未知/缺失單位拒絕猜測機制** — 當 EHR 回傳的檢驗值單位無法辨認（如 `mg/L` 代替 `g/dL`）或完全缺失時：
+  - **後端**：`UnitConversionService.get_value_with_status()` 新增 5 種狀態碼（`ok`/`no_data`/`no_value`/`missing_unit`/`unknown_unit`），區分「FHIR 無資料」vs「有資料但單位無法轉換」
+  - **Calculator**：`extract_inputs()` 追蹤 `unit_issues[]`，`_check_unit_issue_warnings()` 產生 `unrecognized_unit` 類型警告（severity=high），明確告知醫師原始值、未知單位、預期單位
+  - **前端**：`main.html` 新增 `#unit-warning` alert-danger 區塊，`main.js` 新增 `displayUnitWarnings()` 函式
+  - **安全策略**：系統**拒絕猜測單位**，將該參數排除於計分之外（score=0），並在 UI 標示「Not available」+ 明確原因
+  - **30 項新增測試**（`tests/test_unit_failsafe.py`）：狀態碼驗證、追蹤機制、警告產生、邊界案例、向下相容
+  - 依 ISO 14971 RISK-001 設計：猜錯單位可能造成 10 倍量級誤差，直接影響風險分類
 - **Data Quality Warning — 數值截斷警告機制** — 當 EHR 傳入的檢驗值超出臨床預期範圍（如血紅素因單位錯誤被放大 10 倍），系統不再默默截斷，而是：
   - **後端**：`PreciseHBRCalculator._check_truncation_warnings()` 偵測 Age/Hb/eGFR/WBC 四項參數的截斷情況，產生結構化警告（含原始值、截斷值、方向、預期範圍、建議訊息）
   - **元件顯示**：截斷的參數在 component display 中顯示 `(capped to X)`，並附帶 `is_truncated` / `effective_value` 標記

@@ -128,9 +128,10 @@ class PreciseHBRCalculator:
             'arc_hbr_count': 0,
             'missing_fields': [],
             'empty_fhir_resources': [],  # Track empty FHIR resource types
+            'unit_issues': [],           # Track unrecognized/missing unit problems
             'metadata': {}
         }
-        
+
         # 1. Age
         age = demographics.get('age')
         if age is not None:
@@ -138,59 +139,99 @@ class PreciseHBRCalculator:
             inputs['metadata']['age_effective'] = max(limits['min_age'], min(limits['max_age'], age))
         else:
             inputs['missing_fields'].append('Age')
-            
+
         # 2. Hemoglobin
         hemoglobin_list = raw_data.get('HEMOGLOBIN', [])
         if hemoglobin_list:
             hb_obs = hemoglobin_list[0]
-            hb_val = unit_converter.get_value_from_observation(hb_obs, unit_converter.TARGET_UNITS['HEMOGLOBIN'])
-            if hb_val is not None:
-                inputs['hb'] = hb_val
-                inputs['metadata']['hb_effective'] = max(limits['min_hb'], min(limits['max_hb'], hb_val))
+            hb_result = unit_converter.get_value_with_status(hb_obs, unit_converter.TARGET_UNITS['HEMOGLOBIN'])
+            if hb_result['value'] is not None:
+                inputs['hb'] = hb_result['value']
+                inputs['metadata']['hb_effective'] = max(limits['min_hb'], min(limits['max_hb'], hb_result['value']))
                 inputs['metadata']['hb_date'] = hb_obs.get('effectiveDateTime', 'N/A')
+            elif hb_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                inputs['unit_issues'].append({
+                    'parameter': 'Hemoglobin',
+                    'status': hb_result['status'],
+                    'raw_value': hb_result['raw_value'],
+                    'source_unit': hb_result['source_unit'],
+                    'target_unit': hb_result['target_unit'],
+                })
+                inputs['missing_fields'].append('Hemoglobin')
             else:
                 inputs['missing_fields'].append('Hemoglobin')
         else:
             inputs['missing_fields'].append('Hemoglobin')
-            
+
         # 3. eGFR
         egfr_val = None
         egfr_source = ""
+        egfr_unit_issue = None
         egfr_list = raw_data.get('EGFR', [])
         if egfr_list:
             egfr_obs = egfr_list[0]
-            egfr_val = unit_converter.get_value_from_observation(egfr_obs, unit_converter.TARGET_UNITS['EGFR'])
-            egfr_source = "Direct eGFR"
-            inputs['metadata']['egfr_date'] = egfr_obs.get('effectiveDateTime', 'N/A')
-            
+            egfr_result = unit_converter.get_value_with_status(egfr_obs, unit_converter.TARGET_UNITS['EGFR'])
+            if egfr_result['value'] is not None:
+                egfr_val = egfr_result['value']
+                egfr_source = "Direct eGFR"
+                inputs['metadata']['egfr_date'] = egfr_obs.get('effectiveDateTime', 'N/A')
+            elif egfr_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                egfr_unit_issue = {
+                    'parameter': 'eGFR',
+                    'status': egfr_result['status'],
+                    'raw_value': egfr_result['raw_value'],
+                    'source_unit': egfr_result['source_unit'],
+                    'target_unit': egfr_result['target_unit'],
+                }
+
         if egfr_val is None:
             creatinine_list = raw_data.get('CREATININE', [])
             if creatinine_list and inputs['age'] is not None and demographics.get('gender'):
                 creatinine_obs = creatinine_list[0]
-                creatinine_val = unit_converter.get_value_from_observation(creatinine_obs, unit_converter.TARGET_UNITS['CREATININE'])
-                if creatinine_val:
-                    calc_egfr, reason = unit_converter.calculate_egfr(creatinine_val, inputs['age'], demographics['gender'])
+                cr_result = unit_converter.get_value_with_status(creatinine_obs, unit_converter.TARGET_UNITS['CREATININE'])
+                if cr_result['value'] is not None:
+                    calc_egfr, reason = unit_converter.calculate_egfr(cr_result['value'], inputs['age'], demographics['gender'])
                     if calc_egfr:
                         egfr_val = calc_egfr
                         egfr_source = reason
+                        egfr_unit_issue = None  # Creatinine fallback succeeded
                         inputs['metadata']['egfr_date'] = creatinine_obs.get('effectiveDateTime', 'N/A')
-        
+                elif cr_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT) and not egfr_unit_issue:
+                    egfr_unit_issue = {
+                        'parameter': 'Creatinine (for eGFR calculation)',
+                        'status': cr_result['status'],
+                        'raw_value': cr_result['raw_value'],
+                        'source_unit': cr_result['source_unit'],
+                        'target_unit': cr_result['target_unit'],
+                    }
+
         if egfr_val is not None:
             inputs['egfr'] = egfr_val
             inputs['metadata']['egfr_effective'] = max(limits['min_egfr'], min(limits['max_egfr'], egfr_val))
             inputs['metadata']['egfr_source'] = egfr_source
         else:
             inputs['missing_fields'].append('eGFR')
+            if egfr_unit_issue:
+                inputs['unit_issues'].append(egfr_unit_issue)
 
         # 4. WBC
         wbc_list = raw_data.get('WBC', [])
         if wbc_list:
             wbc_obs = wbc_list[0]
-            wbc_val = unit_converter.get_value_from_observation(wbc_obs, unit_converter.TARGET_UNITS['WBC'])
-            if wbc_val is not None:
-                inputs['wbc'] = wbc_val
-                inputs['metadata']['wbc_effective'] = max(limits['min_wbc'], min(limits['max_wbc'], wbc_val))
+            wbc_result = unit_converter.get_value_with_status(wbc_obs, unit_converter.TARGET_UNITS['WBC'])
+            if wbc_result['value'] is not None:
+                inputs['wbc'] = wbc_result['value']
+                inputs['metadata']['wbc_effective'] = max(limits['min_wbc'], min(limits['max_wbc'], wbc_result['value']))
                 inputs['metadata']['wbc_date'] = wbc_obs.get('effectiveDateTime', 'N/A')
+            elif wbc_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                inputs['unit_issues'].append({
+                    'parameter': 'WBC',
+                    'status': wbc_result['status'],
+                    'raw_value': wbc_result['raw_value'],
+                    'source_unit': wbc_result['source_unit'],
+                    'target_unit': wbc_result['target_unit'],
+                })
+                inputs['missing_fields'].append('WBC')
             else:
                 inputs['missing_fields'].append('WBC')
         else:
@@ -287,6 +328,57 @@ class PreciseHBRCalculator:
                         f'or data entry issue in the EHR.'
                     ),
                 })
+
+        return warnings
+
+    @classmethod
+    def _check_unit_issue_warnings(cls, inputs):
+        """
+        Generate high-severity warnings when lab values were present in the EHR
+        but could not be used because the unit was unrecognized or missing.
+
+        This is a Fail-safe mechanism for Class C medical devices: the system
+        refuses to guess and explicitly alerts the clinician, rather than
+        silently treating the value as "missing data".
+        """
+        warnings = []
+        for issue in inputs.get('unit_issues', []):
+            status = issue['status']
+            param = issue['parameter']
+            raw_val = issue['raw_value']
+            source_unit = issue.get('source_unit')
+            target_unit = issue['target_unit']
+
+            if status == unit_converter.STATUS_MISSING_UNIT:
+                message = (
+                    f'{param} value {raw_val} was received from the EHR '
+                    f'without a unit. The expected unit is {target_unit}. '
+                    f'The system cannot safely assume the unit and has '
+                    f'excluded this value from the score calculation. '
+                    f'Please verify the value and unit in the EHR, then '
+                    f'use the manual override if appropriate.'
+                )
+            else:  # STATUS_UNKNOWN_UNIT
+                message = (
+                    f'{param} value {raw_val} was received with an '
+                    f'unrecognized unit "{source_unit}". '
+                    f'The expected unit is {target_unit}. '
+                    f'The system cannot safely convert this value and has '
+                    f'excluded it from the score calculation. '
+                    f'Please verify the value and unit in the EHR, then '
+                    f'use the manual override if appropriate.'
+                )
+
+            warnings.append({
+                'type': 'unrecognized_unit',
+                'severity': 'high',
+                'parameter': param,
+                'raw_value': raw_val,
+                'source_unit': source_unit,
+                'target_unit': target_unit,
+                'status': status,
+                'message': message,
+            })
 
         return warnings
 
@@ -612,6 +704,10 @@ class PreciseHBRCalculator:
         # Build data quality warnings for truncated values
         truncation_warnings = cls._check_truncation_warnings(inputs)
         data_warnings.extend(truncation_warnings)
+
+        # Build warnings for unrecognized/missing units (Fail-safe for Class C)
+        unit_issue_warnings = cls._check_unit_issue_warnings(inputs)
+        data_warnings.extend(unit_issue_warnings)
 
         logging.info(f"PRECISE-HBR calculation complete: {total_score}")
         if data_warnings:

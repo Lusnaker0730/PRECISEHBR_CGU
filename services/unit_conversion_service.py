@@ -85,30 +85,72 @@ class UnitConversionService:
         }
     }
     
+    # Status constants for get_value_with_status
+    STATUS_OK = 'ok'
+    STATUS_NO_DATA = 'no_data'
+    STATUS_NO_VALUE = 'no_value'
+    STATUS_MISSING_UNIT = 'missing_unit'
+    STATUS_UNKNOWN_UNIT = 'unknown_unit'
+
     @classmethod
     def get_value_from_observation(cls, obs, unit_system):
         """
         Safely extracts a numeric value from an Observation resource, handling unit conversions.
         Returns the numeric value in the target unit, or None if conversion is not possible.
         """
+        result = cls.get_value_with_status(obs, unit_system)
+        return result['value']
+
+    @classmethod
+    def get_value_with_status(cls, obs, unit_system):
+        """
+        Extracts a numeric value with detailed status about the conversion outcome.
+
+        Returns:
+            dict with keys:
+                - value: converted numeric value, or None
+                - status: STATUS_OK | STATUS_NO_DATA | STATUS_NO_VALUE |
+                          STATUS_MISSING_UNIT | STATUS_UNKNOWN_UNIT
+                - source_unit: the raw unit string from the observation (or None)
+                - target_unit: the expected canonical unit
+                - raw_value: the original numeric value before conversion (or None)
+        """
+        target_unit = unit_system['unit'].lower()
+        no_data = {'value': None, 'status': cls.STATUS_NO_DATA,
+                   'source_unit': None, 'target_unit': target_unit, 'raw_value': None}
+
         if not obs or not isinstance(obs, dict):
-            return None
+            return no_data
 
         value_quantity = obs.get('valueQuantity')
         if not value_quantity:
-            return None
+            return no_data
 
         value = value_quantity.get('value')
         if value is None or not isinstance(value, (int, float)):
-            return None
-        
+            return {'value': None, 'status': cls.STATUS_NO_VALUE,
+                    'source_unit': value_quantity.get('unit'),
+                    'target_unit': target_unit, 'raw_value': None}
+
         # Normalize both units to lowercase for consistent comparison
-        source_unit = value_quantity.get('unit', '').lower().strip()
-        target_unit = unit_system['unit'].lower()
-        
+        raw_unit = value_quantity.get('unit')
+        source_unit = (raw_unit or '').lower().strip()
+
+        # Missing unit — value present but no unit specified
+        if not source_unit:
+            logging.warning(
+                f"Observation has numeric value {value} but no unit specified. "
+                f"Expected: '{target_unit}'. Refusing to guess — treating as unusable."
+            )
+            return {'value': None, 'status': cls.STATUS_MISSING_UNIT,
+                    'source_unit': raw_unit, 'target_unit': target_unit,
+                    'raw_value': value}
+
         # 1. Direct match (case-insensitive)
         if source_unit == target_unit:
-            return value
+            return {'value': value, 'status': cls.STATUS_OK,
+                    'source_unit': raw_unit, 'target_unit': target_unit,
+                    'raw_value': value}
 
         # 2. Attempt conversion using factors
         conversion_factors = unit_system.get('factors', {})
@@ -116,14 +158,19 @@ class UnitConversionService:
             conversion_factor = conversion_factors[source_unit]
             converted_value = value * conversion_factor
             logging.info(f"Converted {value} {source_unit} to {converted_value:.2f} {target_unit}")
-            return converted_value
+            return {'value': converted_value, 'status': cls.STATUS_OK,
+                    'source_unit': raw_unit, 'target_unit': target_unit,
+                    'raw_value': value}
 
-        # 3. If no conversion is possible, log a warning and return None
+        # 3. Unknown unit — value and unit present but no conversion rule
         logging.warning(
             f"Unit mismatch and no conversion rule found for Observation. "
-            f"Received: '{source_unit}', Expected: '{target_unit}'. Cannot proceed with this value."
+            f"Received: '{source_unit}', Expected: '{target_unit}'. "
+            f"Raw value: {value}. Refusing to guess — treating as unusable."
         )
-        return None
+        return {'value': None, 'status': cls.STATUS_UNKNOWN_UNIT,
+                'source_unit': raw_unit, 'target_unit': target_unit,
+                'raw_value': value}
     
     @classmethod
     def validate_egfr_inputs(cls, cr_val, age, gender):

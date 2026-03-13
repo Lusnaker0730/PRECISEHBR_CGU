@@ -247,6 +247,30 @@
             </div>
         </div>
 
+        <!-- Data Quality Warning (Unrecognized / Missing Units) -->
+        <div id="unit-warning" class="alert alert-danger mb-4 d-none" role="alert" aria-live="assertive">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-exclamation-triangle me-3 mt-1" style="font-size:1.5rem" aria-hidden="true"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-2">
+                        <strong>Data Quality Alert - Unrecognized Unit(s)</strong>
+                    </h5>
+                    <p class="mb-2">
+                        One or more lab values were received with an <strong>unrecognized or missing unit</strong>.
+                        These values have been <strong>excluded from the score calculation</strong> rather than
+                        guessing the unit. The affected parameters are shown as "Not available" above.
+                    </p>
+                    <ul id="unit-warning-list" class="mb-2">
+                        <!-- Unit warning items inserted by JavaScript -->
+                    </ul>
+                    <p class="mb-0">
+                        <i class="fas fa-user-md"></i>
+                        <strong>Please verify the values and units in the EHR. Use manual override if appropriate.</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Score Breakdown -->
         <div class="card shadow-sm mb-4">
             <div class="card-header">

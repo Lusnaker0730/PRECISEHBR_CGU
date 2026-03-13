@@ -822,6 +822,9 @@
 
             // Display truncation warnings (data quality alerts)
             displayTruncationWarnings();
+
+            // Display unrecognized unit warnings (fail-safe alerts)
+            displayUnitWarnings();
         } else {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
@@ -1048,6 +1051,38 @@
             clearElement(warningList);
 
             truncationWarnings.forEach(warning => {
+                const li = document.createElement('li');
+                const strong = document.createElement('strong');
+                strong.textContent = (warning.parameter || 'Unknown') + ': ';
+                li.appendChild(strong);
+                li.appendChild(document.createTextNode(warning.message || ''));
+                warningList.appendChild(li);
+            });
+
+            warningDiv.classList.remove('d-none');
+        } else {
+            warningDiv.classList.add('d-none');
+        }
+    }
+
+    /**
+     * Display data quality warnings for values with unrecognized or missing units.
+     * These values were excluded from score calculation (fail-safe for Class C).
+     */
+    function displayUnitWarnings() {
+        const warningDiv = document.getElementById('unit-warning');
+        const warningList = document.getElementById('unit-warning-list');
+
+        if (!warningDiv || !warningList) return;
+
+        const unitWarnings = (dataWarnings || []).filter(
+            w => w.type === 'unrecognized_unit'
+        );
+
+        if (unitWarnings.length > 0) {
+            clearElement(warningList);
+
+            unitWarnings.forEach(warning => {
                 const li = document.createElement('li');
                 const strong = document.createElement('strong');
                 strong.textContent = (warning.parameter || 'Unknown') + ': ';
