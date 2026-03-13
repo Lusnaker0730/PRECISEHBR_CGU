@@ -1,22 +1,31 @@
 # Test Traceability Report (IEC 62304)
-Generated: 2026-03-12T23:02:47.138451+00:00
-Total traced tests: 77 (passed: 77, failed: 0)
+Generated: 2026-03-13T01:48:31.465657+00:00
+Total traced tests: 83 (passed: 83, failed: 0)
 
 | Test | Result | Requirements | Risks | Design |
 |------|--------|-------------|-------|--------|
-| `tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_patient_id_from_session` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestGetAuthorizedPatientId::test_falls_back_to_fhir_data` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_none_when_not_set` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestValidatePatientContext::test_valid_context_passes` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestValidatePatientContext::test_mismatched_context_fails` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestValidatePatientContext::test_missing_patient_id_fails` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestValidatePatientContext::test_no_authorized_patient_fails` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestValidatePatientContext::test_whitespace_normalization` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestRequirePatientContextDecorator::test_passes_with_valid_context` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_invalid_context` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_request_without_patient_id` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestVerifyPatientAccess::test_passes_with_valid_access` | passed | SRS-006 | RISK-009 | SDS-006 |
-| `tests/test_patient_context.py::TestVerifyPatientAccess::test_raises_on_invalid_access` | passed | SRS-006 | RISK-009 | SDS-006 |
+| `tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_basic` | passed | SRS-004 | - | SDS-004 |
+| `tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_twcore` | passed | SRS-004 | - | SDS-004 |
+| `tests/test_fhir_service.py::TestUnitConversion::test_calculate_egfr` | passed | SRS-003 | RISK-003 | - |
+| `tests/test_fhir_service.py::TestUnitConversion::test_get_value_from_observation` | passed | SRS-003 | RISK-003 | - |
+| `tests/test_fhir_service.py::TestConditionChecker::test_check_bleeding_diathesis` | passed | SRS-012 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestConditionChecker::test_check_active_cancer` | passed | SRS-012 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestConditionChecker::test_check_oral_anticoagulation` | passed | SRS-012 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestRiskCalculation::test_calculate_bleeding_risk_percentage` | passed | SRS-002 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestRiskCalculation::test_get_risk_category_info` | passed | SRS-002 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestRiskCalculation::test_get_precise_hbr_display_info` | passed | SRS-002 | RISK-001 | - |
+| `tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_basic` | passed | SRS-012 | - | - |
+| `tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_detailed` | passed | SRS-012 | - | - |
+| `tests/test_fhir_service.py::TestMedicationFunctions::test_get_active_medications` | passed | SRS-012 | - | - |
+| `tests/test_fhir_service.py::TestMedicationFunctions::test_check_medication_interactions` | passed | SRS-012 | - | - |
+| `tests/test_fhir_service.py::TestHelperFunctions::test_get_score_from_table` | passed | SRS-001 | - | - |
+| `tests/test_fhir_service.py::TestHelperFunctions::test_get_condition_text` | passed | SRS-001 | - | - |
+| `tests/test_fhir_service.py::TestErrorHandling::test_invalid_patient_demographics` | passed | SRS-004 | RISK-004 | SDS-004 |
+| `tests/test_fhir_service.py::TestErrorHandling::test_invalid_observation_value` | passed | SRS-004 | RISK-004 | SDS-004 |
+| `tests/test_fhir_service.py::TestErrorHandling::test_egfr_with_invalid_inputs` | passed | SRS-004 | RISK-004 | SDS-004 |
+| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_200` | passed | SRS-008 | - | - |
+| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_json` | passed | SRS-008 | - | - |
+| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_contains_services` | passed | SRS-008 | - | - |
 | `tests/test_penetration.py::TestCDSHooksPayloadInjection::test_oversized_payload` | passed | SRS-008 | RISK-006 | - |
 | `tests/test_penetration.py::TestCDSHooksPayloadInjection::test_deeply_nested_json` | passed | SRS-008 | RISK-006 | - |
 | `tests/test_penetration.py::TestCDSHooksPayloadInjection::test_xss_in_patient_name` | passed | SRS-008 | RISK-006 | - |
@@ -78,6 +87,3 @@ Total traced tests: 77 (passed: 77, failed: 0)
 | `tests/test_penetration.py::TestLogoutSecurity::test_logout_clears_session` | passed | - | RISK-005 | - |
 | `tests/test_penetration.py::TestLogoutSecurity::test_post_logout_session_invalid` | passed | - | RISK-005 | - |
 | `tests/test_penetration.py::TestTokenExchangeInfoLeak::test_error_response_text_leaked` | passed | - | RISK-008 | - |
-| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_200` | passed | SRS-008 | - | - |
-| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_json` | passed | SRS-008 | - | - |
-| `tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_contains_services` | passed | SRS-008 | - | - |

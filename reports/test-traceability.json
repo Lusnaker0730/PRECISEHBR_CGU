@@ -1,201 +1,252 @@
 {
-  "generated": "2026-03-12T23:02:47.138451+00:00",
-  "total_traced_tests": 77,
-  "passed": 77,
+  "generated": "2026-03-13T01:48:31.465657+00:00",
+  "total_traced_tests": 83,
+  "passed": 83,
   "failed": 0,
   "traceability": [
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_patient_id_from_session",
+      "test": "tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_basic",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-009"
+          "SRS-004"
         ],
         "design": [
-          "SDS-006"
+          "SDS-004"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_falls_back_to_fhir_data",
+      "test": "tests/test_fhir_service.py::TestPatientDemographics::test_get_patient_demographics_twcore",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-009"
+          "SRS-004"
         ],
         "design": [
-          "SDS-006"
+          "SDS-004"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestGetAuthorizedPatientId::test_returns_none_when_not_set",
+      "test": "tests/test_fhir_service.py::TestUnitConversion::test_calculate_egfr",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-003"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-003"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_valid_context_passes",
+      "test": "tests/test_fhir_service.py::TestUnitConversion::test_get_value_from_observation",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-003"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-003"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_mismatched_context_fails",
+      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_bleeding_diathesis",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-012"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_missing_patient_id_fails",
+      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_active_cancer",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-012"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_no_authorized_patient_fails",
+      "test": "tests/test_fhir_service.py::TestConditionChecker::test_check_oral_anticoagulation",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-012"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestValidatePatientContext::test_whitespace_normalization",
+      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_calculate_bleeding_risk_percentage",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-002"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_passes_with_valid_context",
+      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_get_risk_category_info",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-002"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_invalid_context",
+      "test": "tests/test_fhir_service.py::TestRiskCalculation::test_get_precise_hbr_display_info",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-002"
         ],
         "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "RISK-001"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestRequirePatientContextDecorator::test_rejects_request_without_patient_id",
+      "test": "tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_basic",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "SRS-012"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestVerifyPatientAccess::test_passes_with_valid_access",
+      "test": "tests/test_fhir_service.py::TestArcHbrFactors::test_check_arc_hbr_factors_detailed",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
-        ],
-        "risk": [
-          "RISK-009"
-        ],
-        "design": [
-          "SDS-006"
+          "SRS-012"
         ]
       }
     },
     {
-      "test": "tests/test_patient_context.py::TestVerifyPatientAccess::test_raises_on_invalid_access",
+      "test": "tests/test_fhir_service.py::TestMedicationFunctions::test_get_active_medications",
       "outcome": "passed",
       "traces": {
         "requirement": [
-          "SRS-006"
+          "SRS-012"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestMedicationFunctions::test_check_medication_interactions",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-012"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestHelperFunctions::test_get_score_from_table",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestHelperFunctions::test_get_condition_text",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-001"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestErrorHandling::test_invalid_patient_demographics",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-004"
         ],
         "risk": [
-          "RISK-009"
+          "RISK-004"
         ],
         "design": [
-          "SDS-006"
+          "SDS-004"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestErrorHandling::test_invalid_observation_value",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-004"
+        ],
+        "risk": [
+          "RISK-004"
+        ],
+        "design": [
+          "SDS-004"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_fhir_service.py::TestErrorHandling::test_egfr_with_invalid_inputs",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-004"
+        ],
+        "risk": [
+          "RISK-004"
+        ],
+        "design": [
+          "SDS-004"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_200",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-008"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_json",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-008"
+        ]
+      }
+    },
+    {
+      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_contains_services",
+      "outcome": "passed",
+      "traces": {
+        "requirement": [
+          "SRS-008"
         ]
       }
     },
@@ -874,33 +925,6 @@
       "traces": {
         "risk": [
           "RISK-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_200",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_returns_json",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
-        ]
-      }
-    },
-    {
-      "test": "tests/test_app_e2e.py::TestCDSServicesEndpoint::test_cds_services_contains_services",
-      "outcome": "passed",
-      "traces": {
-        "requirement": [
-          "SRS-008"
         ]
       }
     }
