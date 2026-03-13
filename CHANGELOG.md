@@ -15,6 +15,12 @@
 - **更新 PR 範本** — Class C 變更提醒區段，列出會觸發 Golden Dataset 驗證的檔案清單
 
 ### 安全性 (Security)
+- **ePHI 日誌過濾器重構為嚴格白名單模式** — 完全取代舊版黑名單方式：
+  - **FHIR Resource 偵測器**：任何含 `resourceType`、`subject`、`identifier`、`telecom` 等 FHIR 結構鍵的 dict 整包遮蔽，防禦 FHIR 規格更新引入新 ePHI 欄位
+  - **Dict Key 白名單**：僅允許 `SAFE_DICT_KEYS` 中的系統除錯鍵通過，未知鍵一律 `[REDACTED]`
+  - **台灣 ePHI 格式支援**：台灣身分證號（A123456789）、居留證號、NHI 藥品代碼、台灣電話、中文姓名
+  - **JSON Blob 深層清洗**：字串中嵌入的 FHIR JSON（含 `resourceType`）自動偵測並遮蔽
+  - **52 項新增測試**（`tests/test_ephi_allowlist_filter.py`）：6 層防禦逐層驗證
 - **修復深層 BOLA 越權存取漏洞** — 兩項關鍵修復：
   - `tradeoff_routes.py` `/api/calculate_tradeoff` 端點新增 `validate_patient_context()` 檢查，防止攻擊者在 payload 中替換 patientId 查詢他人資料
   - `fhir_client_service.py` 新增 FHIR 回傳資源 Ownership 驗證（`_validate_resource_ownership` / `_filter_owned_resources`），檢查每筆 Observation/Condition 的 `subject.reference` 是否指向授權病患，防禦 FHIR Server 異常或中間人攻擊
