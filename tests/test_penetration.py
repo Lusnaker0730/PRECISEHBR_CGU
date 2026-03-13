@@ -434,8 +434,19 @@ class TestInjectionAttacks:
                 'contact_email': 'test@example.com'
             })
             response_text = resp.data.decode('utf-8', errors='replace')
-            # SSTI evaluated results should not appear
-            assert '49' not in response_text or payload in response_text
+            # SSTI: {{7*7}} should NOT evaluate to 49 in rendered output.
+            # The payload is sanitized via markupsafe.escape, so it appears
+            # escaped (e.g., "&#123;&#123;7*7&#125;&#125;") or stripped.
+            # We verify the template engine did NOT evaluate the expression
+            # by ensuring "49" doesn't appear as a standalone computed result.
+            # Note: "49" may appear incidentally in nonces, tokens, or IDs.
+            if '49' in response_text:
+                # If 49 appears, it must NOT be because SSTI evaluated {{7*7}}
+                # Check that the escaped payload is present (input was sanitized, not executed)
+                import markupsafe
+                escaped = str(markupsafe.escape(payload))
+                assert escaped in response_text or resp.status_code in (400, 403), \
+                    f"Possible SSTI: '49' in response without escaped payload for: {payload}"
 
     def test_crlf_injection_in_headers(self, client):
         """CRLF 注入不應影響 HTTP headers。"""
