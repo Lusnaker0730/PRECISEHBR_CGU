@@ -9,6 +9,8 @@
 
 ### CI/CD 基礎建設 (Infrastructure)
 - **新增 `clinical-validation.yml` CI 工作流程** — 當 `config/cdss_config.json` 或計算核心（`precise_hbr_calculator.py`、`risk_classifier.py`、`condition_checker.py`、`unit_conversion_service.py`）被修改時，自動觸發 Golden Dataset 驗證（`verify_precise_hbr.py`）+ 風險分類測試 + 設定完整性測試。報告保留 2555 天（TFDA 合規）。設為 GitHub branch protection required check 即可強制 Class C 變更必須通過驗證
+- **新增 `regulatory-compliance.yml` CI 工作流程** — PR 時自動檢查所有測試是否具備 IEC 62304 法規追溯標記（`@pytest.mark.requirement`/`@pytest.mark.risk`/`@pytest.mark.design`），缺少標記的測試將導致 CI 失敗。產出追溯覆蓋率報告並上傳至 GitHub Step Summary
+- **增強 `regulatory_plugin.py`** — 新增 `--enforce-regulatory-markers` CLI 選項，啟用時若有測試缺少法規標記則 session exit code 設為 1，並輸出詳細的未追溯測試清單與覆蓋率統計
 - **修正 `test.yml` paths filter** — 加入 `config/**`，確保臨床參數變更也會觸發測試套件
 - **更新 PR 範本** — Class C 變更提醒區段，列出會觸發 Golden Dataset 驗證的檔案清單
 
