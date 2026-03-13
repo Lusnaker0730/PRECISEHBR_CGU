@@ -66,6 +66,12 @@
 - **更新 test-traceability 報告與 regulatory-issue-mapping**
 
 ### 功能改進 (Features)
+- **Data Quality Warning — 數值截斷警告機制** — 當 EHR 傳入的檢驗值超出臨床預期範圍（如血紅素因單位錯誤被放大 10 倍），系統不再默默截斷，而是：
+  - **後端**：`PreciseHBRCalculator._check_truncation_warnings()` 偵測 Age/Hb/eGFR/WBC 四項參數的截斷情況，產生結構化警告（含原始值、截斷值、方向、預期範圍、建議訊息）
+  - **元件顯示**：截斷的參數在 component display 中顯示 `(capped to X)`，並附帶 `is_truncated` / `effective_value` 標記
+  - **前端**：`main.html` 新增 `#truncation-warning` alert-danger 區塊，`main.js` 新增 `displayTruncationWarnings()` 函式，明確警告醫師「該數值異常，系統已採用截斷值計算」
+  - **19 項新增測試**（`tests/test_truncation_warnings.py`）：截斷偵測、邊界值、元件顯示、警告訊息品質
+  - 依 ISO 14971 RISK-001（Score Calculation Integrity）設計，防止默默截斷導致醫療誤判
 - `condition_checker.py` 臨床狀態偵測邏輯更新
 - `precise_hbr_calculator.py` 計算邏輯改進
 - `cdss_config.json` 臨床參數更新
