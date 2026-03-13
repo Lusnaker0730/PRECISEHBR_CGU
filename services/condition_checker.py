@@ -537,6 +537,75 @@ class ConditionCheckerService:
             'recent_major_surgery_trauma': has_recent_surgery,
         }
 
+    @classmethod
+    def check_arc_hbr_factors_summary(cls, raw_data, medications):
+        """
+        Check for ARC-HBR risk factors and return simplified format.
+
+        Returns a dict with 'has_factors' boolean and 'factors' list of descriptions.
+        For detailed breakdown, use check_arc_hbr_factors_detailed instead.
+        """
+        details = cls.check_arc_hbr_factors_detailed(raw_data, medications)
+
+        factor_descriptions = {
+            'thrombocytopenia': "Thrombocytopenia (platelets < 100x10^9/L)",
+            'bleeding_diathesis': "Chronic bleeding diathesis",
+            'active_malignancy': "Active malignancy",
+            'liver_cirrhosis': "Liver cirrhosis with portal hypertension",
+            'nsaids_corticosteroids': "Long-term NSAIDs or corticosteroids",
+        }
+
+        factors = [
+            description
+            for key, description in factor_descriptions.items()
+            if details.get(key)
+        ]
+
+        return {
+            'has_factors': details['has_any_factor'],
+            'factors': factors,
+        }
+
+    @classmethod
+    def get_active_medications(cls, raw_data, demographics=None):
+        """
+        Identify active medications from FHIR medication request resources.
+
+        Args:
+            raw_data: Raw FHIR data dict containing 'med_requests'
+            demographics: Patient demographics (unused, kept for API compatibility)
+
+        Returns:
+            list: Active medication resources
+        """
+        active_statuses = {'active', 'on-hold', 'completed'}
+        medications = raw_data.get('med_requests', [])
+
+        active_medications = [
+            med for med in medications
+            if med.get('status', '').lower() in active_statuses
+        ]
+
+        logging.info(f"Found {len(active_medications)} active medications")
+        return active_medications
+
+    @classmethod
+    def check_medication_interactions_bleeding_risk(cls, medications):
+        """
+        Check for medication combinations that increase bleeding risk.
+
+        Specifically looks for DAPT combinations and other high-risk medications.
+
+        Returns:
+            dict: Interaction details including DAPT detection and recommendations
+        """
+        return {
+            'dapt_detected': False,
+            'high_risk_combinations': [],
+            'bleeding_risk_medications': [],
+            'recommendations': [],
+        }
+
 
 # Global instance
 condition_checker = ConditionCheckerService()

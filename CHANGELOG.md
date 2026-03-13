@@ -32,6 +32,18 @@
   - PT-014: Logout Session 清除驗證
   - PT-015: Token Exchange 資訊洩露回歸測試
 
+### 重構 (Refactoring)
+- **Legacy Facade 退場機制（Phase 1）** — `fhir_data_service.py` 正式標記為 Deprecated：
+  - 所有 facade wrapper 函式加入 `warnings.warn(DeprecationWarning)`，含遷移指引
+  - 4 個含獨有邏輯的函式遷移至 canonical service：
+    - `get_patient_demographics` → `twcore_adapter.get_patient_demographics()`
+    - `check_arc_hbr_factors` → `condition_checker.check_arc_hbr_factors_summary()`
+    - `get_active_medications` → `condition_checker.get_active_medications()`
+    - `get_score_from_table` → `risk_classifier.get_score_from_table()`
+  - `check_medication_interactions_bleeding_risk` → `condition_checker.check_medication_interactions_bleeding_risk()`
+  - Facade 模組 docstring 包含完整遷移對照表
+- **新增 22 項 Facade 退場測試** (`tests/test_facade_deprecation.py`)：16 項 DeprecationWarning 觸發驗證 + 6 項 facade/canonical 輸出一致性驗證
+
 ### 法規合規 (Regulatory Compliance)
 - **新增法規文件自動化生成規範至 `CLAUDE.md`**，記錄 TFDA SaMD 認證相關開發規範
 - **所有測試加入 IEC 62304 法規追溯標記**：`@pytest.mark.requirement`、`@pytest.mark.risk`、`@pytest.mark.design`

@@ -449,6 +449,67 @@ class TWCoreAdapter:
             })
 
 
+    @classmethod
+    def get_patient_demographics(cls, patient_resource, use_twcore=True):
+        """
+        Extract key demographics from a FHIR Patient resource.
+
+        Supports Taiwan Core IG (TW Core IG) for Taiwan-specific fields:
+        - Chinese name support (text field)
+        - Taiwan ID (National ID) / Resident ID
+        - Medical Record Number
+
+        Args:
+            patient_resource: FHIR Patient resource dictionary
+            use_twcore: If True, use TW Core IG adapter for enhanced Taiwan support
+
+        Returns:
+            Dictionary with name, gender, age, birthDate, and Taiwan-specific fields
+        """
+        if use_twcore:
+            return cls.extract_patient_demographics_twcore(patient_resource)
+
+        import datetime as dt
+
+        demographics = {
+            "name": "Unknown",
+            "gender": None,
+            "age": None,
+            "birthDate": None,
+        }
+
+        if not patient_resource:
+            return demographics
+
+        # Extract name
+        name_list = patient_resource.get("name")
+        if name_list:
+            name_data = name_list[0]
+            if name_data.get("text"):
+                demographics["name"] = name_data["text"]
+            else:
+                name_parts = name_data.get("given", []) + [name_data.get("family", "")]
+                demographics["name"] = " ".join(name_parts).strip()
+
+        demographics["gender"] = patient_resource.get("gender")
+
+        # Calculate age from birthDate
+        birth_date_str = patient_resource.get("birthDate")
+        if birth_date_str:
+            demographics["birthDate"] = birth_date_str
+            try:
+                birth_date = dt.datetime.strptime(birth_date_str, "%Y-%m-%d").date()
+                today = dt.date.today()
+                age = today.year - birth_date.year
+                if (today.month, today.day) < (birth_date.month, birth_date.day):
+                    age -= 1
+                demographics["age"] = age
+            except (ValueError, TypeError):
+                pass
+
+        return demographics
+
+
 # Global instance
 twcore_adapter = TWCoreAdapter()
 

@@ -4,6 +4,8 @@ Handles risk categorization and bleeding risk percentage calculations
 """
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 class RiskClassifierService:
     """Service for classifying risk levels and calculating risk percentages"""
@@ -113,6 +115,65 @@ class RiskClassifierService:
             "recommendation": f"1-year risk of major bleeding: {bleeding_risk_percent:.2f}% "
                             f"(Bleeding Academic Research Consortium [BARC] type 3 or 5)"
         }
+
+
+    @classmethod
+    def get_score_from_table(cls, value, score_table, range_key):
+        """
+        Get score from lookup tables based on value ranges.
+
+        Args:
+            value: The numeric value to look up
+            score_table: List of dicts with range_key and base_score
+            range_key: Key name for the range field (e.g. 'age_range')
+
+        Returns:
+            Score from table, or 0 if not found
+        """
+        # Check for exact range match
+        for item in score_table:
+            if range_key not in item:
+                continue
+            range_values = item[range_key]
+            if len(range_values) == 2 and range_values[0] <= value <= range_values[1]:
+                return item.get('base_score', 0)
+
+        # Handle out-of-range values based on range type
+        boundary_configs = {
+            'age_range': {'check': 'above_max', 'label': 'Age'},
+            'wbc_range': {'check': 'above_max', 'label': 'WBC'},
+            'hb_range': {'check': 'below_min', 'label': 'Hemoglobin'},
+            'ccr_range': {'check': 'below_min', 'label': 'Creatinine clearance'},
+        }
+
+        config = boundary_configs.get(range_key)
+        if not config:
+            return 0
+
+        if config['check'] == 'above_max':
+            boundary_item = max(
+                score_table,
+                key=lambda x: x[range_key][1] if range_key in x else 0
+            )
+            boundary_value = boundary_item[range_key][1]
+            is_out_of_range = value > boundary_value
+        else:
+            boundary_item = min(
+                score_table,
+                key=lambda x: x[range_key][0] if range_key in x else float('inf')
+            )
+            boundary_value = boundary_item[range_key][0]
+            is_out_of_range = value < boundary_value
+
+        if is_out_of_range:
+            score = boundary_item.get('base_score', 0)
+            logger.info(
+                f"{config['label']} {value} outside range {boundary_item[range_key]}, "
+                f"using score: {score}"
+            )
+            return score
+
+        return 0
 
 
 # Global instance
