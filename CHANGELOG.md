@@ -96,6 +96,14 @@
 - `precise_hbr_calculator.py` 計算邏輯改進
 - `cdss_config.json` 臨床參數更新
 
+### 測試修復 (Test Fixes)
+- **修復 Python 3.10/3.12 相容性** — `verify_precise_hbr.py`、`verify_tradeoff.py` 中的 `patch('services.module.singleton.method')` 在 Python 3.10/3.12 會觸發 `ModuleNotFoundError`（`unittest.mock` 嘗試將 `.py` 模組當作 package 載入子模組）。改用 `patch.object(singleton, 'method')` 確保跨版本相容
+- **修復測試順序汙染導致的 14 項 302 假失敗** — `test_performance.py::test_app_import_time` 刪除 `sys.modules['APP']` 後重新匯入 APP，未設定 `TESTING` 環境變數導致 Flask-Talisman `force_https=True`，污染後續所有測試。修復：重新匯入時設定正確環境變數，`finally` 區塊還原原始模組參照
+- **修復效能測試 fixture 隔離** — `test_performance.py` 各 class 定義的 `app`/`client` fixture 未包含 conftest 的環境變數設定，導致單獨執行時 APP 以 production 模式初始化。改用共用 `perf_app`/`perf_client` fixture 並正確 patch 環境變數
+- **修復 URL 驗證效能閾值** — `validate_url()` 包含 DNS 解析（`socket.getaddrinfo`）用於 SSRF 防護，原先 0.1ms/次的閾值不切實際。改為單一主機名 100 次迭代、閾值放寬至 5ms
+- **修復 SSTI 滲透測試誤判** — `{{config}}` payload 的回應中 `'49'` 來自 nonce/reference ID 而非 SSTI 執行結果。改為僅在 payload 含 `7*7` 時檢查 `'49'`，並對 `{{config}}` 新增 `SECRET_KEY` 洩露檢查
+- **修復 `UnitConversionService.get_value_with_status()` TypeError** — 當 `unit_system` 為字串而非 dict 時 `unit_system['unit']` 觸發 `TypeError: string indices must be integers`。新增型別檢查支援 dict 與 string 兩種輸入格式
+
 ---
 
 ## [1.0.0] — 2026-03-12

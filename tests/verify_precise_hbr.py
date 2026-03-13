@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from services.precise_hbr_calculator import PreciseHBRCalculator
 from services.unit_conversion_service import unit_converter
+from services.condition_checker import condition_checker
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -159,8 +160,8 @@ def test_golden_dataset_verification(case):
     
     from unittest.mock import patch
     
-    with patch('services.condition_checker.condition_checker.check_prior_bleeding', return_value=(case['bleeding'], ['trace'])):
-        with patch('services.condition_checker.condition_checker.check_oral_anticoagulation', return_value=case['anticoag']):
+    with patch.object(condition_checker, 'check_prior_bleeding', return_value=(case['bleeding'], ['trace'])):
+        with patch.object(condition_checker, 'check_oral_anticoagulation', return_value=case['anticoag']):
             # Fix: Ensure at least one factor is true if has_any_factor is true, because pure calculator logic sums them.
             arc_factors = {
                 'has_any_factor': case['arc'], 
@@ -170,7 +171,7 @@ def test_golden_dataset_verification(case):
                 'active_malignancy': False, 
                 'nsaids_corticosteroids': False
             }
-            with patch('services.condition_checker.condition_checker.check_arc_hbr_factors_detailed', return_value=arc_factors):
+            with patch.object(condition_checker, 'check_arc_hbr_factors_detailed', return_value=arc_factors):
                 
                 # Execute Implementation
                 components, score_impl, _ = PreciseHBRCalculator.calculate_score(raw_data, demographics)
@@ -198,9 +199,9 @@ def test_boundary_values():
     
     # We patch dependencies to ensure we are testing the CALCULATOR logic, not the extractor logic
     # Defaulting to False/None for these patches as the BVA cases here don't focus on them
-    with patch('services.condition_checker.condition_checker.check_prior_bleeding', return_value=(False, [])):
-        with patch('services.condition_checker.condition_checker.check_oral_anticoagulation', return_value=False):
-            with patch('services.condition_checker.condition_checker.check_arc_hbr_factors_detailed', return_value={
+    with patch.object(condition_checker, 'check_prior_bleeding', return_value=(False, [])):
+        with patch.object(condition_checker, 'check_oral_anticoagulation', return_value=False):
+            with patch.object(condition_checker, 'check_arc_hbr_factors_detailed', return_value={
                 'has_any_factor': False, 
                 'thrombocytopenia': False, 'bleeding_diathesis': False, 
                 'liver_cirrhosis': False, 'active_malignancy': False, 'nsaids_corticosteroids': False

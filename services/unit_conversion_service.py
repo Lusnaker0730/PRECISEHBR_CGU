@@ -115,7 +115,11 @@ class UnitConversionService:
                 - target_unit: the expected canonical unit
                 - raw_value: the original numeric value before conversion (or None)
         """
-        target_unit = unit_system['unit'].lower()
+        # Handle both dict unit_system (e.g., {'unit': 'g/dL'}) and string fallback
+        if isinstance(unit_system, dict):
+            target_unit = unit_system.get('unit', '').lower()
+        else:
+            target_unit = str(unit_system).lower() if unit_system else ''
         no_data = {'value': None, 'status': cls.STATUS_NO_DATA,
                    'source_unit': None, 'target_unit': target_unit, 'raw_value': None}
 
