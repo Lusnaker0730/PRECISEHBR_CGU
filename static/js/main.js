@@ -819,6 +819,9 @@
 
             // Display missing data warning if any
             displayMissingDataWarning(missingDataItems);
+
+            // Display truncation warnings (data quality alerts)
+            displayTruncationWarnings();
         } else {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
@@ -1022,6 +1025,39 @@
             warningDiv.classList.remove('d-none');
         } else {
             // Hide the warning if no missing data
+            warningDiv.classList.add('d-none');
+        }
+    }
+
+    /**
+     * Display data quality warnings for values that were truncated/capped.
+     * Uses data_warnings from the backend API response.
+     */
+    function displayTruncationWarnings() {
+        const warningDiv = document.getElementById('truncation-warning');
+        const warningList = document.getElementById('truncation-warning-list');
+
+        if (!warningDiv || !warningList) return;
+
+        // Filter for truncated_value warnings from backend
+        const truncationWarnings = (dataWarnings || []).filter(
+            w => w.type === 'truncated_value'
+        );
+
+        if (truncationWarnings.length > 0) {
+            clearElement(warningList);
+
+            truncationWarnings.forEach(warning => {
+                const li = document.createElement('li');
+                const strong = document.createElement('strong');
+                strong.textContent = (warning.parameter || 'Unknown') + ': ';
+                li.appendChild(strong);
+                li.appendChild(document.createTextNode(warning.message || ''));
+                warningList.appendChild(li);
+            });
+
+            warningDiv.classList.remove('d-none');
+        } else {
             warningDiv.classList.add('d-none');
         }
     }

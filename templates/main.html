@@ -223,6 +223,30 @@
             </div>
         </div>
 
+        <!-- Data Quality Warning (Truncated Values) -->
+        <div id="truncation-warning" class="alert alert-danger mb-4 d-none" role="alert" aria-live="assertive">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-radiation me-3 mt-1" style="font-size:1.5rem" aria-hidden="true"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-2">
+                        <strong>Data Quality Alert - Abnormal Value(s) Detected</strong>
+                    </h5>
+                    <p class="mb-2">
+                        One or more lab values fell <strong>outside the clinically expected range</strong>.
+                        The score was calculated using capped values. This may indicate a
+                        <strong>unit conversion error</strong> or <strong>data entry issue</strong> in the EHR.
+                    </p>
+                    <ul id="truncation-warning-list" class="mb-2">
+                        <!-- Truncation warning items inserted by JavaScript -->
+                    </ul>
+                    <p class="mb-0">
+                        <i class="fas fa-user-md"></i>
+                        <strong>Please verify these values before making clinical decisions.</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Score Breakdown -->
         <div class="card shadow-sm mb-4">
             <div class="card-header">

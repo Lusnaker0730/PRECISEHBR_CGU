@@ -237,6 +237,60 @@ class PreciseHBRCalculator:
         return inputs
 
     @classmethod
+    def _check_truncation_warnings(cls, inputs):
+        """
+        Detect values that were truncated and generate clinical warnings.
+
+        A truncated value means the EHR-reported value fell outside the
+        clinically expected range. This could indicate:
+        - Unit conversion error in the EHR (e.g., g/L reported as g/dL)
+        - Data entry error
+        - Genuinely extreme patient values
+
+        In all cases, the clinician MUST be informed.
+        """
+        limits = cls._get_truncation_limits()
+        warnings = []
+
+        checks = [
+            ('age', 'Age', inputs.get('age'), 'age_effective',
+             limits['min_age'], limits['max_age'], 'years'),
+            ('hb', 'Hemoglobin', inputs.get('hb'), 'hb_effective',
+             limits['min_hb'], limits['max_hb'], 'g/dL'),
+            ('egfr', 'eGFR', inputs.get('egfr'), 'egfr_effective',
+             limits['min_egfr'], limits['max_egfr'], 'mL/min/1.73m²'),
+            ('wbc', 'WBC', inputs.get('wbc'), 'wbc_effective',
+             limits['min_wbc'], limits['max_wbc'], '10^9/L'),
+        ]
+
+        for key, label, raw_val, eff_key, low, high, unit in checks:
+            if raw_val is None:
+                continue
+            eff_val = inputs['metadata'].get(eff_key)
+            if eff_val is not None and raw_val != eff_val:
+                direction = 'above' if raw_val > high else 'below'
+                warnings.append({
+                    'type': 'truncated_value',
+                    'severity': 'high',
+                    'parameter': label,
+                    'raw_value': raw_val,
+                    'effective_value': eff_val,
+                    'unit': unit,
+                    'range_min': low,
+                    'range_max': high,
+                    'direction': direction,
+                    'message': (
+                        f'{label} value {raw_val} {unit} is {direction} the expected '
+                        f'clinical range ({low}-{high} {unit}). '
+                        f'The score was calculated using the capped value of {eff_val} {unit}. '
+                        f'Please verify this value — it may indicate a unit conversion error '
+                        f'or data entry issue in the EHR.'
+                    ),
+                })
+
+        return warnings
+
+    @classmethod
     def calculate_pure_score(cls, inputs):
         """
         Calculates score from extracted inputs. 
@@ -359,12 +413,15 @@ class PreciseHBRCalculator:
         else:
             age = inputs['age']
             eff_age = inputs['metadata']['age_effective']
+            age_display = f"{age} years (capped to {eff_age})" if age != eff_age else f"{age} years"
             components.append({
                 "parameter": "PRECISE-HBR - Age",
-                "value": f"{age} years (effective: {eff_age})" if age != eff_age else f"{age} years",
+                "value": age_display,
                 "score": math.floor(breakdown['age'] + 0.5),
                 "raw_value": age,
                 "date": "N/A",
+                "is_truncated": age != eff_age,
+                "effective_value": eff_age,
                 "description": f"Age score: {breakdown['age']:.2f}"
             })
 
@@ -379,13 +436,17 @@ class PreciseHBRCalculator:
             })
         else:
             hb = inputs['hb']
+            eff_hb = inputs['metadata']['hb_effective']
+            hb_display = f"{hb} g/dL (capped to {eff_hb})" if hb != eff_hb else f"{hb} g/dL"
             components.append({
                 "parameter": "PRECISE-HBR - Hemoglobin",
-                "value": f"{hb} g/dL",
+                "value": hb_display,
                 "score": math.floor(breakdown['hb'] + 0.5),
                 "raw_value": hb,
                 "date": inputs['metadata'].get('hb_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('hb_date', 'N/A')),
+                "is_truncated": hb != eff_hb,
+                "effective_value": eff_hb,
                 "description": f"Hb score: {breakdown['hb']:.2f}"
             })
             
@@ -400,13 +461,17 @@ class PreciseHBRCalculator:
             })
         else:
             egfr = inputs['egfr']
+            eff_egfr = inputs['metadata']['egfr_effective']
+            egfr_display = f"{egfr} mL/min/1.73m² (capped to {eff_egfr})" if egfr != eff_egfr else f"{egfr} mL/min/1.73m²"
             components.append({
                 "parameter": "PRECISE-HBR - eGFR",
-                "value": f"{egfr} mL/min/1.73m²",
+                "value": egfr_display,
                 "score": math.floor(breakdown['egfr'] + 0.5),
                 "raw_value": egfr,
                 "date": inputs['metadata'].get('egfr_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('egfr_date', 'N/A')),
+                "is_truncated": egfr != eff_egfr,
+                "effective_value": eff_egfr,
                 "description": f"eGFR score: {breakdown['egfr']:.2f}"
             })
             
@@ -421,13 +486,17 @@ class PreciseHBRCalculator:
             })
         else:
             wbc = inputs['wbc']
+            eff_wbc = inputs['metadata']['wbc_effective']
+            wbc_display = f"{wbc} 10^9/L (capped to {eff_wbc})" if wbc != eff_wbc else f"{wbc} 10^9/L"
             components.append({
                 "parameter": "PRECISE-HBR - White Blood Cell Count",
-                "value": f"{wbc} 10^9/L",
+                "value": wbc_display,
                 "score": math.floor(breakdown['wbc'] + 0.5),
                 "raw_value": wbc,
                 "date": inputs['metadata'].get('wbc_date', 'N/A'),
                 "is_outdated": cls._is_outdated(inputs['metadata'].get('wbc_date', 'N/A')),
+                "is_truncated": wbc != eff_wbc,
+                "effective_value": eff_wbc,
                 "description": f"WBC score: {breakdown['wbc']:.2f}"
             })
             
@@ -523,7 +592,7 @@ class PreciseHBRCalculator:
         # Build data warnings for missing FHIR resources
         data_warnings = []
         empty_resources = inputs.get('empty_fhir_resources', [])
-        
+
         if 'Condition' in empty_resources:
             data_warnings.append({
                 'type': 'missing_fhir_resource',
@@ -531,7 +600,7 @@ class PreciseHBRCalculator:
                 'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy, recent major surgery or trauma) may be missed.',
                 'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy', 'Recent Major Surgery or Trauma']
             })
-        
+
         if 'Medication' in empty_resources:
             data_warnings.append({
                 'type': 'missing_fhir_resource',
@@ -540,9 +609,14 @@ class PreciseHBRCalculator:
                 'affected_factors': ['Oral Anticoagulation', 'NSAIDs/Corticosteroids']
             })
 
+        # Build data quality warnings for truncated values
+        truncation_warnings = cls._check_truncation_warnings(inputs)
+        data_warnings.extend(truncation_warnings)
+
         logging.info(f"PRECISE-HBR calculation complete: {total_score}")
         if data_warnings:
-            logging.warning(f"Data warnings: {[w['resource'] for w in data_warnings]} resources empty")
+            warning_types = [w.get('resource', w.get('parameter', '?')) for w in data_warnings]
+            logging.warning(f"Data warnings: {warning_types}")
         
         return components, total_score, data_warnings
 
