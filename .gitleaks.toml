@@ -1,0 +1,25 @@
+# Gitleaks configuration — allowlist false positives
+# All entries below are test fixtures or historical commits with dummy/fake values
+
+[extend]
+# Use the default gitleaks config as base
+
+[[rules]]
+# Override: allow test API key strings in test files
+id = "test-api-keys"
+description = "Allow test API key patterns in test files"
+
+[allowlist]
+description = "Global allowlist for known false positives"
+
+# Allowlist by commit fingerprint (historical false positives that cannot be removed from git history)
+commits = [
+    "38606bccb5099248d7a7b2af1822a9665616111c",  # app_clean.yaml with dev FLASK_SECRET_KEY (file removed)
+    "eaa107c4d052c6a4dc641ababfb6f429648e009b",  # logging_filter.py test example (already fixed)
+]
+
+# Allowlist by path — test files use fake tokens/keys by design
+paths = [
+    '''tests/test_ephi_allowlist_filter\.py''',
+    '''tests/test_security_comprehensive\.py''',
+]
