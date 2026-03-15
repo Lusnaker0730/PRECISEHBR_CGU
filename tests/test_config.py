@@ -11,6 +11,8 @@ from unittest.mock import patch, Mock
 from services.app_config import Config
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestConfigBasics:
     """Test basic configuration loading."""
     
@@ -45,6 +47,8 @@ class TestConfigBasics:
     #     assert 'token_endpoint' in Config.CERNER_SANDBOX_CONFIG
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestEnvironmentVariables:
     """Test environment variable loading."""
     
@@ -80,6 +84,9 @@ class TestEnvironmentVariables:
         assert Config.CLIENT_ID is not None or Config.CLIENT_ID is None
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-005")
 class TestSessionDirectory:
     """Test session directory configuration."""
 
@@ -115,6 +122,9 @@ class TestSessionDirectory:
             assert len(app.config['SESSION_FILE_DIR']) > 0
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-005")
 class TestInitApp:
     """Test init_app method."""
     
@@ -256,6 +266,9 @@ class TestInitApp:
 #         assert len(Config.CERNER_SANDBOX_CONFIG['tenant_id']) > 0
 
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-006")
 class TestSecuritySettings:
     """Test security-related configuration settings."""
     
@@ -288,6 +301,8 @@ class TestSecuritySettings:
             assert Config.REDIRECT_URI.startswith('http://') or Config.REDIRECT_URI.startswith('https://')
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestScopesConfiguration:
     """Test SMART on FHIR scopes configuration."""
     
@@ -332,6 +347,8 @@ class TestScopesConfiguration:
             assert len(scope) > 0
 
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.design("SDS-006")
 class TestConfigImmutability:
     """Test that critical config values are not easily modified."""
     
@@ -346,6 +363,8 @@ class TestConfigImmutability:
         assert isinstance(inspect.getattr_static(Config, 'init_app'), staticmethod)
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestEdgeCases:
     """Test edge cases and error conditions."""
     

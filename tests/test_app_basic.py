@@ -5,16 +5,22 @@ Basic application tests for PRECISE-HBR
 import pytest
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 def test_app_exists(app):
     """Test that the Flask app instance exists."""
     assert app is not None
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 def test_app_is_testing(app):
     """Test that the app is in testing mode."""
     assert app.config['TESTING'] is True
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 def test_health_endpoint(client):
     """Test the health check endpoint."""
     response = client.get('/health')
@@ -26,6 +32,8 @@ def test_health_endpoint(client):
         assert data['status'] == 'healthy'
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 def test_index_redirect(client):
     """Test that index redirects to landing page."""
     response = client.get('/', follow_redirects=False)
@@ -61,6 +69,8 @@ def test_callback_endpoint_exists(client):
     assert response.status_code in [200, 302, 400, 500]
 
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 def test_static_files_accessible(client):
     """Test that static files are accessible."""
     response = client.get('/static/favicon.ico')
