@@ -111,12 +111,7 @@ jobs:
             echo "### Untraced Tests" >> $GITHUB_STEP_SUMMARY
             echo "The following tests are missing \`@pytest.mark.requirement\`, \`@pytest.mark.risk\`, or \`@pytest.mark.design\` markers:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            python -c "
-import json
-d = json.load(open('reports/test-traceability.json'))
-for t in d.get('untraced_tests', []):
-    print(f'- \`{t}\`')
-" >> $GITHUB_STEP_SUMMARY
+            python -c "import json; d=json.load(open('reports/test-traceability.json')); [print(f'- \`{t}\`') for t in d.get('untraced_tests', [])]" >> $GITHUB_STEP_SUMMARY
           fi
         else
           echo "No traceability report generated." >> $GITHUB_STEP_SUMMARY
