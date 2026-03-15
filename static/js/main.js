@@ -24,6 +24,67 @@
     let dataWarnings = [];
     let initialMissingCriticalData = [];
 
+    // Session state key for preserving clinician input across re-launches
+    const FORM_STATE_KEY = 'precise_hbr_form_state';
+
+    /**
+     * Save all editable form inputs to sessionStorage.
+     * Called before showing session-expired UI to preserve clinician work.
+     */
+    function saveFormState() {
+        try {
+            const state = {};
+            document.querySelectorAll('#results-container input').forEach(function (input) {
+                if (!input.id) return;
+                if (input.type === 'checkbox') {
+                    state[input.id] = { type: 'checkbox', checked: input.checked };
+                } else if (input.type === 'number' || input.type === 'text') {
+                    if (input.value) {
+                        state[input.id] = { type: input.type, value: input.value };
+                    }
+                }
+            });
+            if (Object.keys(state).length > 0) {
+                sessionStorage.setItem(FORM_STATE_KEY, JSON.stringify(state));
+            }
+        } catch (e) {
+            // sessionStorage may be unavailable in some contexts
+            console.warn('Could not save form state:', e.message);
+        }
+    }
+
+    /**
+     * Restore form inputs from sessionStorage after re-launch.
+     * Only restores values that differ from server defaults (user overrides).
+     */
+    function restoreFormState() {
+        try {
+            const raw = sessionStorage.getItem(FORM_STATE_KEY);
+            if (!raw) return;
+            const state = JSON.parse(raw);
+            let restored = 0;
+            Object.keys(state).forEach(function (id) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const saved = state[id];
+                if (saved.type === 'checkbox') {
+                    el.checked = saved.checked;
+                    restored++;
+                } else if (saved.value) {
+                    el.value = saved.value;
+                    restored++;
+                }
+            });
+            if (restored > 0) {
+                console.info(`Restored ${restored} form field(s) from previous session`);
+                // Clear after successful restore
+                sessionStorage.removeItem(FORM_STATE_KEY);
+            }
+        } catch (e) {
+            console.warn('Could not restore form state:', e.message);
+        }
+    }
+
     /**
      * Fetch scoring configuration from backend API.
      * Must be called before any score calculations.
@@ -388,12 +449,18 @@
 
             if (!response.ok) {
                 let errorMessage = `HTTP error: ${response.status}`;
+                let requiresReauth = false;
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.error || errorData.message || errorMessage;
+                    requiresReauth = errorData.requires_reauth === true;
                 } catch (parseError) {
                     // Response wasn't JSON, use status text
                     errorMessage = `Server error: ${response.status} ${response.statusText}`;
+                }
+                if (response.status === 401 || requiresReauth) {
+                    displaySessionExpired();
+                    return;
                 }
                 throw new Error(errorMessage);
             }
@@ -482,6 +549,9 @@
 
         // Render the interactive table for the first time
         renderInteractiveTable();
+
+        // Restore any previously saved form state (e.g., after session expiry re-launch)
+        restoreFormState();
 
         // Note: CCD export button visibility is handled by recalculateAndRefreshUI()
         // based on data completeness - no need to show it here
@@ -822,6 +892,9 @@
 
             // Display truncation warnings (data quality alerts)
             displayTruncationWarnings();
+
+            // Display unrecognized unit warnings (fail-safe alerts)
+            displayUnitWarnings();
         } else {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
@@ -1048,6 +1121,38 @@
             clearElement(warningList);
 
             truncationWarnings.forEach(warning => {
+                const li = document.createElement('li');
+                const strong = document.createElement('strong');
+                strong.textContent = (warning.parameter || 'Unknown') + ': ';
+                li.appendChild(strong);
+                li.appendChild(document.createTextNode(warning.message || ''));
+                warningList.appendChild(li);
+            });
+
+            warningDiv.classList.remove('d-none');
+        } else {
+            warningDiv.classList.add('d-none');
+        }
+    }
+
+    /**
+     * Display data quality warnings for values with unrecognized or missing units.
+     * These values were excluded from score calculation (fail-safe for Class C).
+     */
+    function displayUnitWarnings() {
+        const warningDiv = document.getElementById('unit-warning');
+        const warningList = document.getElementById('unit-warning-list');
+
+        if (!warningDiv || !warningList) return;
+
+        const unitWarnings = (dataWarnings || []).filter(
+            w => w.type === 'unrecognized_unit'
+        );
+
+        if (unitWarnings.length > 0) {
+            clearElement(warningList);
+
+            unitWarnings.forEach(warning => {
                 const li = document.createElement('li');
                 const strong = document.createElement('strong');
                 strong.textContent = (warning.parameter || 'Unknown') + ': ';
@@ -1543,6 +1648,31 @@
         document.getElementById('error-message').textContent = errorMessage;
     }
 
+    /**
+     * Display session expired UI when token is invalid/expired (401).
+     * Saves current form state to sessionStorage before showing the message,
+     * so the clinician's input can be restored after re-launch.
+     */
+    function displaySessionExpired() {
+        // P1: Save form state before showing expired message
+        saveFormState();
+
+        document.getElementById('loading-container').classList.add('d-none');
+        document.getElementById('results-container').classList.add('d-none');
+
+        const errorContainer = document.getElementById('error-container');
+        errorContainer.classList.remove('d-none');
+        errorContainer.className = 'alert alert-warning';
+        errorContainer.innerHTML = `
+            <h4><i class="fas fa-lock" aria-hidden="true"></i> Session Expired</h4>
+            <p>Your authentication session has expired. This can happen after a period of inactivity.</p>
+            <p><strong>Your input has been saved.</strong> Please re-launch the application from your EHR to continue.</p>
+            <a href="/" class="btn btn-primary" aria-label="Return to launch page">
+                <i class="fas fa-redo" aria-hidden="true"></i> Re-launch Application
+            </a>
+        `;
+    }
+
     function translateParameterName(parameterName) {
         // Clean up parameter names for better display
         const translations = {
@@ -1951,4 +2081,137 @@
 
     // Start the countdown on page load
     startCountdown();
+})();
+
+// ==========================================================================
+// TOKEN HEALTH MONITOR: Proactive token expiry detection and refresh
+// Checks token status periodically and attempts refresh before expiry.
+// ==========================================================================
+(function () {
+    'use strict';
+
+    const CHECK_INTERVAL_MS = 60 * 1000;  // Check every 60 seconds
+    const REFRESH_THRESHOLD_SECONDS = 120; // Attempt refresh when < 2 min remaining
+    let refreshInProgress = false;
+    let monitorInterval = null;
+
+    async function checkTokenHealth() {
+        if (refreshInProgress) return;
+
+        try {
+            const resp = await fetch('/api/session-status');
+            if (!resp.ok) {
+                if (resp.status === 401) {
+                    showTokenExpiredBanner();
+                    stopMonitor();
+                }
+                return;
+            }
+
+            const data = await resp.json();
+
+            if (data.token_expired) {
+                // Token already expired — try refresh if possible
+                if (data.has_refresh_token) {
+                    const refreshed = await attemptRefresh();
+                    if (!refreshed) {
+                        showTokenExpiredBanner();
+                        stopMonitor();
+                    }
+                } else {
+                    showTokenExpiredBanner();
+                    stopMonitor();
+                }
+                return;
+            }
+
+            // Token still valid but expiring soon — proactive refresh
+            if (data.token_remaining_seconds !== null &&
+                data.token_remaining_seconds <= REFRESH_THRESHOLD_SECONDS &&
+                data.has_refresh_token) {
+                await attemptRefresh();
+            }
+        } catch (e) {
+            // Network error — skip this check cycle
+            console.warn('Token health check failed:', e.message);
+        }
+    }
+
+    async function attemptRefresh() {
+        refreshInProgress = true;
+        try {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const headers = { 'Accept': 'application/json' };
+            if (csrfMeta) headers['X-CSRFToken'] = csrfMeta.getAttribute('content');
+
+            const resp = await fetch('/api/refresh-token', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: headers
+            });
+
+            if (resp.ok) {
+                console.info('Token refreshed successfully');
+                return true;
+            }
+
+            const data = await resp.json().catch(function () { return {}; });
+            if (data.requires_reauth) {
+                return false;
+            }
+            // Rate limited or transient error — will retry next cycle
+            return true;
+        } catch (e) {
+            console.warn('Token refresh failed:', e.message);
+            return false;
+        } finally {
+            refreshInProgress = false;
+        }
+    }
+
+    function showTokenExpiredBanner() {
+        // Save form state before showing banner (for main page)
+        try {
+            const resultsContainer = document.getElementById('results-container');
+            if (resultsContainer) {
+                const state = {};
+                resultsContainer.querySelectorAll('input').forEach(function (input) {
+                    if (!input.id) return;
+                    if (input.type === 'checkbox') {
+                        state[input.id] = { type: 'checkbox', checked: input.checked };
+                    } else if (input.value) {
+                        state[input.id] = { type: input.type, value: input.value };
+                    }
+                });
+                if (Object.keys(state).length > 0) {
+                    sessionStorage.setItem('precise_hbr_form_state', JSON.stringify(state));
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        // Only show if not already showing a session-expired message
+        if (document.querySelector('.token-expired-banner')) return;
+
+        const banner = document.createElement('div');
+        banner.className = 'token-expired-banner alert alert-warning alert-dismissible position-fixed w-100';
+        banner.style.cssText = 'top:0;left:0;z-index:9999;border-radius:0;margin:0;';
+        banner.setAttribute('role', 'alert');
+        banner.innerHTML =
+            '<strong><i class="fas fa-lock"></i> Session Expired</strong> ' +
+            'Your authentication has expired. Your input has been saved. ' +
+            '<a href="/" class="btn btn-sm btn-primary ms-2">Re-launch Application</a>';
+        document.body.prepend(banner);
+    }
+
+    function stopMonitor() {
+        if (monitorInterval) {
+            clearInterval(monitorInterval);
+            monitorInterval = null;
+        }
+    }
+
+    // Start monitoring
+    monitorInterval = setInterval(checkTokenHealth, CHECK_INTERVAL_MS);
+    // Run first check after a short delay (let page finish loading)
+    setTimeout(checkTokenHealth, 5000);
 })();

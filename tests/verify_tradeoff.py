@@ -42,7 +42,7 @@ class TestTradeoffModelSafety(unittest.TestCase):
         tradeoff_data = {} # No clinical flags
         
         # Patch config first
-        with patch('services.config_loader.config_loader.get_tradeoff_config', return_value=self.mock_config):
+        with patch.object(config_loader, 'get_tradeoff_config', return_value=self.mock_config):
             active_factors, missing_data = TradeoffModelCalculator.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
             
         print(f"\nMissing Data Active Factors: {active_factors}, Missing: {missing_data}")
@@ -66,7 +66,7 @@ class TestTradeoffModelSafety(unittest.TestCase):
         demographics = {'age': 75} # Elderly
         tradeoff_data = {'diabetes': True}
         
-        with patch('services.config_loader.config_loader.get_tradeoff_config', return_value=self.mock_config):
+        with patch.object(config_loader, 'get_tradeoff_config', return_value=self.mock_config):
             active_factors, _ = TradeoffModelCalculator.detect_tradeoff_factors(raw_data, demographics, tradeoff_data)
             
         print(f"High Risk Active Factors: {active_factors}")

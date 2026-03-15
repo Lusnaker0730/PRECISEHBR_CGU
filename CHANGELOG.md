@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### 安全性 (Security)
+- **修復 X-Frame-Options: DENY 阻擋 SMART on FHIR iframe 嵌入** — EHR（Epic/Cerner）透過 iframe 載入 SMART App，`DENY` 導致瀏覽器拒絕渲染：
+  - 移除 `X-Frame-Options: DENY`（`after_request` + Talisman `frame_options=False`）
+  - 改用 CSP `frame-ancestors` 白名單：`'self'`、`*.epic.com`、`*.cerner.com`、`*.cernerworks.com`
+  - 支援 `FRAME_ANCESTORS` 環境變數擴充額外 EHR 來源（逗號分隔）
+  - 更新 3 個安全測試檔案驗證 `frame-ancestors` 取代 `X-Frame-Options`
+
 ### CI/CD 基礎建設 (Infrastructure)
 - **新增 `clinical-validation.yml` CI 工作流程** — 當 `config/cdss_config.json` 或計算核心（`precise_hbr_calculator.py`、`risk_classifier.py`、`condition_checker.py`、`unit_conversion_service.py`）被修改時，自動觸發 Golden Dataset 驗證（`verify_precise_hbr.py`）+ 風險分類測試 + 設定完整性測試。報告保留 2555 天（TFDA 合規）。設為 GitHub branch protection required check 即可強制 Class C 變更必須通過驗證
 - **新增 `regulatory-compliance.yml` CI 工作流程** — PR 時自動檢查所有測試是否具備 IEC 62304 法規追溯標記（`@pytest.mark.requirement`/`@pytest.mark.risk`/`@pytest.mark.design`），缺少標記的測試將導致 CI 失敗。產出追溯覆蓋率報告並上傳至 GitHub Step Summary
@@ -39,7 +46,7 @@
   - PT-008: 資訊洩露（堆疊追蹤、token、內部錯誤、health endpoint）
   - PT-009: HTTP Method Tampering
   - PT-010: Patient ID 格式驗證與注入防護
-  - PT-011: Security Headers 完整性（CSP、HSTS、X-Frame-Options 等）
+  - PT-011: Security Headers 完整性（CSP、HSTS、frame-ancestors 等）
   - PT-012: Tradeoff 端點安全
   - PT-013: Complaint Form 濫用防護（CAPTCHA 繞過、replay）
   - PT-014: Logout Session 清除驗證
@@ -65,7 +72,72 @@
   - `scripts/add_pytest_markers.py` — 自動為測試加入法規標記
 - **更新 test-traceability 報告與 regulatory-issue-mapping**
 
+### 可靠性 (Reliability)
+- **Break the Glass (BTG) 403 完整處理鏈** — Epic VIP 病患觸發 BTG 時的優雅降級：
+  - `fhir_client_service.py`：所有資源擷取方法（Observation/Condition/Procedure/MedicationRequest）偵測 403 Forbidden，記錄至 `_access_denied_resources` 而非靜默吞掉回傳空 list。403 不觸發斷路器（client error）
+  - `api_routes.py`：偵測 `_access_denied_resources` 或 `get_patient()` 回傳的 403 錯誤訊息，回傳 HTTP 403 + `access_denied_btg` 錯誤類型 + 可操作的 BTG 提示訊息（「請在 EHR 完成 Break the Glass 授權後重試」）
+  - `precise_hbr_calculator.py`：當 raw_data 含 `_access_denied_resources` 時產生 `severity: critical` 資料警告，明確告知「分數基於不完整資料，可能低估出血風險」
+  - `hooks.py`：`_build_fallback_card()` 新增 `access_denied` 降級原因，CDS Hooks 回傳 BTG 專用提示卡片
+  - **修復前**：403 → 靜默吞掉 → 空 list → 分數看似正常但基於不完整資料 → 醫師不知情
+  - **修復後**：403 → 偵測 → API 回傳 403 + BTG 提示 → UI 可顯示「此病患資料受保護」
+- **Circuit Breaker 斷路器** — 防止 FHIR server 持續不可用時的雪崩效應：
+  - `services/circuit_breaker.py`：輕量級 3 態斷路器（CLOSED → OPEN → HALF_OPEN → CLOSED），per-server 隔離
+  - `CircuitBreakerRegistry`：全域 singleton 註冊表，跨請求共享斷路器狀態（`FHIRClientService` 每次請求實例化，但斷路器狀態持久化）
+  - `fhir_client_service.py`：所有 FHIR 外部呼叫（get_patient / get_observations / get_conditions / get_procedures / get_medication_requests）整合斷路器檢查，連續 5 次失敗後 fast-fail 30 秒
+  - 僅 server-side 錯誤（timeout / 500）觸發斷路器，client 錯誤（401/403/404）不計入
+- **CDS Hooks Deadline 強制機制** — EHR 要求 < 500ms 回應：
+  - `hooks.py` 新增 `CDS_DEADLINE_SECONDS = 3.0` 總預算，各處理階段檢查 deadline
+  - 超時時回傳 **Fallback Card**（`_build_fallback_card()`），告知醫師「評估延遲，請使用完整計算器」，而非讓請求掛住
+  - 錯誤時也回傳 Fallback Card 而非空卡片，確保醫師知道系統有嘗試評估
+  - 支援 4 種降級原因：`timeout`（deadline 到期）、`circuit_open`（FHIR server 暫時不可用）、`access_denied`（BTG 403）、`error`（未預期錯誤）
+- **27 項新增測試**（`tests/test_circuit_breaker.py`）：狀態機轉換、metrics、Registry 隔離、執行緒安全、Fallback Card 結構驗證、CDS deadline 機制、端點整合
+
+### 重構 (Refactoring) — Canonical Data Model（FHIR 正規化層）
+- **新增 `services/fhir_normalizer.py`** — FHIR-agnostic 正規化資料模型（IEC 62304 §5.3 架構邊界）：
+  - 6 個 Python dataclass：`NormalizedPatientData`、`NormalizedLabValue`、`NormalizedDemographics`、`CodeEntry`、`NormalizedCondition`、`NormalizedMedication`
+  - `FHIRNormalizer` 類別：統一的 FHIR R4 → canonical model 轉換器，所有 FHIR dict 解析集中於此
+  - eGFR 肌酐酸回退邏輯從 calculator 移至 normalizer（資料衍生，非計分邏輯）
+  - Condition 正規化預萃取：所有 codes、ICD-10、合併文字（小寫）、臨床狀態
+  - Medication 正規化預萃取：合併文字、NHI 代碼、RxNorm 代碼
+- **`precise_hbr_calculator.py` 新增正規化入口**：
+  - `extract_inputs_normalized(patient_data: NormalizedPatientData)`：從 canonical dataclass 擷取計算輸入，**零 FHIR dict 存取**
+  - `calculate_score_normalized(patient_data)`：完整分數計算的正規化版本
+  - `_build_result(inputs)`：共用結果建構邏輯，legacy `calculate_score()` 與 normalized 路徑共享，消除 250+ 行重複程式碼
+- **`condition_checker.py` 新增 10 個正規化方法**（`*_normalized` 後綴）：
+  - `check_prior_bleeding_normalized()`、`check_bleeding_diathesis_normalized()`、`check_active_cancer_normalized()`、`check_liver_cirrhosis_normalized()`、`check_recent_major_surgery_normalized()`
+  - `check_oral_anticoagulation_normalized()`、`check_nsaids_or_corticosteroids_normalized()`
+  - `check_thrombocytopenia_normalized()`、`check_arc_hbr_factors_normalized()`
+  - `_check_medication_normalized()`、`_matches_code_in_normalized()`
+  - 所有方法消費 canonical dataclass，不存取 FHIR dict
+- **29 項新增測試**（`tests/test_fhir_normalizer.py`）：
+  - Lab 正規化（5）、eGFR 回退（4）、Condition（3）、Medication（3）、Full normalize（2）
+  - Normalized condition checker（6）
+  - **Score Equivalence（6）** — 關鍵 Class C 安全測試：驗證 legacy 路徑與 normalized 路徑對相同輸入資料產生**完全相同的分數**（含缺失資料、肌酐酸回退、conditions、抗凝藥）
+- **架構意義**：核心計算層（`precise_hbr_calculator`、`condition_checker`、`risk_classifier`）現在可完全透過 normalized 路徑運作，不再需要理解 `valueQuantity`、`coding`、`medicationCodeableConcept` 等 FHIR 結構。所有 FHIR 相關解析集中在 `fhir_normalizer.py` 與 `twcore_adapter.py`，符合 Class C 醫材的關注點分離原則
+
+### 稽核日誌增強 (Audit Logging) — 5W 完整性 + WORM 級保護
+- **Who（醫師身份）** — `audit_logger.py` `log_event()` 新增 `fhir_user` 欄位，記錄 OIDC `fhirUser` claim（如 `Practitioner/12345`），而非僅記錄無法辨識操作者的 session ID。`_get_request_context()` 自動從 `session['fhir_user']` 擷取，`audit_ephi_access` decorator 及所有 convenience function 同步更新
+- **When（毫秒級時間戳）** — 時間戳從秒級 `utcnow().isoformat()` 升級為毫秒級 `datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'`，解決併發請求相同時間戳無法排序的問題，同時修復 Python 3.12 `utcnow()` deprecation
+- **Where（真實來源 IP + GCP Trace）** — `_get_request_context()` 從 `X-Forwarded-For` header 擷取真實 client IP（GAE/nginx load balancer 環境下 `remote_addr` 是 LB IP）。新增 `_get_trace_context()` 擷取 `X-Cloud-Trace-Context` 做 GCP 跨服務追蹤，trace ID 自動合併至 audit entry details
+- **What（CDS Hooks 稽核覆蓋）** — `hooks.py` 三個 CDS Hooks 端點全部新增結構化稽核記錄：
+  - `cds_services_discovery` — service discovery 存取記錄
+  - `handle_precise_hbr_bleeding_risk_hook` — 記錄分數、風險等級、卡片數、耗時、timeout/error
+  - `precise_hbr_patient_view` — 同上含 missing fields 記錄
+  - 新增 `_extract_cds_user()` 從 CDS Hooks `fhirAuthorization.userId` 擷取操作醫師（CDS Hooks 無 Flask session）
+  - 新增 `_log_cds_event()` 統一 CDS audit 記錄，含 `_get_cds_ip()` X-Forwarded-For 感知
+- **GCP WORM 級保護** — `_write_structured_log()` 在 GAE 環境自動將 audit entry 以 structured JSON 輸出至 stdout（Cloud Logging 自動擷取）。搭配 Log Sink（filter: `jsonPayload.audit_event="true"`）+ Cloud Storage Bucket（Retention Policy + Bucket Lock）即可達成 WORM 保護，連 DevOps 都無法竄改。structured log 含 `logging.googleapis.com/trace` 與 `logging.googleapis.com/labels` 供 Cloud Logging 查詢與篩選
+- **13 項新增測試**（`tests/test_audit_logger_extended.py`）：
+  - `TestAudit5WCompliance`（9 項）：fhir_user 記錄/預設值、X-Forwarded-For 擷取/fallback、session fhir_user、trace context 擷取/合併、decorator 整合
+  - `TestGCPStructuredLogging`（4 項）：GAE stdout JSON 輸出、非 GAE 無輸出、trace link 格式、hash chain 向後相容驗證
+
 ### 功能改進 (Features)
+- **Unit Conversion Fail-Safe — 未知/缺失單位拒絕猜測機制** — 當 EHR 回傳的檢驗值單位無法辨認（如 `mg/L` 代替 `g/dL`）或完全缺失時：
+  - **後端**：`UnitConversionService.get_value_with_status()` 新增 5 種狀態碼（`ok`/`no_data`/`no_value`/`missing_unit`/`unknown_unit`），區分「FHIR 無資料」vs「有資料但單位無法轉換」
+  - **Calculator**：`extract_inputs()` 追蹤 `unit_issues[]`，`_check_unit_issue_warnings()` 產生 `unrecognized_unit` 類型警告（severity=high），明確告知醫師原始值、未知單位、預期單位
+  - **前端**：`main.html` 新增 `#unit-warning` alert-danger 區塊，`main.js` 新增 `displayUnitWarnings()` 函式
+  - **安全策略**：系統**拒絕猜測單位**，將該參數排除於計分之外（score=0），並在 UI 標示「Not available」+ 明確原因
+  - **30 項新增測試**（`tests/test_unit_failsafe.py`）：狀態碼驗證、追蹤機制、警告產生、邊界案例、向下相容
+  - 依 ISO 14971 RISK-001 設計：猜錯單位可能造成 10 倍量級誤差，直接影響風險分類
 - **Data Quality Warning — 數值截斷警告機制** — 當 EHR 傳入的檢驗值超出臨床預期範圍（如血紅素因單位錯誤被放大 10 倍），系統不再默默截斷，而是：
   - **後端**：`PreciseHBRCalculator._check_truncation_warnings()` 偵測 Age/Hb/eGFR/WBC 四項參數的截斷情況，產生結構化警告（含原始值、截斷值、方向、預期範圍、建議訊息）
   - **元件顯示**：截斷的參數在 component display 中顯示 `(capped to X)`，並附帶 `is_truncated` / `effective_value` 標記
@@ -75,6 +147,14 @@
 - `condition_checker.py` 臨床狀態偵測邏輯更新
 - `precise_hbr_calculator.py` 計算邏輯改進
 - `cdss_config.json` 臨床參數更新
+
+### 測試修復 (Test Fixes)
+- **修復 Python 3.10/3.12 相容性** — `verify_precise_hbr.py`、`verify_tradeoff.py` 中的 `patch('services.module.singleton.method')` 在 Python 3.10/3.12 會觸發 `ModuleNotFoundError`（`unittest.mock` 嘗試將 `.py` 模組當作 package 載入子模組）。改用 `patch.object(singleton, 'method')` 確保跨版本相容
+- **修復測試順序汙染導致的 14 項 302 假失敗** — `test_performance.py::test_app_import_time` 刪除 `sys.modules['APP']` 後重新匯入 APP，未設定 `TESTING` 環境變數導致 Flask-Talisman `force_https=True`，污染後續所有測試。修復：重新匯入時設定正確環境變數，`finally` 區塊還原原始模組參照
+- **修復效能測試 fixture 隔離** — `test_performance.py` 各 class 定義的 `app`/`client` fixture 未包含 conftest 的環境變數設定，導致單獨執行時 APP 以 production 模式初始化。改用共用 `perf_app`/`perf_client` fixture 並正確 patch 環境變數
+- **修復 URL 驗證效能閾值** — `validate_url()` 包含 DNS 解析（`socket.getaddrinfo`）用於 SSRF 防護，原先 0.1ms/次的閾值不切實際。改為單一主機名 100 次迭代、閾值放寬至 5ms
+- **修復 SSTI 滲透測試誤判** — `{{config}}` payload 的回應中 `'49'` 來自 nonce/reference ID 而非 SSTI 執行結果。改為僅在 payload 含 `7*7` 時檢查 `'49'`，並對 `{{config}}` 新增 `SECRET_KEY` 洩露檢查
+- **修復 `UnitConversionService.get_value_with_status()` TypeError** — 當 `unit_system` 為字串而非 dict 時 `unit_system['unit']` 觸發 `TypeError: string indices must be integers`。新增型別檢查支援 dict 與 string 兩種輸入格式
 
 ---
 

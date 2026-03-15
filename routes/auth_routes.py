@@ -382,13 +382,15 @@ def store_token_response(token_response, launch_params):
                 f"id_token validated successfully. fhirUser: {claims.get('fhirUser')}"
             )
     
+    expires_in = token_response.get('expires_in')
     session['fhir_data'] = {
         'token': token_response.get('access_token'),
         'patient': token_response.get('patient'),
         'server': issuer,
         'client_id': client_id,
         'token_type': token_response.get('token_type', 'Bearer'),
-        'expires_in': token_response.get('expires_in'),
+        'expires_in': expires_in,
+        'token_expires_at': (time.time() + int(expires_in)) if expires_in else None,
         'scope': token_response.get('scope'),
         'refresh_token': token_response.get('refresh_token')
     }
@@ -590,8 +592,10 @@ def refresh_token():
         return jsonify({"error": "Invalid token response."}), 500
     
     # Update session with new tokens (rotation - old refresh token is now invalid)
+    new_expires_in = token_response.get('expires_in')
     fhir_data['token'] = new_access_token
-    fhir_data['expires_in'] = token_response.get('expires_in')
+    fhir_data['expires_in'] = new_expires_in
+    fhir_data['token_expires_at'] = (time.time() + int(new_expires_in)) if new_expires_in else None
     fhir_data['token_type'] = token_response.get('token_type', 'Bearer')
     
     # Rotate refresh token if a new one was provided
@@ -626,6 +630,34 @@ def refresh_token():
         "status": "ok",
         "expires_in": token_response.get('expires_in'),
         "token_type": token_response.get('token_type', 'Bearer')
+    })
+
+
+@auth_bp.route('/api/session-status', methods=['GET'])
+@limiter.limit("30 per minute")
+def session_status():
+    """Return token expiry status for frontend monitoring."""
+    fhir_data = session.get('fhir_data')
+    if not fhir_data or not fhir_data.get('token'):
+        return jsonify({"authenticated": False}), 401
+
+    expires_at = fhir_data.get('token_expires_at')
+    has_refresh = bool(fhir_data.get('refresh_token'))
+
+    if expires_at:
+        remaining = int(expires_at - time.time())
+        return jsonify({
+            "authenticated": True,
+            "token_remaining_seconds": max(remaining, 0),
+            "token_expired": remaining <= 0,
+            "has_refresh_token": has_refresh
+        })
+
+    return jsonify({
+        "authenticated": True,
+        "token_remaining_seconds": None,
+        "token_expired": False,
+        "has_refresh_token": has_refresh
     })
 
 

@@ -7,6 +7,7 @@ import os
 import datetime
 
 # Internal imports
+from version import __version__
 from services.app_config import Config
 from extensions import limiter, csrf
 from utils.logging_filter import setup_ephi_logging_filter
@@ -67,12 +68,28 @@ def create_app():
             '\'self\'',
             'cdn.jsdelivr.net',
             'cdnjs.cloudflare.com'
+        ],
+        # SMART on FHIR apps run inside EHR iframes — allow known EHR origins.
+        # Additional origins can be added via FRAME_ANCESTORS env var (comma-separated).
+        'frame-ancestors': [
+            '\'self\'',
+            'https://*.epic.com',
+            'https://*.cerner.com',
+            'https://*.cernerworks.com',
+        ] + [
+            o.strip() for o in os.environ.get('FRAME_ANCESTORS', '').split(',') if o.strip()
         ]
     }
     # Disable force_https in testing/development to avoid 302 redirects
     is_testing = app.config.get('TESTING', False) or os.environ.get('TESTING', '').lower() == 'true'
     force_https = not is_testing and not app.config.get('DEBUG', False)
-    Talisman(app, content_security_policy=csp, content_security_policy_nonce_in=['script-src', 'style-src'], force_https=force_https)  # H-08
+    Talisman(
+        app,
+        content_security_policy=csp,
+        content_security_policy_nonce_in=['script-src', 'style-src'],
+        force_https=force_https,
+        frame_options=False,  # Replaced by CSP frame-ancestors (X-Frame-Options incompatible with iframe embedding)
+    )  # H-08
     
     # Register Blueprints
     app.register_blueprint(web_bp)
@@ -106,7 +123,7 @@ def create_app():
                 'status': 'healthy',
                 'timestamp': datetime.datetime.utcnow().isoformat(),
                 'service': 'PRECISE-HBR SMART on FHIR',
-                'version': '1.0.0'
+                'version': __version__
             }
             return jsonify(health_status), 200
         except Exception as e:
@@ -124,7 +141,8 @@ def create_app():
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['X-Content-Type-Options'] = 'nosniff'  # M-07
-        response.headers['X-Frame-Options'] = 'DENY'
+        # X-Frame-Options removed — CSP frame-ancestors handles iframe policy
+        # (X-Frame-Options: DENY blocks SMART on FHIR iframe embedding in EHRs)
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
         return response

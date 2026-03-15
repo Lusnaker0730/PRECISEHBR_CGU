@@ -67,6 +67,14 @@ def calculate_tradeoff_api():
             client_id=fhir_session_data.get('client_id')
         )
         if error:
+            error_lower = error.lower()
+            if "authentication failed" in error_lower or "re-launch" in error_lower:
+                current_app.logger.warning(f"FHIR 401 in tradeoff for patient {patient_id}: token expired")
+                return jsonify({
+                    'error': 'Your session has expired. Please re-launch the application from your EHR.',
+                    'error_type': 'auth_expired',
+                    'requires_reauth': True
+                }), 401
             raise Exception(f"FHIR data service failed: {error}")
             
         demographics = fhir_data_service.get_patient_demographics(raw_data.get('patient'))

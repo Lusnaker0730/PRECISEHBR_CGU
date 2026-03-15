@@ -12,6 +12,9 @@ import re
 from typing import Any
 
 from services.config_loader import config_loader
+from services.fhir_normalizer import (
+    NormalizedCondition, NormalizedMedication, NormalizedPatientData,
+)
 from services.twcore_adapter import twcore_adapter
 from services.unit_conversion_service import unit_converter
 
@@ -604,6 +607,273 @@ class ConditionCheckerService:
             'high_risk_combinations': [],
             'bleeding_risk_medications': [],
             'recommendations': [],
+        }
+
+    # =====================================================================
+    # Normalized-input methods (consume canonical model dataclasses)
+    # IEC 62304 §5.3 — Architecture boundary: FHIR-agnostic condition logic
+    # =====================================================================
+
+    @classmethod
+    def _matches_code_in_normalized(
+        cls, condition: NormalizedCondition, system: str, target_codes: set,
+    ) -> str | None:
+        """Find a matching code in a NormalizedCondition. Returns display or None."""
+        for code_entry in condition.codes:
+            if code_entry.system == system and code_entry.code in target_codes:
+                return code_entry.display or code_entry.code
+        return None
+
+    @classmethod
+    def check_prior_bleeding_normalized(cls, conditions: list[NormalizedCondition]) -> tuple[bool, list]:
+        """Check for prior bleeding using pre-normalized conditions."""
+        snomed_config = config_loader.get_snomed_codes('prior_bleeding')
+        snomed_codes = set(snomed_config.get('snomed_codes', []))
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
+        bleeding_keywords = config_loader.get_bleeding_history_keywords()
+        snomed_system = cls._get_snomed_system()
+
+        found_bleeding: set[str] = set()
+
+        for cond in conditions:
+            # SNOMED
+            display = cls._matches_code_in_normalized(cond, snomed_system, snomed_codes)
+            if display is not None:
+                found_bleeding.add(display or 'Prior bleeding')
+
+            # ICD-10
+            if cond.icd10_code and cls._matches_icd10_code(cond.icd10_code, icd10_codes):
+                found_bleeding.add(cond.icd10_display or f"Prior bleeding (ICD-10: {cond.icd10_code})")
+
+            # Text keywords
+            for keyword in bleeding_keywords:
+                if keyword.lower() in cond.text:
+                    found_bleeding.add(cond.text)
+                    break
+
+        found_list = [item for item in found_bleeding if item]
+        return bool(found_list), found_list
+
+    @classmethod
+    def check_bleeding_diathesis_normalized(cls, conditions: list[NormalizedCondition]) -> tuple[bool, str | None]:
+        """Check for chronic bleeding diathesis using pre-normalized conditions."""
+        snomed_config = config_loader.get_snomed_codes('bleeding_diathesis')
+        snomed_codes = set(snomed_config.get('snomed_codes', ['64779008']))
+        icd10_codes = snomed_config.get('icd10cm_codes', ['D65', 'D66', 'D67', 'D68', 'D69'])
+        text_keywords = snomed_config.get('text_keywords', ['bleeding disorder', 'coagulation disorder'])
+        snomed_system = cls._get_snomed_system()
+
+        for cond in conditions:
+            display = cls._matches_code_in_normalized(cond, snomed_system, snomed_codes)
+            if display is not None:
+                return True, display or 'Bleeding diathesis'
+
+            if cond.icd10_code and cls._matches_icd10_code(cond.icd10_code, icd10_codes):
+                return True, cond.icd10_display or f"ICD-10: {cond.icd10_code}"
+
+            for keyword in text_keywords:
+                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                if re.search(pattern, cond.text):
+                    return True, cond.text
+
+        return False, None
+
+    @classmethod
+    def check_active_cancer_normalized(cls, conditions: list[NormalizedCondition]) -> tuple[bool, str | None]:
+        """Check for active malignancy using pre-normalized conditions."""
+        snomed_config = config_loader.get_snomed_codes('active_cancer')
+        malignancy_codes = set(snomed_config.get('snomed_codes', ['363346000']))
+        excluded_codes = set(snomed_config.get('snomed_exclude_codes', ['254637007', '254632001']))
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
+        cancer_keywords = snomed_config.get('text_keywords', [])
+        exclusion_keywords = snomed_config.get('exclusion_keywords', [])
+        snomed_system = cls._get_snomed_system()
+        active_status_codes = cls._get_active_status_codes()
+
+        for cond in conditions:
+            if cond.clinical_status not in active_status_codes:
+                continue
+
+            for code_entry in cond.codes:
+                if code_entry.system != snomed_system:
+                    continue
+                if code_entry.code in excluded_codes:
+                    continue
+                if code_entry.code in malignancy_codes:
+                    return True, code_entry.display or 'Active malignancy'
+
+            if cond.icd10_code and any(cond.icd10_code.startswith(t) for t in icd10_codes):
+                return True, cond.icd10_display or f"Active cancer (ICD-10: {cond.icd10_code})"
+
+            if any(ex in cond.text for ex in exclusion_keywords):
+                continue
+            for keyword in cancer_keywords:
+                if keyword in cond.text:
+                    return True, cond.text
+
+        return False, None
+
+    @classmethod
+    def check_liver_cirrhosis_normalized(cls, conditions: list[NormalizedCondition]) -> tuple[bool, list]:
+        """Check for liver cirrhosis with portal hypertension using pre-normalized conditions."""
+        snomed_config = config_loader.get_snomed_codes('liver_cirrhosis')
+        cirrhosis_codes = set(snomed_config.get('snomed_codes', ['19943007']))
+        cirrhosis_keywords = snomed_config.get('text_keywords', ['cirrhosis'])
+        cirrhosis_icd10 = snomed_config.get('icd10cm_codes', [])
+
+        pht_config = snomed_config.get('portal_hypertension_criteria', {})
+        pht_criteria = pht_config.get('text_keywords', [
+            'ascites', 'portal hypertension', 'esophageal varices', 'hepatic encephalopathy'
+        ])
+        pht_codes = set(pht_config.get('snomed_codes', []))
+        pht_icd10 = pht_config.get('icd10cm_codes', [])
+        snomed_system = cls._get_snomed_system()
+
+        has_cirrhosis = False
+        has_pht = False
+        found_conditions: set[str] = set()
+
+        for cond in conditions:
+            for code_entry in cond.codes:
+                if code_entry.system != snomed_system:
+                    continue
+                if code_entry.code in cirrhosis_codes:
+                    has_cirrhosis = True
+                    found_conditions.add(code_entry.display or 'Liver cirrhosis')
+                if code_entry.code in pht_codes:
+                    has_pht = True
+                    found_conditions.add(code_entry.display or 'Portal hypertension')
+
+            for keyword in cirrhosis_keywords:
+                if keyword in cond.text:
+                    has_cirrhosis = True
+                    found_conditions.add(f"Cirrhosis: {cond.text[:50]}...")
+                    break
+
+            for criteria in pht_criteria:
+                if criteria in cond.text:
+                    has_pht = True
+                    found_conditions.add(f"Portal HTN sign: {criteria}")
+                    break
+
+            if cond.icd10_code:
+                if cls._matches_icd10_code(cond.icd10_code, cirrhosis_icd10):
+                    has_cirrhosis = True
+                    found_conditions.add(cond.icd10_display or f"Liver cirrhosis (ICD-10: {cond.icd10_code})")
+                if cls._matches_icd10_code(cond.icd10_code, pht_icd10):
+                    has_pht = True
+                    found_conditions.add(cond.icd10_display or f"Portal hypertension sign (ICD-10: {cond.icd10_code})")
+
+        return (has_cirrhosis and has_pht), list(found_conditions)
+
+    @classmethod
+    def check_recent_major_surgery_normalized(cls, conditions: list[NormalizedCondition]) -> tuple[bool, str | None]:
+        """Check for recent major surgery or trauma using pre-normalized conditions."""
+        snomed_config = config_loader.get_snomed_codes('recent_major_surgery_trauma')
+        snomed_codes = set(snomed_config.get('snomed_codes', ['417005009', '371626004']))
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
+        text_keywords = snomed_config.get('text_keywords', ['major surgery', 'major trauma'])
+        snomed_system = cls._get_snomed_system()
+
+        for cond in conditions:
+            display = cls._matches_code_in_normalized(cond, snomed_system, snomed_codes)
+            if display is not None:
+                return True, display or 'Recent major surgery or trauma'
+
+            if cond.icd10_code and cls._matches_icd10_code(cond.icd10_code, icd10_codes):
+                return True, cond.icd10_display or f"ICD-10: {cond.icd10_code}"
+
+            for keyword in text_keywords:
+                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                if re.search(pattern, cond.text):
+                    return True, cond.text
+
+        return False, None
+
+    @classmethod
+    def _check_medication_normalized(
+        cls, medications: list[NormalizedMedication], keywords: list, nhi_codes: list, log_label: str,
+    ) -> bool:
+        """Check if any normalized medication matches keywords or NHI codes."""
+        for med in medications:
+            if med.nhi_code:
+                if any(med.nhi_code == t or med.nhi_code.startswith(t) for t in nhi_codes):
+                    logging.info(f"Found {log_label} via NHI code: {med.nhi_code}")
+                    return True
+            for keyword in keywords:
+                if keyword.lower() in med.text:
+                    logging.info(f"Found {log_label} via keyword '{keyword}' in: {med.text[:80]}")
+                    return True
+        return False
+
+    @classmethod
+    def check_oral_anticoagulation_normalized(cls, medications: list[NormalizedMedication]) -> bool:
+        """Check for oral anticoagulation using pre-normalized medications."""
+        med_config = config_loader.get_medication_keywords()
+        oac_config = med_config.get('oral_anticoagulants', {})
+        keywords = oac_config.get('generic_names', []) + oac_config.get('brand_names', [])
+        nhi_codes = oac_config.get('nhi_codes', [])
+        return cls._check_medication_normalized(medications, keywords, nhi_codes, "OAC")
+
+    @classmethod
+    def check_nsaids_or_corticosteroids_normalized(cls, medications: list[NormalizedMedication]) -> bool:
+        """Check for NSAIDs or corticosteroids using pre-normalized medications."""
+        med_config = config_loader.get_medication_keywords()
+        nsaid_config = med_config.get('nsaids_corticosteroids', {})
+        keywords = nsaid_config.get('nsaid_keywords', []) + nsaid_config.get('corticosteroid_keywords', [])
+        nhi_codes = nsaid_config.get('nhi_codes', [])
+        return cls._check_medication_normalized(medications, keywords, nhi_codes, "NSAID/Steroid")
+
+    @classmethod
+    def check_thrombocytopenia_normalized(
+        cls, platelets_lab: Any | None, conditions: list[NormalizedCondition],
+    ) -> bool:
+        """Check for thrombocytopenia using normalized platelet value + conditions."""
+        snomed_config = config_loader.get_snomed_codes('thrombocytopenia')
+        threshold = snomed_config.get('threshold', {}).get('value', 100)
+        icd10_codes = snomed_config.get('icd10cm_codes', [])
+
+        # Check lab value (NormalizedLabValue or None)
+        if platelets_lab is not None and platelets_lab.value is not None:
+            if platelets_lab.value < threshold:
+                return True
+
+        # Check ICD-10 codes in normalized conditions
+        for cond in conditions:
+            if cond.icd10_code and cls._matches_icd10_code(cond.icd10_code, icd10_codes):
+                return True
+
+        return False
+
+    @classmethod
+    def check_arc_hbr_factors_normalized(cls, patient_data: NormalizedPatientData) -> dict:
+        """
+        Check ARC-HBR risk factors using fully normalized patient data.
+
+        Returns the same dict shape as check_arc_hbr_factors_detailed().
+        """
+        conditions = patient_data.conditions
+        medications = patient_data.medications
+
+        has_thrombocytopenia = cls.check_thrombocytopenia_normalized(patient_data.platelets, conditions)
+        has_bleeding_diathesis, _ = cls.check_bleeding_diathesis_normalized(conditions)
+        has_active_cancer, _ = cls.check_active_cancer_normalized(conditions)
+        has_liver_condition, _ = cls.check_liver_cirrhosis_normalized(conditions)
+        has_nsaids = cls.check_nsaids_or_corticosteroids_normalized(medications)
+        has_recent_surgery, _ = cls.check_recent_major_surgery_normalized(conditions)
+
+        factors = [
+            has_thrombocytopenia, has_bleeding_diathesis, has_active_cancer,
+            has_liver_condition, has_nsaids, has_recent_surgery,
+        ]
+        return {
+            'has_any_factor': any(factors),
+            'thrombocytopenia': has_thrombocytopenia,
+            'bleeding_diathesis': has_bleeding_diathesis,
+            'active_malignancy': has_active_cancer,
+            'liver_cirrhosis': has_liver_condition,
+            'nsaids_corticosteroids': has_nsaids,
+            'recent_major_surgery_trauma': has_recent_surgery,
         }
 
 

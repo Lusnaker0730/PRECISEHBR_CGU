@@ -435,18 +435,18 @@ class TestInjectionAttacks:
             })
             response_text = resp.data.decode('utf-8', errors='replace')
             # SSTI: {{7*7}} should NOT evaluate to 49 in rendered output.
-            # The payload is sanitized via markupsafe.escape, so it appears
-            # escaped (e.g., "&#123;&#123;7*7&#125;&#125;") or stripped.
-            # We verify the template engine did NOT evaluate the expression
-            # by ensuring "49" doesn't appear as a standalone computed result.
-            # Note: "49" may appear incidentally in nonces, tokens, or IDs.
-            if '49' in response_text:
-                # If 49 appears, it must NOT be because SSTI evaluated {{7*7}}
-                # Check that the escaped payload is present (input was sanitized, not executed)
+            # Only check for '49' when the payload actually contains '7*7',
+            # since '49' can appear incidentally in nonces, tokens, or reference IDs.
+            if '7*7' in payload and '49' in response_text:
                 import markupsafe
                 escaped = str(markupsafe.escape(payload))
                 assert escaped in response_text or resp.status_code in (400, 403), \
                     f"Possible SSTI: '49' in response without escaped payload for: {payload}"
+            # For all payloads: verify the template engine didn't expose config objects
+            if payload == '{{config}}':
+                # If SSTI worked, response would contain Flask config dict representation
+                assert 'SECRET_KEY' not in response_text, \
+                    "SSTI exposed config: {{config}} evaluated in template"
 
     def test_crlf_injection_in_headers(self, client):
         """CRLF 注入不應影響 HTTP headers。"""
@@ -759,11 +759,13 @@ class TestSecurityHeaders:
         hsts = resp.headers.get('Strict-Transport-Security', '')
         assert 'max-age=' in hsts
 
-    def test_x_frame_options(self, client):
-        """X-Frame-Options 應為 DENY 或 SAMEORIGIN。"""
+    def test_frame_ancestors_csp(self, client):
+        """CSP frame-ancestors 應取代 X-Frame-Options 以支援 SMART on FHIR iframe 嵌入。"""
         resp = client.get('/')
-        xfo = resp.headers.get('X-Frame-Options', '')
-        assert xfo.upper() in ('DENY', 'SAMEORIGIN')
+        csp = resp.headers.get('Content-Security-Policy', '')
+        assert 'frame-ancestors' in csp
+        # X-Frame-Options should NOT be set (conflicts with CSP frame-ancestors)
+        assert 'X-Frame-Options' not in resp.headers
 
     def test_x_content_type_options(self, client):
         """X-Content-Type-Options 應為 nosniff。"""

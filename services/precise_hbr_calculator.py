@@ -6,10 +6,12 @@ All scoring coefficients and truncation limits are loaded from cdss_config.json 
 """
 import logging
 import math
-from services.unit_conversion_service import unit_converter
+from datetime import datetime, timedelta
+
 from services.condition_checker import condition_checker
 from services.config_loader import config_loader
-from datetime import datetime, timedelta
+from services.fhir_normalizer import NormalizedPatientData, fhir_normalizer
+from services.unit_conversion_service import UnitConversionService, unit_converter
 
 
 class PreciseHBRCalculator:
@@ -128,9 +130,10 @@ class PreciseHBRCalculator:
             'arc_hbr_count': 0,
             'missing_fields': [],
             'empty_fhir_resources': [],  # Track empty FHIR resource types
+            'unit_issues': [],           # Track unrecognized/missing unit problems
             'metadata': {}
         }
-        
+
         # 1. Age
         age = demographics.get('age')
         if age is not None:
@@ -138,59 +141,99 @@ class PreciseHBRCalculator:
             inputs['metadata']['age_effective'] = max(limits['min_age'], min(limits['max_age'], age))
         else:
             inputs['missing_fields'].append('Age')
-            
+
         # 2. Hemoglobin
         hemoglobin_list = raw_data.get('HEMOGLOBIN', [])
         if hemoglobin_list:
             hb_obs = hemoglobin_list[0]
-            hb_val = unit_converter.get_value_from_observation(hb_obs, unit_converter.TARGET_UNITS['HEMOGLOBIN'])
-            if hb_val is not None:
-                inputs['hb'] = hb_val
-                inputs['metadata']['hb_effective'] = max(limits['min_hb'], min(limits['max_hb'], hb_val))
+            hb_result = unit_converter.get_value_with_status(hb_obs, unit_converter.TARGET_UNITS['HEMOGLOBIN'])
+            if hb_result['value'] is not None:
+                inputs['hb'] = hb_result['value']
+                inputs['metadata']['hb_effective'] = max(limits['min_hb'], min(limits['max_hb'], hb_result['value']))
                 inputs['metadata']['hb_date'] = hb_obs.get('effectiveDateTime', 'N/A')
+            elif hb_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                inputs['unit_issues'].append({
+                    'parameter': 'Hemoglobin',
+                    'status': hb_result['status'],
+                    'raw_value': hb_result['raw_value'],
+                    'source_unit': hb_result['source_unit'],
+                    'target_unit': hb_result['target_unit'],
+                })
+                inputs['missing_fields'].append('Hemoglobin')
             else:
                 inputs['missing_fields'].append('Hemoglobin')
         else:
             inputs['missing_fields'].append('Hemoglobin')
-            
+
         # 3. eGFR
         egfr_val = None
         egfr_source = ""
+        egfr_unit_issue = None
         egfr_list = raw_data.get('EGFR', [])
         if egfr_list:
             egfr_obs = egfr_list[0]
-            egfr_val = unit_converter.get_value_from_observation(egfr_obs, unit_converter.TARGET_UNITS['EGFR'])
-            egfr_source = "Direct eGFR"
-            inputs['metadata']['egfr_date'] = egfr_obs.get('effectiveDateTime', 'N/A')
-            
+            egfr_result = unit_converter.get_value_with_status(egfr_obs, unit_converter.TARGET_UNITS['EGFR'])
+            if egfr_result['value'] is not None:
+                egfr_val = egfr_result['value']
+                egfr_source = "Direct eGFR"
+                inputs['metadata']['egfr_date'] = egfr_obs.get('effectiveDateTime', 'N/A')
+            elif egfr_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                egfr_unit_issue = {
+                    'parameter': 'eGFR',
+                    'status': egfr_result['status'],
+                    'raw_value': egfr_result['raw_value'],
+                    'source_unit': egfr_result['source_unit'],
+                    'target_unit': egfr_result['target_unit'],
+                }
+
         if egfr_val is None:
             creatinine_list = raw_data.get('CREATININE', [])
             if creatinine_list and inputs['age'] is not None and demographics.get('gender'):
                 creatinine_obs = creatinine_list[0]
-                creatinine_val = unit_converter.get_value_from_observation(creatinine_obs, unit_converter.TARGET_UNITS['CREATININE'])
-                if creatinine_val:
-                    calc_egfr, reason = unit_converter.calculate_egfr(creatinine_val, inputs['age'], demographics['gender'])
+                cr_result = unit_converter.get_value_with_status(creatinine_obs, unit_converter.TARGET_UNITS['CREATININE'])
+                if cr_result['value'] is not None:
+                    calc_egfr, reason = unit_converter.calculate_egfr(cr_result['value'], inputs['age'], demographics['gender'])
                     if calc_egfr:
                         egfr_val = calc_egfr
                         egfr_source = reason
+                        egfr_unit_issue = None  # Creatinine fallback succeeded
                         inputs['metadata']['egfr_date'] = creatinine_obs.get('effectiveDateTime', 'N/A')
-        
+                elif cr_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT) and not egfr_unit_issue:
+                    egfr_unit_issue = {
+                        'parameter': 'Creatinine (for eGFR calculation)',
+                        'status': cr_result['status'],
+                        'raw_value': cr_result['raw_value'],
+                        'source_unit': cr_result['source_unit'],
+                        'target_unit': cr_result['target_unit'],
+                    }
+
         if egfr_val is not None:
             inputs['egfr'] = egfr_val
             inputs['metadata']['egfr_effective'] = max(limits['min_egfr'], min(limits['max_egfr'], egfr_val))
             inputs['metadata']['egfr_source'] = egfr_source
         else:
             inputs['missing_fields'].append('eGFR')
+            if egfr_unit_issue:
+                inputs['unit_issues'].append(egfr_unit_issue)
 
         # 4. WBC
         wbc_list = raw_data.get('WBC', [])
         if wbc_list:
             wbc_obs = wbc_list[0]
-            wbc_val = unit_converter.get_value_from_observation(wbc_obs, unit_converter.TARGET_UNITS['WBC'])
-            if wbc_val is not None:
-                inputs['wbc'] = wbc_val
-                inputs['metadata']['wbc_effective'] = max(limits['min_wbc'], min(limits['max_wbc'], wbc_val))
+            wbc_result = unit_converter.get_value_with_status(wbc_obs, unit_converter.TARGET_UNITS['WBC'])
+            if wbc_result['value'] is not None:
+                inputs['wbc'] = wbc_result['value']
+                inputs['metadata']['wbc_effective'] = max(limits['min_wbc'], min(limits['max_wbc'], wbc_result['value']))
                 inputs['metadata']['wbc_date'] = wbc_obs.get('effectiveDateTime', 'N/A')
+            elif wbc_result['status'] in (unit_converter.STATUS_UNKNOWN_UNIT, unit_converter.STATUS_MISSING_UNIT):
+                inputs['unit_issues'].append({
+                    'parameter': 'WBC',
+                    'status': wbc_result['status'],
+                    'raw_value': wbc_result['raw_value'],
+                    'source_unit': wbc_result['source_unit'],
+                    'target_unit': wbc_result['target_unit'],
+                })
+                inputs['missing_fields'].append('WBC')
             else:
                 inputs['missing_fields'].append('WBC')
         else:
@@ -235,6 +278,143 @@ class PreciseHBRCalculator:
         inputs['metadata']['arc_details'] = arc_details
         
         return inputs
+
+    # -----------------------------------------------------------------
+    # Normalized-input extraction (canonical model)
+    # IEC 62304 §5.3 — FHIR-agnostic input extraction
+    # -----------------------------------------------------------------
+
+    @classmethod
+    def extract_inputs_normalized(cls, patient_data: NormalizedPatientData) -> dict:
+        """
+        Extract scoring inputs from a NormalizedPatientData instance.
+
+        This is the preferred entry point: all FHIR parsing has already been
+        done by FHIRNormalizer, so this method only reads clean Python
+        dataclasses — no FHIR dict access whatsoever.
+        """
+        limits = cls._get_truncation_limits()
+
+        inputs: dict = {
+            'age': None,
+            'hb': None,
+            'egfr': None,
+            'wbc': None,
+            'prior_bleeding': False,
+            'oral_anticoag': False,
+            'arc_hbr_count': 0,
+            'missing_fields': [],
+            'empty_fhir_resources': [],
+            'unit_issues': [],
+            'metadata': {},
+        }
+
+        # 1. Age
+        age = patient_data.demographics.age
+        if age is not None:
+            inputs['age'] = age
+            inputs['metadata']['age_effective'] = max(limits['min_age'], min(limits['max_age'], age))
+        else:
+            inputs['missing_fields'].append('Age')
+
+        # 2. Hemoglobin
+        hb_lab = patient_data.hemoglobin
+        if hb_lab and hb_lab.value is not None:
+            inputs['hb'] = hb_lab.value
+            inputs['metadata']['hb_effective'] = max(limits['min_hb'], min(limits['max_hb'], hb_lab.value))
+            inputs['metadata']['hb_date'] = hb_lab.effective_date or 'N/A'
+        elif hb_lab and hb_lab.status in (UnitConversionService.STATUS_UNKNOWN_UNIT, UnitConversionService.STATUS_MISSING_UNIT):
+            inputs['unit_issues'].append({
+                'parameter': 'Hemoglobin',
+                'status': hb_lab.status,
+                'raw_value': hb_lab.raw_value,
+                'source_unit': hb_lab.source_unit,
+                'target_unit': hb_lab.unit,
+            })
+            inputs['missing_fields'].append('Hemoglobin')
+        else:
+            inputs['missing_fields'].append('Hemoglobin')
+
+        # 3. eGFR (already includes creatinine fallback from normalizer)
+        egfr_lab = patient_data.egfr
+        if egfr_lab and egfr_lab.value is not None:
+            inputs['egfr'] = egfr_lab.value
+            inputs['metadata']['egfr_effective'] = max(limits['min_egfr'], min(limits['max_egfr'], egfr_lab.value))
+            inputs['metadata']['egfr_source'] = egfr_lab.source or ''
+            inputs['metadata']['egfr_date'] = egfr_lab.effective_date or 'N/A'
+        elif egfr_lab and egfr_lab.status in (UnitConversionService.STATUS_UNKNOWN_UNIT, UnitConversionService.STATUS_MISSING_UNIT):
+            inputs['unit_issues'].append({
+                'parameter': 'eGFR' if egfr_lab.source is None else egfr_lab.source,
+                'status': egfr_lab.status,
+                'raw_value': egfr_lab.raw_value,
+                'source_unit': egfr_lab.source_unit,
+                'target_unit': egfr_lab.unit,
+            })
+            inputs['missing_fields'].append('eGFR')
+        else:
+            inputs['missing_fields'].append('eGFR')
+
+        # 4. WBC
+        wbc_lab = patient_data.wbc
+        if wbc_lab and wbc_lab.value is not None:
+            inputs['wbc'] = wbc_lab.value
+            inputs['metadata']['wbc_effective'] = max(limits['min_wbc'], min(limits['max_wbc'], wbc_lab.value))
+            inputs['metadata']['wbc_date'] = wbc_lab.effective_date or 'N/A'
+        elif wbc_lab and wbc_lab.status in (UnitConversionService.STATUS_UNKNOWN_UNIT, UnitConversionService.STATUS_MISSING_UNIT):
+            inputs['unit_issues'].append({
+                'parameter': 'WBC',
+                'status': wbc_lab.status,
+                'raw_value': wbc_lab.raw_value,
+                'source_unit': wbc_lab.source_unit,
+                'target_unit': wbc_lab.unit,
+            })
+            inputs['missing_fields'].append('WBC')
+        else:
+            inputs['missing_fields'].append('WBC')
+
+        # 5. Prior Bleeding (normalized)
+        if not patient_data.conditions:
+            inputs['empty_fhir_resources'].append('Condition')
+            inputs['metadata']['conditions_empty'] = True
+        else:
+            inputs['metadata']['conditions_empty'] = False
+            inputs['metadata']['conditions_count'] = len(patient_data.conditions)
+
+        has_bleeding, evidence = condition_checker.check_prior_bleeding_normalized(patient_data.conditions)
+        inputs['prior_bleeding'] = has_bleeding
+        inputs['metadata']['bleeding_evidence'] = evidence
+
+        # 6. Oral Anticoagulation (normalized)
+        if not patient_data.medications:
+            inputs['empty_fhir_resources'].append('Medication')
+            inputs['metadata']['medications_empty'] = True
+        else:
+            inputs['metadata']['medications_empty'] = False
+            inputs['metadata']['medications_count'] = len(patient_data.medications)
+
+        inputs['oral_anticoag'] = condition_checker.check_oral_anticoagulation_normalized(patient_data.medications)
+
+        # 7. ARC-HBR (normalized)
+        arc_details = condition_checker.check_arc_hbr_factors_normalized(patient_data)
+        inputs['arc_hbr_count'] = sum([
+            arc_details['thrombocytopenia'], arc_details['bleeding_diathesis'],
+            arc_details['liver_cirrhosis'], arc_details['active_malignancy'],
+            arc_details['nsaids_corticosteroids'], arc_details.get('recent_major_surgery_trauma', False),
+        ])
+        inputs['metadata']['arc_details'] = arc_details
+
+        return inputs
+
+    @classmethod
+    def calculate_score_normalized(cls, patient_data: NormalizedPatientData):
+        """
+        Full score calculation from NormalizedPatientData.
+
+        Returns the same (components, total_score, data_warnings) tuple as
+        calculate_score(), but operates entirely on pre-normalized data.
+        """
+        inputs = cls.extract_inputs_normalized(patient_data)
+        return cls._build_result(inputs)
 
     @classmethod
     def _check_truncation_warnings(cls, inputs):
@@ -291,9 +471,321 @@ class PreciseHBRCalculator:
         return warnings
 
     @classmethod
+    def _check_unit_issue_warnings(cls, inputs):
+        """
+        Generate high-severity warnings when lab values were present in the EHR
+        but could not be used because the unit was unrecognized or missing.
+
+        This is a Fail-safe mechanism for Class C medical devices: the system
+        refuses to guess and explicitly alerts the clinician, rather than
+        silently treating the value as "missing data".
+        """
+        warnings = []
+        for issue in inputs.get('unit_issues', []):
+            status = issue['status']
+            param = issue['parameter']
+            raw_val = issue['raw_value']
+            source_unit = issue.get('source_unit')
+            target_unit = issue['target_unit']
+
+            if status == unit_converter.STATUS_MISSING_UNIT:
+                message = (
+                    f'{param} value {raw_val} was received from the EHR '
+                    f'without a unit. The expected unit is {target_unit}. '
+                    f'The system cannot safely assume the unit and has '
+                    f'excluded this value from the score calculation. '
+                    f'Please verify the value and unit in the EHR, then '
+                    f'use the manual override if appropriate.'
+                )
+            else:  # STATUS_UNKNOWN_UNIT
+                message = (
+                    f'{param} value {raw_val} was received with an '
+                    f'unrecognized unit "{source_unit}". '
+                    f'The expected unit is {target_unit}. '
+                    f'The system cannot safely convert this value and has '
+                    f'excluded it from the score calculation. '
+                    f'Please verify the value and unit in the EHR, then '
+                    f'use the manual override if appropriate.'
+                )
+
+            warnings.append({
+                'type': 'unrecognized_unit',
+                'severity': 'high',
+                'parameter': param,
+                'raw_value': raw_val,
+                'source_unit': source_unit,
+                'target_unit': target_unit,
+                'status': status,
+                'message': message,
+            })
+
+        return warnings
+
+    @classmethod
+    def _build_result(cls, inputs, access_denied=None):
+        """
+        Shared result builder: turns extracted inputs into
+        (components, total_score, data_warnings).
+
+        Used by both calculate_score() and calculate_score_normalized().
+        """
+        total_score, breakdown = cls.calculate_pure_score(inputs)
+
+        # Reconstruct detailed components for UI
+        components = []
+
+        # Base
+        components.append({
+            "parameter": "PRECISE-HBR - Base Score",
+            "value": "Fixed base score",
+            "score": breakdown['base'],
+            "date": "N/A",
+            "description": f"Base score: {breakdown['base']} points (fixed)"
+        })
+
+        # Age
+        if 'Age' in inputs['missing_fields']:
+            components.append({
+                "parameter": "PRECISE-HBR - Age",
+                "value": "Unknown",
+                "score": 0,
+                "date": "N/A",
+                "description": "Age not available"
+            })
+        else:
+            age = inputs['age']
+            eff_age = inputs['metadata']['age_effective']
+            age_display = f"{age} years (capped to {eff_age})" if age != eff_age else f"{age} years"
+            components.append({
+                "parameter": "PRECISE-HBR - Age",
+                "value": age_display,
+                "score": math.floor(breakdown['age'] + 0.5),
+                "raw_value": age,
+                "date": "N/A",
+                "is_truncated": age != eff_age,
+                "effective_value": eff_age,
+                "description": f"Age score: {breakdown['age']:.2f}"
+            })
+
+        # Hemoglobin
+        if 'Hemoglobin' in inputs['missing_fields']:
+            components.append({
+                "parameter": "PRECISE-HBR - Hemoglobin",
+                "value": "Not available",
+                "score": 0,
+                "date": "N/A",
+                "description": "Hemoglobin not available"
+            })
+        else:
+            hb = inputs['hb']
+            eff_hb = inputs['metadata']['hb_effective']
+            hb_display = f"{hb} g/dL (capped to {eff_hb})" if hb != eff_hb else f"{hb} g/dL"
+            components.append({
+                "parameter": "PRECISE-HBR - Hemoglobin",
+                "value": hb_display,
+                "score": math.floor(breakdown['hb'] + 0.5),
+                "raw_value": hb,
+                "date": inputs['metadata'].get('hb_date', 'N/A'),
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('hb_date', 'N/A')),
+                "is_truncated": hb != eff_hb,
+                "effective_value": eff_hb,
+                "description": f"Hb score: {breakdown['hb']:.2f}"
+            })
+
+        # eGFR
+        if 'eGFR' in inputs['missing_fields']:
+            components.append({
+                "parameter": "PRECISE-HBR - eGFR",
+                "value": "Not available",
+                "score": 0,
+                "date": "N/A",
+                "description": "eGFR not available"
+            })
+        else:
+            egfr = inputs['egfr']
+            eff_egfr = inputs['metadata']['egfr_effective']
+            egfr_display = f"{egfr} mL/min/1.73m² (capped to {eff_egfr})" if egfr != eff_egfr else f"{egfr} mL/min/1.73m²"
+            components.append({
+                "parameter": "PRECISE-HBR - eGFR",
+                "value": egfr_display,
+                "score": math.floor(breakdown['egfr'] + 0.5),
+                "raw_value": egfr,
+                "date": inputs['metadata'].get('egfr_date', 'N/A'),
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('egfr_date', 'N/A')),
+                "is_truncated": egfr != eff_egfr,
+                "effective_value": eff_egfr,
+                "description": f"eGFR score: {breakdown['egfr']:.2f}"
+            })
+
+        # WBC
+        if 'WBC' in inputs['missing_fields']:
+            components.append({
+                "parameter": "PRECISE-HBR - White Blood Cell Count",
+                "value": "Not available",
+                "score": 0,
+                "date": "N/A",
+                "description": "WBC not available"
+            })
+        else:
+            wbc = inputs['wbc']
+            eff_wbc = inputs['metadata']['wbc_effective']
+            wbc_display = f"{wbc} 10^9/L (capped to {eff_wbc})" if wbc != eff_wbc else f"{wbc} 10^9/L"
+            components.append({
+                "parameter": "PRECISE-HBR - White Blood Cell Count",
+                "value": wbc_display,
+                "score": math.floor(breakdown['wbc'] + 0.5),
+                "raw_value": wbc,
+                "date": inputs['metadata'].get('wbc_date', 'N/A'),
+                "is_outdated": cls._is_outdated(inputs['metadata'].get('wbc_date', 'N/A')),
+                "is_truncated": wbc != eff_wbc,
+                "effective_value": eff_wbc,
+                "description": f"WBC score: {breakdown['wbc']:.2f}"
+            })
+
+        # Bleeding
+        components.append({
+            "parameter": "PRECISE-HBR - Prior Bleeding",
+            "value": "Yes" if inputs['prior_bleeding'] else "No",
+            "score": breakdown['bleeding'],
+            "is_present": inputs['prior_bleeding'],
+            "description": f"Prior Bleeding: {breakdown['bleeding']}"
+        })
+
+        # Anticoag
+        components.append({
+            "parameter": "PRECISE-HBR - Oral Anticoagulation",
+            "value": "Yes" if inputs['oral_anticoag'] else "No",
+            "score": breakdown['anticoag'],
+            "is_present": inputs['oral_anticoag'],
+            "description": f"Anticoagulation: {breakdown['anticoag']}"
+        })
+
+        # ARC-HBR Details
+        arc_details = inputs['metadata'].get('arc_details', {})
+
+        components.append({
+            "parameter": "PRECISE-HBR - Platelet Count",
+            "value": "Yes" if arc_details.get('thrombocytopenia') else "No",
+            "score": 0,
+            "is_present": arc_details.get('thrombocytopenia', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Platelet count < 100x10^9/L"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - Chronic Bleeding Diathesis",
+            "value": "Yes" if arc_details.get('bleeding_diathesis') else "No",
+            "score": 0,
+            "is_present": arc_details.get('bleeding_diathesis', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "History of chronic bleeding diathesis"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - Liver Cirrhosis",
+            "value": "Yes" if arc_details.get('liver_cirrhosis') else "No",
+            "score": 0,
+            "is_present": arc_details.get('liver_cirrhosis', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Liver cirrhosis with portal hypertension"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - Active Malignancy",
+            "value": "Yes" if arc_details.get('active_malignancy') else "No",
+            "score": 0,
+            "is_present": arc_details.get('active_malignancy', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Active malignancy in past 12 months"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - NSAIDs/Corticosteroids",
+            "value": "Yes" if arc_details.get('nsaids_corticosteroids') else "No",
+            "score": 0,
+            "is_present": arc_details.get('nsaids_corticosteroids', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Chronic use of NSAIDs or corticosteroids"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - Recent Major Surgery or Trauma",
+            "value": "Yes" if arc_details.get('recent_major_surgery_trauma') else "No",
+            "score": 0,
+            "is_present": arc_details.get('recent_major_surgery_trauma', False),
+            "is_arc_hbr_element": True,
+            "date": "N/A",
+            "description": "Recent major surgery or trauma"
+        })
+
+        components.append({
+            "parameter": "PRECISE-HBR - ARC-HBR Summary",
+            "value": f"{inputs['arc_hbr_count']} factor(s)",
+            "score": breakdown['arc_hbr'],
+            "is_present": inputs['arc_hbr_count'] > 0,
+            "description": f"ARC-HBR: {breakdown['arc_hbr']}"
+        })
+
+        # Build data warnings
+        data_warnings = []
+        empty_resources = inputs.get('empty_fhir_resources', [])
+
+        if 'Condition' in empty_resources:
+            data_warnings.append({
+                'type': 'missing_fhir_resource',
+                'resource': 'Condition',
+                'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy, recent major surgery or trauma) may be missed.',
+                'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy', 'Recent Major Surgery or Trauma']
+            })
+
+        if 'Medication' in empty_resources:
+            data_warnings.append({
+                'type': 'missing_fhir_resource',
+                'resource': 'Medication',
+                'message': 'No Medication records found - Oral Anticoagulation status and NSAID/Corticosteroid use may be inaccurate.',
+                'affected_factors': ['Oral Anticoagulation', 'NSAIDs/Corticosteroids']
+            })
+
+        # Access-denied warnings (Break the Glass)
+        if access_denied:
+            denied_str = ', '.join(access_denied)
+            data_warnings.append({
+                'type': 'access_denied',
+                'severity': 'critical',
+                'denied_resources': access_denied,
+                'message': (
+                    f'Access denied (403 Forbidden) for: {denied_str}. '
+                    f'This patient may have Break the Glass (BTG) protections. '
+                    f'The score was calculated with INCOMPLETE data and may '
+                    f'UNDERESTIMATE bleeding risk. Please complete BTG authorization '
+                    f'in the EHR and recalculate.'
+                ),
+            })
+
+        # Truncation warnings
+        truncation_warnings = cls._check_truncation_warnings(inputs)
+        data_warnings.extend(truncation_warnings)
+
+        # Unit issue warnings (Fail-safe for Class C)
+        unit_issue_warnings = cls._check_unit_issue_warnings(inputs)
+        data_warnings.extend(unit_issue_warnings)
+
+        logging.info(f"PRECISE-HBR calculation complete: {total_score}")
+        if data_warnings:
+            warning_types = [w.get('resource', w.get('parameter', '?')) for w in data_warnings]
+            logging.warning(f"Data warnings: {warning_types}")
+
+        return components, total_score, data_warnings
+
+    @classmethod
     def calculate_pure_score(cls, inputs):
         """
-        Calculates score from extracted inputs. 
+        Calculates score from extracted inputs.
         Only performs math. Does not handle IO or extractions.
         Uses coefficients from config.
         
@@ -380,245 +872,14 @@ class PreciseHBRCalculator:
     @classmethod
     def calculate_score(cls, raw_data, demographics):
         """
-        Main entry point for PRECISE-HBR score calculation.
+        Main entry point for PRECISE-HBR score calculation (legacy interface).
         Uses extract_inputs and calculate_pure_score.
-        
+
         Returns:
-            Tuple of (components_list, total_score)
+            Tuple of (components_list, total_score, data_warnings)
         """
         inputs = cls.extract_inputs(raw_data, demographics)
-        total_score, breakdown = cls.calculate_pure_score(inputs)
-        
-        # Reconstruct detailed components for UI
-        components = []
-        
-        # Base
-        components.append({
-            "parameter": "PRECISE-HBR - Base Score",
-            "value": "Fixed base score",
-            "score": breakdown['base'],
-            "date": "N/A",
-            "description": f"Base score: {breakdown['base']} points (fixed)"
-        })
-        
-        # Age
-        if 'Age' in inputs['missing_fields']:
-            components.append({
-                "parameter": "PRECISE-HBR - Age",
-                "value": "Unknown",
-                "score": 0,
-                "date": "N/A",
-                "description": "Age not available"
-            })
-        else:
-            age = inputs['age']
-            eff_age = inputs['metadata']['age_effective']
-            age_display = f"{age} years (capped to {eff_age})" if age != eff_age else f"{age} years"
-            components.append({
-                "parameter": "PRECISE-HBR - Age",
-                "value": age_display,
-                "score": math.floor(breakdown['age'] + 0.5),
-                "raw_value": age,
-                "date": "N/A",
-                "is_truncated": age != eff_age,
-                "effective_value": eff_age,
-                "description": f"Age score: {breakdown['age']:.2f}"
-            })
-
-        # Hemoglobin
-        if 'Hemoglobin' in inputs['missing_fields']:
-            components.append({
-                "parameter": "PRECISE-HBR - Hemoglobin",
-                "value": "Not available",
-                "score": 0,
-                "date": "N/A",
-                "description": "Hemoglobin not available"
-            })
-        else:
-            hb = inputs['hb']
-            eff_hb = inputs['metadata']['hb_effective']
-            hb_display = f"{hb} g/dL (capped to {eff_hb})" if hb != eff_hb else f"{hb} g/dL"
-            components.append({
-                "parameter": "PRECISE-HBR - Hemoglobin",
-                "value": hb_display,
-                "score": math.floor(breakdown['hb'] + 0.5),
-                "raw_value": hb,
-                "date": inputs['metadata'].get('hb_date', 'N/A'),
-                "is_outdated": cls._is_outdated(inputs['metadata'].get('hb_date', 'N/A')),
-                "is_truncated": hb != eff_hb,
-                "effective_value": eff_hb,
-                "description": f"Hb score: {breakdown['hb']:.2f}"
-            })
-            
-        # eGFR
-        if 'eGFR' in inputs['missing_fields']:
-            components.append({
-                "parameter": "PRECISE-HBR - eGFR",
-                "value": "Not available",
-                "score": 0,
-                "date": "N/A",
-                "description": "eGFR not available"
-            })
-        else:
-            egfr = inputs['egfr']
-            eff_egfr = inputs['metadata']['egfr_effective']
-            egfr_display = f"{egfr} mL/min/1.73m² (capped to {eff_egfr})" if egfr != eff_egfr else f"{egfr} mL/min/1.73m²"
-            components.append({
-                "parameter": "PRECISE-HBR - eGFR",
-                "value": egfr_display,
-                "score": math.floor(breakdown['egfr'] + 0.5),
-                "raw_value": egfr,
-                "date": inputs['metadata'].get('egfr_date', 'N/A'),
-                "is_outdated": cls._is_outdated(inputs['metadata'].get('egfr_date', 'N/A')),
-                "is_truncated": egfr != eff_egfr,
-                "effective_value": eff_egfr,
-                "description": f"eGFR score: {breakdown['egfr']:.2f}"
-            })
-            
-        # WBC
-        if 'WBC' in inputs['missing_fields']:
-            components.append({
-                "parameter": "PRECISE-HBR - White Blood Cell Count",
-                "value": "Not available",
-                "score": 0,
-                "date": "N/A",
-                "description": "WBC not available"
-            })
-        else:
-            wbc = inputs['wbc']
-            eff_wbc = inputs['metadata']['wbc_effective']
-            wbc_display = f"{wbc} 10^9/L (capped to {eff_wbc})" if wbc != eff_wbc else f"{wbc} 10^9/L"
-            components.append({
-                "parameter": "PRECISE-HBR - White Blood Cell Count",
-                "value": wbc_display,
-                "score": math.floor(breakdown['wbc'] + 0.5),
-                "raw_value": wbc,
-                "date": inputs['metadata'].get('wbc_date', 'N/A'),
-                "is_outdated": cls._is_outdated(inputs['metadata'].get('wbc_date', 'N/A')),
-                "is_truncated": wbc != eff_wbc,
-                "effective_value": eff_wbc,
-                "description": f"WBC score: {breakdown['wbc']:.2f}"
-            })
-            
-        # Bleeding
-        components.append({
-            "parameter": "PRECISE-HBR - Prior Bleeding",
-            "value": "Yes" if inputs['prior_bleeding'] else "No",
-            "score": breakdown['bleeding'],
-            "is_present": inputs['prior_bleeding'],
-            "description": f"Prior Bleeding: {breakdown['bleeding']}"
-        })
-        
-        # Anticoag
-        components.append({
-            "parameter": "PRECISE-HBR - Oral Anticoagulation",
-            "value": "Yes" if inputs['oral_anticoag'] else "No",
-            "score": breakdown['anticoag'],
-            "is_present": inputs['oral_anticoag'],
-            "description": f"Anticoagulation: {breakdown['anticoag']}"
-        })
-        
-        # ARC-HBR Details
-        arc_details = inputs['metadata'].get('arc_details', {})
-        
-        components.append({
-            "parameter": "PRECISE-HBR - Platelet Count",
-            "value": "Yes" if arc_details.get('thrombocytopenia') else "No",
-            "score": 0,
-            "is_present": arc_details.get('thrombocytopenia', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "Platelet count < 100x10^9/L"
-        })
-        
-        components.append({
-            "parameter": "PRECISE-HBR - Chronic Bleeding Diathesis",
-            "value": "Yes" if arc_details.get('bleeding_diathesis') else "No",
-            "score": 0,
-            "is_present": arc_details.get('bleeding_diathesis', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "History of chronic bleeding diathesis"
-        })
-        
-        components.append({
-            "parameter": "PRECISE-HBR - Liver Cirrhosis",
-            "value": "Yes" if arc_details.get('liver_cirrhosis') else "No",
-            "score": 0,
-            "is_present": arc_details.get('liver_cirrhosis', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "Liver cirrhosis with portal hypertension"
-        })
-        
-        components.append({
-            "parameter": "PRECISE-HBR - Active Malignancy",
-            "value": "Yes" if arc_details.get('active_malignancy') else "No",
-            "score": 0,
-            "is_present": arc_details.get('active_malignancy', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "Active malignancy in past 12 months"
-        })
-
-        components.append({
-            "parameter": "PRECISE-HBR - NSAIDs/Corticosteroids",
-            "value": "Yes" if arc_details.get('nsaids_corticosteroids') else "No",
-            "score": 0,
-            "is_present": arc_details.get('nsaids_corticosteroids', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "Chronic use of NSAIDs or corticosteroids"
-        })
-
-        components.append({
-            "parameter": "PRECISE-HBR - Recent Major Surgery or Trauma",
-            "value": "Yes" if arc_details.get('recent_major_surgery_trauma') else "No",
-            "score": 0,
-            "is_present": arc_details.get('recent_major_surgery_trauma', False),
-            "is_arc_hbr_element": True,
-            "date": "N/A",
-            "description": "Recent major surgery or trauma"
-        })
-
-        components.append({
-            "parameter": "PRECISE-HBR - ARC-HBR Summary",
-            "value": f"{inputs['arc_hbr_count']} factor(s)",
-            "score": breakdown['arc_hbr'],
-            "is_present": inputs['arc_hbr_count'] > 0,
-            "description": f"ARC-HBR: {breakdown['arc_hbr']}"
-        })
-
-        # Build data warnings for missing FHIR resources
-        data_warnings = []
-        empty_resources = inputs.get('empty_fhir_resources', [])
-
-        if 'Condition' in empty_resources:
-            data_warnings.append({
-                'type': 'missing_fhir_resource',
-                'resource': 'Condition',
-                'message': 'No Condition records found - Prior Bleeding History and ARC-HBR factors (bleeding diathesis, liver cirrhosis, active malignancy, recent major surgery or trauma) may be missed.',
-                'affected_factors': ['Prior Bleeding', 'Bleeding Diathesis', 'Liver Cirrhosis', 'Active Malignancy', 'Recent Major Surgery or Trauma']
-            })
-
-        if 'Medication' in empty_resources:
-            data_warnings.append({
-                'type': 'missing_fhir_resource',
-                'resource': 'Medication',
-                'message': 'No Medication records found - Oral Anticoagulation status and NSAID/Corticosteroid use may be inaccurate.',
-                'affected_factors': ['Oral Anticoagulation', 'NSAIDs/Corticosteroids']
-            })
-
-        # Build data quality warnings for truncated values
-        truncation_warnings = cls._check_truncation_warnings(inputs)
-        data_warnings.extend(truncation_warnings)
-
-        logging.info(f"PRECISE-HBR calculation complete: {total_score}")
-        if data_warnings:
-            warning_types = [w.get('resource', w.get('parameter', '?')) for w in data_warnings]
-            logging.warning(f"Data warnings: {warning_types}")
-        
-        return components, total_score, data_warnings
+        return cls._build_result(inputs, access_denied=raw_data.get('_access_denied_resources', []))
 
 
 # Global instance

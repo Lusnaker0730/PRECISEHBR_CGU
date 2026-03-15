@@ -5,9 +5,10 @@ This module provides comprehensive audit logging functionality for tracking all
 access to electronic Protected Health Information (ePHI).
 
 Features:
-- Records all ePHI access events with required metadata
+- Records all ePHI access events with required metadata (5W: Who/What/Whom/When/Where)
 - Implements tamper-resistance through cryptographic hashing
 - Stores logs in append-only JSON Lines format
+- GCP Cloud Logging structured output on GAE for WORM-grade durability
 - Provides query and analysis capabilities
 """
 
@@ -16,6 +17,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import tempfile
 import threading
 from functools import wraps
@@ -80,7 +82,7 @@ class AuditLogger:
                 'log_type': 'AUDIT_LOG_HEADER',
                 'application': 'SMART on FHIR PRECISE-HBR Calculator',
                 'compliance_standard': '45 CFR 170.315 (d)(2)',
-                'initialized_at': datetime.datetime.utcnow().isoformat() + 'Z',
+                'initialized_at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
                 'version': '1.0',
                 'hash_algorithm': 'SHA-256',
                 'previous_hash': None,
@@ -167,6 +169,7 @@ class AuditLogger:
         action: str,
         patient_id: Optional[str] = None,
         user_id: Optional[str] = None,
+        fhir_user: Optional[str] = None,
         resource_type: Optional[str] = None,
         resource_ids: Optional[list] = None,
         outcome: str = 'success',
@@ -175,19 +178,20 @@ class AuditLogger:
         user_agent: Optional[str] = None
     ) -> dict[str, Any]:
         """
-        Log an auditable event.
+        Log an auditable event with full 5W context.
 
         Args:
             event_type: Type of event (e.g., 'ePHI_ACCESS', 'DATA_EXPORT', 'LOGIN')
             action: Specific action performed (e.g., 'view_patient_data', 'calculate_risk')
-            patient_id: Patient identifier (if applicable)
-            user_id: User/session identifier
+            patient_id: Patient identifier — Whom (if applicable)
+            user_id: User/session identifier — Who (session-level)
+            fhir_user: FHIR Practitioner reference — Who (e.g., 'Practitioner/12345')
             resource_type: FHIR resource type accessed (e.g., 'Patient', 'Observation')
             resource_ids: List of specific resource IDs accessed
             outcome: 'success' or 'failure'
             details: Additional context information
-            ip_address: Client IP address
-            user_agent: Client user agent string
+            ip_address: Client IP address — Where
+            user_agent: Client user agent string — Where
 
         Returns:
             The logged audit entry
@@ -195,18 +199,26 @@ class AuditLogger:
         # H-04: Lock protects both read and write of hash chain
         with self._lock:
             current_last_hash = self._last_hash
+
+            # Merge GCP trace context into details for cross-service correlation
+            merged_details = dict(details) if details else {}
+            trace_ctx = _get_trace_context()
+            if trace_ctx:
+                merged_details.update(trace_ctx)
+
             audit_entry = {
-                'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
+                'timestamp': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
                 'event_type': event_type,
                 'action': action,
                 'user_id': user_id,
+                'fhir_user': fhir_user,
                 'patient_id': patient_id,
                 'resource_type': resource_type,
                 'resource_ids': resource_ids or [],
                 'outcome': outcome,
                 'ip_address': ip_address,
                 'user_agent': user_agent,
-                'details': details or {},
+                'details': merged_details,
                 'previous_hash': current_last_hash
             }
             audit_entry['entry_hash'] = self._calculate_hash(audit_entry)
@@ -216,6 +228,9 @@ class AuditLogger:
     def _write_audit_entry(self, audit_entry: dict[str, Any]) -> dict[str, Any]:
         """
         Write an audit entry to the log file and update chain state.
+
+        On GAE, also emits structured JSON to stdout for Cloud Logging
+        ingestion (routed to WORM storage via Log Sink).
 
         Note: This method should be called within the _lock context.
         """
@@ -231,12 +246,48 @@ class AuditLogger:
             # Update hash chain state (atomic with write due to lock)
             self._last_hash = audit_entry['entry_hash']
             logger.info(f"AUDIT: {event_type} - {action} - User:{user_id} - Patient:{patient_id} - Outcome:{outcome}")
-            return audit_entry
         except (OSError, IOError) as e:
             logger.warning(f"Could not write to audit log file (read-only filesystem): {e}")
             # Still log to application logger for traceability
             logger.info(f"AUDIT_ENTRY: {json.dumps(audit_entry)}")
-            return audit_entry
+
+        # On GAE, emit structured JSON to stdout for Cloud Logging.
+        # Cloud Logging auto-parses JSON from stdout on GAE Standard.
+        # Route these via a Log Sink to a Locked Cloud Storage bucket for WORM.
+        if os.environ.get('GAE_ENV', '').startswith('standard'):
+            self._write_structured_log(audit_entry)
+
+        return audit_entry
+
+    def _write_structured_log(self, audit_entry: dict[str, Any]) -> None:
+        """
+        Emit audit entry as GCP Cloud Logging structured JSON to stdout.
+
+        Cloud Logging on GAE Standard auto-captures JSON lines from stdout.
+        Use a Log Sink with filter `jsonPayload.audit_event="true"` to route
+        audit entries to a Cloud Storage bucket with Retention Lock (WORM).
+        """
+        structured = {
+            'severity': 'NOTICE',
+            'message': f"AUDIT: {audit_entry['event_type']} - {audit_entry['action']}",
+            'audit_event': 'true',
+            'logging.googleapis.com/labels': {
+                'audit_event': 'true',
+                'event_type': audit_entry['event_type'],
+            },
+        }
+        # Merge all audit fields at top level for Cloud Logging queryability
+        structured.update(audit_entry)
+
+        # Attach GCP trace for correlation in Cloud Trace / Logging
+        trace_id = audit_entry.get('details', {}).get('trace_id')
+        project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', '')
+        if trace_id and project_id:
+            structured['logging.googleapis.com/trace'] = (
+                f'projects/{project_id}/traces/{trace_id}'
+            )
+
+        print(json.dumps(structured, ensure_ascii=False), file=sys.stdout, flush=True)
     
     def verify_log_integrity(self) -> tuple[bool, Optional[str]]:
         """
@@ -338,7 +389,7 @@ def audit_ephi_access(
             audit_logger = get_audit_logger()
             patient_id = session.get('patient_id') or kwargs.get('patient_id')
             user_id = session.get('user_id') or session.get('session_id', 'unknown')
-            ip_address, user_agent = _get_request_context()
+            ip_address, user_agent, fhir_user = _get_request_context()
 
             audit_details = dict(details) if details else {}
             audit_details['endpoint'] = request.endpoint
@@ -351,6 +402,7 @@ def audit_ephi_access(
                     action=action,
                     patient_id=patient_id,
                     user_id=user_id,
+                    fhir_user=fhir_user,
                     resource_type=resource_type,
                     outcome='success',
                     details=audit_details,
@@ -364,6 +416,7 @@ def audit_ephi_access(
                     action=action,
                     patient_id=patient_id,
                     user_id=user_id,
+                    fhir_user=fhir_user,
                     resource_type=resource_type,
                     outcome='failure',
                     details={**audit_details, 'error': str(e)},
@@ -376,16 +429,56 @@ def audit_ephi_access(
     return decorator
 
 
-def _get_request_context() -> tuple[Optional[str], Optional[str]]:
+def _get_request_context() -> tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Extract IP address and user agent from Flask request context.
+    Extract client IP, user agent, and FHIR user from Flask request context.
 
-    Uses has_request_context() to safely check if we're in a request,
-    avoiding RuntimeError when called outside request context.
+    - IP: Uses X-Forwarded-For (set by GAE/nginx load balancers) to get the
+      real client IP instead of the load balancer's IP.
+    - fhir_user: The OIDC fhirUser claim stored in session by OAuth callback,
+      e.g. 'Practitioner/12345'. Essential for identifying *who* (NPI/doctor)
+      performed the action in medical-legal audit trails.
     """
     if not has_request_context():
-        return None, None
-    return request.remote_addr, request.headers.get('User-Agent')
+        return None, None, None
+
+    # Extract real client IP from X-Forwarded-For (format: "client, proxy1, proxy2")
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        ip_address = forwarded_for.split(',')[0].strip()
+    else:
+        ip_address = request.remote_addr
+
+    user_agent = request.headers.get('User-Agent')
+
+    # Extract FHIR practitioner identity from session (set in OAuth callback)
+    fhir_user = None
+    try:
+        fhir_user = session.get('fhir_user')
+    except RuntimeError:
+        # session not available (e.g., CDS Hooks endpoints without session middleware)
+        pass
+
+    return ip_address, user_agent, fhir_user
+
+
+def _get_trace_context() -> dict[str, str]:
+    """
+    Extract GCP Cloud Trace context from request headers.
+
+    X-Cloud-Trace-Context format: "TRACE_ID/SPAN_ID;o=TRACE_TRUE"
+    Used for correlating audit entries with Cloud Trace spans.
+    """
+    if not has_request_context():
+        return {}
+    trace_header = request.headers.get('X-Cloud-Trace-Context')
+    if not trace_header:
+        return {}
+    parts = trace_header.split('/')
+    trace_id = parts[0] if parts else None
+    if not trace_id:
+        return {}
+    return {'trace_id': trace_id, 'trace_header': trace_header}
 
 
 def log_user_authentication(
@@ -399,11 +492,12 @@ def log_user_authentication(
         outcome: 'success' or 'failure'
         details: Additional context (e.g., authentication method)
     """
-    ip_address, user_agent = _get_request_context()
+    ip_address, user_agent, fhir_user = _get_request_context()
     get_audit_logger().log_event(
         event_type='AUTHENTICATION',
         action='user_login',
         user_id=user_id,
+        fhir_user=fhir_user,
         outcome=outcome,
         details=details or {},
         ip_address=ip_address,
@@ -420,11 +514,12 @@ def log_privilege_change(user_id: str, action: str, details: dict[str, Any]) -> 
         action: Description of privilege change
         details: Details of the change
     """
-    ip_address, user_agent = _get_request_context()
+    ip_address, user_agent, fhir_user = _get_request_context()
     get_audit_logger().log_event(
         event_type='PRIVILEGE_CHANGE',
         action=action,
         user_id=user_id,
+        fhir_user=fhir_user,
         outcome='success',
         details=details,
         ip_address=ip_address,
@@ -440,10 +535,11 @@ def log_audit_status_change(action: str, details: dict[str, Any]) -> None:
         action: Description of the audit status change
         details: Details of the change
     """
-    ip_address, user_agent = _get_request_context()
+    ip_address, user_agent, fhir_user = _get_request_context()
     get_audit_logger().log_event(
         event_type='AUDIT_STATUS_CHANGE',
         action=action,
+        fhir_user=fhir_user,
         outcome='success',
         details=details,
         ip_address=ip_address,

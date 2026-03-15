@@ -54,7 +54,22 @@ def calculate_risk_api():
         
         if error:
             error_lower = error.lower()
-            if "timeout" in error_lower or "504" in error or "gateway time-out" in error_lower:
+            if "authentication failed" in error_lower or "re-launch" in error_lower:
+                current_app.logger.warning(f"FHIR 401 for patient {patient_id}: token expired or invalid")
+                return jsonify({
+                    'error': 'Your session has expired. Please re-launch the application from your EHR.',
+                    'error_type': 'auth_expired',
+                    'requires_reauth': True
+                }), 401
+            elif "access denied" in error_lower or "permission" in error_lower:
+                current_app.logger.warning(f"FHIR 403 for patient {patient_id}: {error}")
+                return jsonify({
+                    'error': 'This patient\'s data is protected and requires elevated access. '
+                             'Please complete Break the Glass authorization in the EHR and retry.',
+                    'error_type': 'access_denied_btg',
+                    'details': 'The FHIR server denied access to this patient\'s data.'
+                }), 403
+            elif "timeout" in error_lower or "504" in error or "gateway time-out" in error_lower:
                 current_app.logger.warning(f"FHIR server timeout for patient {patient_id}: {error}")
                 return jsonify({
                     'error': 'The FHIR data service is currently experiencing delays. Please try again in a moment.',
@@ -84,6 +99,21 @@ def calculate_risk_api():
                 'error_type': 'data_not_found',
                 'details': 'The specified patient may not exist or you may not have access to their data'
             }), 404
+
+        # Check for Break the Glass (BTG) / 403 Access Denied
+        access_denied = raw_data.get('_access_denied_resources', [])
+        if access_denied:
+            current_app.logger.warning(
+                f"BTG access denied for patient {patient_id}, resources: {access_denied}"
+            )
+            return jsonify({
+                'error': 'This patient\'s data is protected and requires elevated access. '
+                         'Please complete Break the Glass authorization in the EHR and retry.',
+                'error_type': 'access_denied_btg',
+                'denied_resources': access_denied,
+                'details': 'The FHIR server returned 403 Forbidden for one or more resource types. '
+                           'This typically indicates VIP/sensitive patient protections (Break the Glass).'
+            }), 403
 
         demographics = fhir_data_service.get_patient_demographics(raw_data.get('patient'))
         
