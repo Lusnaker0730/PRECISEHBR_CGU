@@ -435,13 +435,18 @@ class TestInjectionAttacks:
             })
             response_text = resp.data.decode('utf-8', errors='replace')
             # SSTI: {{7*7}} should NOT evaluate to 49 in rendered output.
-            # Only check for '49' when the payload actually contains '7*7',
-            # since '49' can appear incidentally in nonces, tokens, or reference IDs.
-            if '7*7' in payload and '49' in response_text:
-                import markupsafe
-                escaped = str(markupsafe.escape(payload))
-                assert escaped in response_text or resp.status_code in (400, 403), \
-                    f"Possible SSTI: '49' in response without escaped payload for: {payload}"
+            # Strip out known innocuous '49' occurrences (hex in reference IDs,
+            # nonces, SRI hashes, CSRF tokens) before checking for bare '49'.
+            if '7*7' in payload:
+                import re
+                # Remove hex-like strings (nonces, CSRF tokens, reference IDs, SRI hashes)
+                sanitized = re.sub(r'[A-Fa-f0-9]{8,}', '', response_text)
+                # Remove base64-like strings (SRI integrity hashes, JWT segments)
+                sanitized = re.sub(r'[A-Za-z0-9+/=]{16,}', '', sanitized)
+                # After stripping hex/base64 tokens, '49' should not remain
+                # as a standalone number (which would indicate SSTI evaluation)
+                assert not re.search(r'\b49\b', sanitized), \
+                    f"Possible SSTI: '49' found as standalone value for: {payload}"
             # For all payloads: verify the template engine didn't expose config objects
             if payload == '{{config}}':
                 # If SSTI worked, response would contain Flask config dict representation

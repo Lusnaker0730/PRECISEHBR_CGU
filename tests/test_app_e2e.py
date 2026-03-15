@@ -53,6 +53,8 @@ def authenticated_client(app):
             sess['patient_id'] = 'patient-123'
         yield client
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestHealthEndpoint:
     """Test /health endpoint."""
     
@@ -107,6 +109,8 @@ class TestCDSServicesEndpoint:
         assert 'services' in data
         assert isinstance(data['services'], list)
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestIndexPage:
     """Test index/home page."""
     
@@ -122,6 +126,8 @@ class TestIndexPage:
         if response.status_code == 200:
             assert 'text/html' in response.content_type
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestStandalonePage:
     """Test standalone mode page."""
     
@@ -136,6 +142,8 @@ class TestStandalonePage:
         if response.status_code == 200:
             assert 'text/html' in response.content_type
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestLaunchEndpoint:
     """Test SMART launch endpoint."""
     
@@ -169,6 +177,8 @@ class TestLaunchEndpoint:
         # Should reject malicious URLs
         assert response.status_code in [200, 400, 500]
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestCallbackEndpoint:
     """Test OAuth callback endpoint."""
     
@@ -188,6 +198,9 @@ class TestCallbackEndpoint:
         response = client.get('/callback?code=test-code&state=test-state')
         assert response.status_code == 200
 
+@pytest.mark.requirement("SRS-001")
+@pytest.mark.risk("RISK-001")
+@pytest.mark.design("SDS-001")
 class TestCalculateRiskAPI:
     """Test /api/calculate_risk endpoint."""
     
@@ -243,6 +256,8 @@ class TestCalculateRiskAPI:
                         assert 'total_score' in data
 
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestExchangeCodeAPI:
     """Test /api/exchange-code endpoint."""
     
@@ -296,6 +311,8 @@ class TestExchangeCodeAPI:
                 data = response.get_json()
                 assert data['status'] == 'ok'
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestMainPage:
     """Test main application page."""
     
@@ -313,6 +330,8 @@ class TestMainPage:
         # Should return page
         assert response.status_code == 200
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.design("SDS-005")
 class TestLogout:
     """Test logout functionality."""
     
@@ -327,6 +346,9 @@ class TestLogout:
         with authenticated_client.session_transaction() as sess:
             assert 'fhir_data' not in sess or sess.get('fhir_data') is None
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-006")
 class TestErrorHandling:
     """Test error handling."""
     
@@ -350,6 +372,9 @@ class TestErrorHandling:
         )
         assert response.status_code in [400, 500]
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-006")
 class TestSecurityHeaders:
     """Test security headers."""
     
@@ -365,6 +390,9 @@ class TestSecurityHeaders:
         if 'Server' in response.headers:
             assert 'Python' not in response.headers['Server'] or True  # Flexible check
 
+@pytest.mark.requirement("SRS-005")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-005")
 class TestSessionManagement:
     """Test session management."""
     
@@ -384,6 +412,9 @@ class TestSessionManagement:
         with authenticated_client.session_transaction() as sess:
             assert 'fhir_data' in sess
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-006")
+@pytest.mark.design("SDS-006")
 class TestInputValidation:
     """Test input validation across endpoints."""
     
@@ -413,6 +444,8 @@ class TestInputValidation:
         )
         assert response.status_code in (400, 403)
 
+@pytest.mark.requirement("SRS-008")
+@pytest.mark.design("SDS-008")
 class TestCORSConfiguration:
     """Test CORS configuration."""
     
@@ -427,6 +460,8 @@ class TestCORSConfiguration:
         # At least check the request succeeds
         assert response.status_code == 200
 
+@pytest.mark.requirement("SRS-007")
+@pytest.mark.design("SDS-007")
 class TestTradeoffAnalysis:
     """Test tradeoff analysis endpoints."""
     
@@ -437,6 +472,8 @@ class TestTradeoffAnalysis:
         # Should return page or redirect
         assert response.status_code in [200, 302, 404]
 
+@pytest.mark.requirement("SRS-010")
+@pytest.mark.design("SDS-010")
 class TestAuditLogging:
     """Test audit logging functionality."""
     
@@ -460,6 +497,8 @@ class TestAuditLogging:
                         # Request should complete successfully
                         assert response.status_code in [200, 400, 500]
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestStaticFiles:
     """Test static file serving."""
     
@@ -477,6 +516,8 @@ class TestStaticFiles:
         # Favicon may or may not exist
         assert response.status_code in [200, 404]
 
+@pytest.mark.requirement("SRS-004")
+@pytest.mark.design("SDS-004")
 class TestContentNegotiation:
     """Test content negotiation."""
     
@@ -499,6 +540,9 @@ class TestContentNegotiation:
         # Should return JSON even on error
         assert 'application/json' in response.content_type
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-005")
+@pytest.mark.design("SDS-006")
 class TestRateLimiting:
     """Test rate limiting behavior."""
     
@@ -520,6 +564,9 @@ class TestRateLimiting:
         # At least some requests should succeed
         assert success_count > 0 or rate_limited_count > 0
 
+@pytest.mark.requirement("SRS-006")
+@pytest.mark.risk("RISK-006")
+@pytest.mark.design("SDS-006")
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
     

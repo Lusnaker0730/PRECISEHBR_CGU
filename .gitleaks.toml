@@ -1,14 +1,6 @@
 # Gitleaks configuration — allowlist false positives
 # All entries below are test fixtures or historical commits with dummy/fake values
 
-[extend]
-# Use the default gitleaks config as base
-
-[[rules]]
-# Override: allow test API key strings in test files
-id = "test-api-keys"
-description = "Allow test API key patterns in test files"
-
 [allowlist]
 description = "Global allowlist for known false positives"
 
