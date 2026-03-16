@@ -1,0 +1,18 @@
+﻿Age,Hb(g/dl),WBC(10^3/uL),eGFR(ml/min/1.73m2),piorbleed,OAC,ARC-HBR,score,risk,1-year-risk,output
+130,10,5,50,0,0,0,,,,年紀>120報錯
+18,12,6,80,0,0,0,,,,年紀<20報錯
+80,22,7,60,0,0,0,,,,Hb>20報錯
+50,4,10,60,0,0,0,,,,Hb<5報錯
+40,10,31,30,1,0,0,,,,WBC>30報錯
+50,12,2,60,0,1,0,,,,WBC<3報錯
+55,13,12,4,0,0,1,,,,eGFR<5報錯
+66,12,10,151,0,0,0,,,,eGFR>150報錯
+20,20,3,150,0,0,0,2,not high bleeding risk,0.55%,
+20,20,3,150,1,0,0,9,not high bleeding risk,1.09%,
+20,20,3,150,0,1,0,7,not high bleeding risk,0.89%,
+20,20,3,150,0,0,1,5,not high bleeding risk,0.74%,
+20,12,5,30,1,0,0,22,not high bleeding risk,3.79%,邊界
+50,12,5,60,0,1,1,26,high bleeding risk,5.54%,邊界
+50,12,5,30,1,0,0,27,very high bleeding risk,6.09%,邊界
+100,12,5,10,0,1,1,37,very high bleeding risk,15.30%,
+100,7,15,80,0,0,0,45,very high bleeding risk,30.35%,

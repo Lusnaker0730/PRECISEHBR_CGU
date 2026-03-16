@@ -57,8 +57,8 @@
             "truncation_min": 5,
             "truncation_max": 100,
             "threshold": 100,
-            "coefficient": 0.05,
-            "formula": "(100 - effective_eGFR) × 0.05",
+            "coefficient": 0.055,
+            "formula": "(100 - effective_eGFR) × 0.055",
             "score_contribution": "Lower eGFR = higher bleeding risk"
         },
         "white_blood_cell_count": {
