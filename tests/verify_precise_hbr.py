@@ -55,7 +55,7 @@ def reference_precise_hbr_calc(age, hb, egfr, wbc, prior_bleeding, anticoag, arc
     # Spec: <100
     eff_egfr = max(5, min(100, egfr))
     if eff_egfr < 100:
-        score += 0.05 * (100 - eff_egfr)
+        score += 0.055 * (100 - eff_egfr)
         
     # WBC (10^9/L)
     # Spec: >3
