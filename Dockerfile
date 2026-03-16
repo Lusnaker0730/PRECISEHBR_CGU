@@ -18,8 +18,8 @@ COPY . .
 
 # 6. 向 Docker 聲明容器將會監聽的 port
 # 這與我們在 gunicorn 指令中使用的 port 一致
-EXPOSE 8080
+EXPOSE 9000
 
 # 7. 設定容器啟動時要執行的指令
 # 這與您 app.yaml 中的 entrypoint 非常相似
-CMD ["gunicorn", "-b", ":8080", "--timeout", "120", "APP:app"] 
+CMD ["gunicorn", "-b", ":9000", "--timeout", "120", "APP:app"]

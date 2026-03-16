@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 部署 (Deployment)
+- **預設 port 從 8080 改為 9000** — 避免 VM 部署時與既有服務的端口衝突。影響 `APP.py`、`Dockerfile`、`docker-compose.yml`、`docker-compose.prod.yml`。可透過 `PORT` 環境變數覆蓋
+
 ### 安全性 (Security)
 - **修復 X-Frame-Options: DENY 阻擋 SMART on FHIR iframe 嵌入** — EHR（Epic/Cerner）透過 iframe 載入 SMART App，`DENY` 導致瀏覽器拒絕渲染：
   - 移除 `X-Frame-Options: DENY`（`after_request` + Talisman `frame_options=False`）

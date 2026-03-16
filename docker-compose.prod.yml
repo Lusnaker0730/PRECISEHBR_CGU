@@ -26,11 +26,11 @@ services:
     
     # 生產環境端口（可以使用 nginx 反向代理）
     ports:
-      - "8080:8080"
+      - "9000:9000"
     
     # 增強的健康檢查
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 15s
       timeout: 5s
       retries: 5

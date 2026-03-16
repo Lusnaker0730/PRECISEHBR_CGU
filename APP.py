@@ -181,6 +181,6 @@ if __name__ == '__main__':
     else:
         host = os.environ.get("HOST", "127.0.0.1")
     
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 9000))
     app.logger.info(f"Server starting on {host}:{port}")
     app.run(host=host, port=port, debug=debug_mode)
