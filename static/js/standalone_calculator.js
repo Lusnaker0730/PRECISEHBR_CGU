@@ -217,6 +217,77 @@
     }
 
     // ------------------------------------------------------------------
+    // Required field check
+    // ------------------------------------------------------------------
+
+    var REQUIRED_FIELDS = ['input-age', 'input-hb', 'input-egfr', 'input-wbc'];
+
+    function getMissingRequired() {
+        var missing = [];
+        REQUIRED_FIELDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el || !el.value || el.value.trim() === '') {
+                missing.push(id);
+            }
+        });
+        return missing;
+    }
+
+    function updateCalculateButton() {
+        var btn = document.getElementById('btn-calculate');
+        if (!btn) return;
+        var missing = getMissingRequired();
+        btn.disabled = missing.length > 0;
+    }
+
+    function handleCalculateClick() {
+        var missing = getMissingRequired();
+        if (missing.length > 0) {
+            // Highlight missing fields
+            missing.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('is-invalid');
+            });
+            return;
+        }
+
+        recalculate();
+
+        // Show results, hide placeholder
+        document.getElementById('score-placeholder').classList.add('d-none');
+        document.getElementById('score-results').classList.remove('d-none');
+    }
+
+    function handleResetClick() {
+        // Clear all inputs
+        document.querySelectorAll('#score-components input').forEach(function (input) {
+            if (input.type === 'checkbox') {
+                input.checked = false;
+            } else {
+                input.value = '';
+            }
+            input.classList.remove('is-invalid', 'value-error', 'value-warning', 'value-normal');
+        });
+
+        // Clear validation messages
+        document.querySelectorAll('.validation-message').forEach(function (msg) { msg.remove(); });
+
+        // Reset score displays
+        ['score-age', 'score-hb', 'score-egfr', 'score-wbc',
+         'score-bleeding', 'score-oac', 'score-arc'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = '0';
+        });
+
+        // Hide results, show placeholder
+        document.getElementById('score-results').classList.add('d-none');
+        document.getElementById('score-placeholder').classList.remove('d-none');
+        document.getElementById('hbr-recommendations-section').classList.add('d-none');
+
+        updateCalculateButton();
+    }
+
+    // ------------------------------------------------------------------
     // Init
     // ------------------------------------------------------------------
 
@@ -249,20 +320,35 @@
         });
         initPopovers();
 
-        // Bind input listeners
-        document.querySelectorAll('#score-components input').forEach(function (input) {
-            if (input.type === 'checkbox') {
-                input.addEventListener('change', recalculate);
-            } else {
-                input.addEventListener('input', recalculate);
-            }
+        // Bind input listeners — validate on input, but don't auto-calculate
+        document.querySelectorAll('#score-components input[type="number"]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var paramMap = {
+                    'input-age': 'Age', 'input-hb': 'Hemoglobin',
+                    'input-egfr': 'eGFR', 'input-wbc': 'White Blood Cell Count'
+                };
+                var param = paramMap[input.id];
+                if (param) {
+                    var v = Core.validateValue(param, input.value, unitSettings);
+                    Core.applyValidationStyling(input, v);
+                }
+                input.classList.remove('is-invalid');
+                updateCalculateButton();
+            });
         });
 
         // Bind Hb unit toggle
         var toggleBtn = document.getElementById('hb-unit-toggle');
         if (toggleBtn) toggleBtn.addEventListener('click', toggleHemoglobinUnit);
 
-        recalculate();
+        // Bind Calculate and Reset buttons
+        var calcBtn = document.getElementById('btn-calculate');
+        if (calcBtn) calcBtn.addEventListener('click', handleCalculateClick);
+
+        var resetBtn = document.getElementById('btn-reset');
+        if (resetBtn) resetBtn.addEventListener('click', handleResetClick);
+
+        updateCalculateButton();
     }
 
     if (document.readyState === 'loading') {

@@ -320,15 +320,15 @@
             inputElement.classList.add('value-normal');
         }
 
-        var inputGroup = inputElement.closest('.input-group') || inputElement.parentElement;
-        var container = inputGroup.parentElement;
+        // Always append the validation message inside the <td> containing the input
+        var container = inputElement.closest('td') || inputElement.parentElement;
 
         var existingMessages = container.querySelectorAll('.validation-message');
         existingMessages.forEach(function (msg) { msg.remove(); });
 
         if (validation.message) {
             var messageDiv = document.createElement('div');
-            messageDiv.className = 'validation-message';
+            messageDiv.className = 'validation-message small mt-1';
             messageDiv.textContent = validation.message;
             if (validation.level === 'error') messageDiv.classList.add('text-danger');
             if (validation.level === 'warning') messageDiv.classList.add('text-warning');

@@ -123,3 +123,4 @@ def submit_complaint():
         current_app.logger.error(f"Error saving complaint: {e}")
         return render_template('report_issue.html', 
                              error="An error occurred while submitting your complaint. Please try again."), 500
+
