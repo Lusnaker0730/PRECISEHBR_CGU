@@ -1,31 +1,26 @@
 // PRECISE-HBR Standalone Calculator
-// Client-side scoring without FHIR/patient context
+// Reuses the SAME scoring config, validation ranges, unit conversion,
+// and clinical tooltips as main.js to ensure consistency.
+// All coefficients are loaded from /api/config/scoring (cdss_config.json).
 (function () {
     'use strict';
 
-    // Scoring configuration — loaded from backend, with local fallback
-    var scoringConfig = null;
+    // ======================================================================
+    // Shared state — mirrors main.js
+    // ======================================================================
+    let scoringConfig = null;
 
-    // Current hemoglobin unit
-    var hbUnit = 'g/dL';
-    var HB_CONVERSION_FACTOR = 0.6206; // 1 g/dL = 0.6206 mmol/L
-
-    // Complementary log-log calibration curve for 1-year BARC 3/5 risk
-    var CLOGLOG_A = -5.3945;
-    var CLOGLOG_B = 0.09725;
-
-    // Risk thresholds
-    var THRESHOLD_NON_HBR = 22;
-    var THRESHOLD_HBR = 26;
-
-    // Validation ranges (matching main.js)
-    var VALIDATION_RANGES = {
-        Age: { min: 18, max: 120, warnMax: 100 },
-        Hemoglobin: { min: 3, max: 22, warnMin: 7, warnMax: 18 },  // g/dL
-        eGFR: { min: 0, max: 200, warnMax: 150 },
-        WBC: { min: 0.1, max: 50, warnMin: 4, warnMax: 20 }
+    let unitSettings = {
+        hemoglobin: 'g/dL' // or 'mmol/L'
     };
 
+    // Complementary log-log calibration curve (from risk_classifier.py)
+    const CLOGLOG_A = -5.3945;
+    const CLOGLOG_B = 0.09725;
+
+    // ======================================================================
+    // Scoring config — IDENTICAL to main.js
+    // ======================================================================
     function getDefaultScoringConfig() {
         return {
             base_score: 2,
@@ -43,221 +38,379 @@
         };
     }
 
+    function validateScoringConfigResponse(data) {
+        if (!data || typeof data !== 'object') return false;
+        if (!data.coefficients || typeof data.coefficients !== 'object') return false;
+        if (!data.binary_scores || typeof data.binary_scores !== 'object') return false;
+        const requiredCoeffs = ['age', 'hemoglobin', 'egfr', 'wbc'];
+        for (const key of requiredCoeffs) {
+            const c = data.coefficients[key];
+            if (!c || typeof c.coefficient !== 'number' || typeof c.threshold !== 'number') return false;
+        }
+        return true;
+    }
+
     async function fetchScoringConfig() {
         try {
-            var response = await fetch('/api/config/scoring');
-            if (response.ok) {
-                scoringConfig = await response.json();
-            } else {
+            const response = await fetch('/api/config/scoring');
+            if (!response.ok) {
                 scoringConfig = getDefaultScoringConfig();
+                return scoringConfig;
             }
-        } catch (e) {
+            const configData = await response.json();
+            if (!validateScoringConfigResponse(configData)) {
+                scoringConfig = getDefaultScoringConfig();
+                return scoringConfig;
+            }
+            scoringConfig = configData;
+            updateTooltipsWithConfig();
+            return scoringConfig;
+        } catch (error) {
             scoringConfig = getDefaultScoringConfig();
+            return scoringConfig;
         }
-        return scoringConfig;
     }
 
-    // === Validation ===
-
-    function validateInput(inputId, paramName) {
-        var el = document.getElementById(inputId);
-        var value = parseFloat(el.value);
-        var feedbackEl = el.closest('td').querySelector('.validation-feedback');
-
-        // Clear previous feedback
-        el.classList.remove('is-invalid', 'is-warning');
-        if (feedbackEl) feedbackEl.remove();
-
-        if (el.value === '' || isNaN(value)) {
-            return { valid: true, blockCalculation: false };
+    // ======================================================================
+    // Clinical tooltips — IDENTICAL to main.js
+    // ======================================================================
+    const clinicalTooltips = {
+        'Age': {
+            title: 'Age',
+            content: 'Age is a continuous variable in the PRECISE-HBR model. It is truncated to the 30-80 years range during calculation; older age increases the score.',
+            normalRange: 'Calculation Range: 30-80 years',
+            riskFactors: 'Score Weight: +0.25 points per year increase'
+        },
+        'Hemoglobin': {
+            title: 'Hemoglobin',
+            content: 'Hemoglobin is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-15 g/dL range during calculation; lower hemoglobin increases the score.',
+            normalRange: 'Calculation Range: 5-15 g/dL',
+            riskFactors: 'Score Weight: +2.5 points per 1 g/dL decrease'
+        },
+        'eGFR': {
+            title: 'eGFR (Estimated Glomerular Filtration Rate)',
+            content: 'eGFR is a continuous variable in the PRECISE-HBR model. It is truncated to the 5-100 mL/min range; lower kidney function increases the score.',
+            normalRange: 'Calculation Range: 5-100 mL/min/1.73m\u00b2',
+            riskFactors: 'Score Weight: +0.055 points per 1 mL/min decrease'
+        },
+        'White Blood Cell Count': {
+            title: 'White Blood Cell Count',
+            content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 \u00d710\u00b3/\u00b5L; higher WBC increases the score.',
+            normalRange: 'Calculation Range: 3-15 \u00d710\u00b3/\u00b5L',
+            riskFactors: 'Score Weight: +0.8 points per 1 \u00d710\u00b3/\u00b5L increase'
+        },
+        'Previous bleeding': {
+            title: 'Previous Bleeding',
+            content: 'History of spontaneous bleeding is the strongest predictor of future bleeding.',
+            normalRange: 'No history of bleeding',
+            riskFactors: 'Significant risk increase (+7 points)'
+        },
+        'Long-term oral anticoagulation': {
+            title: 'Long-term Oral Anticoagulation',
+            content: 'Long-term use of oral anticoagulants (e.g., Warfarin, DOACs) significantly increases bleeding risk.',
+            normalRange: 'Not used',
+            riskFactors: 'ARC-HBR Major Criterion (+5 points)'
+        },
+        'ARC-HBR Factors': {
+            title: 'ARC-HBR Additional Factors',
+            content: 'Presence of at least one of the remaining ARC-HBR elements: thrombocytopenia, bleeding diathesis, active malignancy, liver cirrhosis with portal hypertension, recent major surgery/trauma, chronic NSAIDs/corticosteroids.',
+            normalRange: 'None present',
+            riskFactors: '+3 points if \u22651 factor present'
         }
+    };
 
-        var result = validateValue(paramName, value);
-
-        if (result.level === 'error') {
-            el.classList.add('is-invalid');
-            addFeedback(el, result.message, 'text-danger');
-        } else if (result.level === 'warning') {
-            el.classList.add('is-warning');
-            addFeedback(el, result.message, 'text-warning');
+    function updateTooltipsWithConfig() {
+        if (!scoringConfig) return;
+        const c = scoringConfig.coefficients;
+        if (clinicalTooltips['Age'] && c.age) {
+            clinicalTooltips['Age'].riskFactors =
+                `Score Weight: +${c.age.coefficient} points per year increase`;
+            clinicalTooltips['Age'].normalRange =
+                `Calculation Range: ${c.age.truncation_min}-${c.age.truncation_max} years`;
         }
-
-        return result;
+        if (clinicalTooltips['Hemoglobin'] && c.hemoglobin) {
+            clinicalTooltips['Hemoglobin'].riskFactors =
+                `Score Weight: +${c.hemoglobin.coefficient} points per 1 g/dL decrease`;
+            clinicalTooltips['Hemoglobin'].normalRange =
+                `Calculation Range: ${c.hemoglobin.truncation_min}-${c.hemoglobin.truncation_max} g/dL`;
+        }
+        if (clinicalTooltips['eGFR'] && c.egfr) {
+            clinicalTooltips['eGFR'].riskFactors =
+                `Score Weight: +${c.egfr.coefficient} points per 1 mL/min decrease`;
+        }
+        if (clinicalTooltips['White Blood Cell Count'] && c.wbc) {
+            clinicalTooltips['White Blood Cell Count'].riskFactors =
+                `Score Weight: +${c.wbc.coefficient} points per 1 \u00d710\u00b3/\u00b5L increase`;
+        }
     }
 
-    function validateValue(paramName, value) {
-        var result = { valid: true, level: 'normal', message: '', blockCalculation: false };
+    // ======================================================================
+    // Validation ranges — IDENTICAL to main.js
+    // ======================================================================
+    const VALIDATION_RANGES = {
+        Age: { min: 18, max: 120, warnMax: 100 },
+        Hemoglobin: { min: 3, max: 22, warnMin: 7, warnMax: 18 },
+        eGFR: { min: 0, max: 200, warnMax: 150 },
+        WBC: { min: 0.1, max: 50, warnMin: 4, warnMax: 20 }
+    };
 
-        if (paramName === 'Age') {
-            var r = VALIDATION_RANGES.Age;
-            if (value < r.min || value > r.max) {
+    const RISK_THRESHOLDS = {
+        NOT_HIGH: 22,
+        HBR: 23,
+        VERY_HBR: 27
+    };
+
+    // validateValue — IDENTICAL to main.js
+    function validateValue(parameterName, value) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) return { valid: true, level: 'normal', message: '', blockCalculation: false };
+
+        let result = { valid: true, level: 'normal', message: '', blockCalculation: false };
+
+        if (parameterName.includes("Age")) {
+            const range = VALIDATION_RANGES.Age;
+            if (numValue < range.min || numValue > range.max) {
                 result.level = 'error';
-                result.message = 'Age must be between ' + r.min + ' and ' + r.max + ' years';
+                result.message = `Age must be between ${range.min} and ${range.max} years`;
                 result.blockCalculation = true;
-            } else if (value > r.warnMax) {
+            } else if (numValue > range.warnMax) {
                 result.level = 'warning';
                 result.message = 'Age exceeds typical range (>100 years)';
-            } else if (value >= 75) {
+            } else if (numValue >= 75) {
                 result.level = 'warning';
-                result.message = 'Elderly patient (\u226575 years) \u2014 increased bleeding risk';
+                result.message = 'Elderly patient (\u226575 years) - increased bleeding risk';
             }
-        } else if (paramName === 'Hemoglobin') {
-            var r = VALIDATION_RANGES.Hemoglobin;
-            var factor = hbUnit === 'mmol/L' ? HB_CONVERSION_FACTOR : 1;
-            var min = r.min * factor, max = r.max * factor;
-            var warnMin = r.warnMin * factor, warnMax = r.warnMax * factor;
-            if (value < min || value > max) {
+        } else if (parameterName.includes("Hemoglobin")) {
+            const range = VALIDATION_RANGES.Hemoglobin;
+            const unit = unitSettings.hemoglobin || 'g/dL';
+            const factor = unit === 'mmol/L' ? 0.6206 : 1;
+            const min = range.min * factor;
+            const max = range.max * factor;
+            const warnMin = range.warnMin * factor;
+            const warnMax = range.warnMax * factor;
+
+            if (numValue < min || numValue > max) {
                 result.level = 'error';
-                result.message = 'Hemoglobin must be between ' + min.toFixed(1) + ' and ' + max.toFixed(1) + ' ' + hbUnit;
+                result.message = `Hemoglobin must be between ${min.toFixed(1)} and ${max.toFixed(1)} ${unit}`;
                 result.blockCalculation = true;
-            } else if (value < warnMin) {
+            } else if (numValue < warnMin) {
                 result.level = 'warning';
-                result.message = 'Low hemoglobin (<' + warnMin.toFixed(1) + ' ' + hbUnit + ') \u2014 Anemia';
-            } else if (value > warnMax) {
+                result.message = `Low hemoglobin (<${warnMin.toFixed(1)} ${unit}) - Anemia`;
+            } else if (numValue > warnMax) {
                 result.level = 'warning';
-                result.message = 'Elevated hemoglobin (>' + warnMax.toFixed(1) + ' ' + hbUnit + ')';
+                result.message = `Elevated hemoglobin (>${warnMax.toFixed(1)} ${unit})`;
             }
-        } else if (paramName === 'eGFR') {
-            var r = VALIDATION_RANGES.eGFR;
-            if (value < r.min || value > r.max) {
+        } else if (parameterName.includes("eGFR")) {
+            const range = VALIDATION_RANGES.eGFR;
+            if (numValue < range.min || numValue > range.max) {
                 result.level = 'error';
-                result.message = 'eGFR must be between ' + r.min + ' and ' + r.max + ' mL/min';
+                result.message = `eGFR must be between ${range.min} and ${range.max} mL/min`;
                 result.blockCalculation = true;
-            } else if (value < 15) {
+            } else if (numValue < 15) {
                 result.level = 'warning';
-                result.message = 'Severe renal impairment (<15) \u2014 Very high risk';
-            } else if (value < 30) {
+                result.message = 'Severe renal impairment (<15) - Very high risk';
+            } else if (numValue < 30) {
                 result.level = 'warning';
-                result.message = 'Severe renal impairment (<30) \u2014 High risk';
-            } else if (value < 60) {
+                result.message = 'Severe renal impairment (<30) - High risk';
+            } else if (numValue < 60) {
                 result.level = 'warning';
-                result.message = 'Moderate renal impairment (30\u201360)';
-            } else if (value > r.warnMax) {
+                result.message = 'Moderate renal impairment (30-60)';
+            } else if (numValue > range.warnMax) {
                 result.level = 'warning';
-                result.message = 'eGFR unusually high (>150) \u2014 Please verify';
+                result.message = 'eGFR unusually high (>150) - Please verify';
             }
-        } else if (paramName === 'WBC') {
-            var r = VALIDATION_RANGES.WBC;
-            if (value < r.min || value > r.max) {
+        } else if (parameterName.includes("WBC") || parameterName.includes("White Blood Cell")) {
+            const range = VALIDATION_RANGES.WBC;
+            if (numValue < range.min || numValue > range.max) {
                 result.level = 'error';
-                result.message = 'WBC must be between ' + r.min + ' and ' + r.max + ' \u00d710\u00b3/\u00b5L';
+                result.message = `WBC must be between ${range.min} and ${range.max} \u00d710\u00b3/\u00b5L`;
                 result.blockCalculation = true;
-            } else if (value < r.warnMin) {
+            } else if (numValue < range.warnMin) {
                 result.level = 'warning';
-                result.message = 'Low WBC (<4) \u2014 Leukopenia';
-            } else if (value > r.warnMax) {
+                result.message = 'Low WBC (<4 \u00d710\u00b3/\u00b5L) - Leukopenia';
+            } else if (numValue > range.warnMax) {
                 result.level = 'warning';
-                result.message = 'Elevated WBC (>20) \u2014 Leukocytosis';
+                result.message = 'Elevated WBC (>20 \u00d710\u00b3/\u00b5L) - Leukocytosis';
             }
         }
+
         return result;
     }
 
-    function addFeedback(inputEl, message, cssClass) {
-        var div = document.createElement('div');
-        div.className = 'validation-feedback small mt-1 ' + cssClass;
-        div.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + escapeHtml(message);
-        inputEl.closest('td').appendChild(div);
-    }
+    // applyValidationStyling — IDENTICAL to main.js
+    function applyValidationStyling(inputElement, validation) {
+        inputElement.classList.remove('value-normal', 'value-warning', 'value-error');
 
-    function hasValidationErrors() {
-        var validations = [
-            validateInput('input-age', 'Age'),
-            validateInput('input-hb', 'Hemoglobin'),
-            validateInput('input-egfr', 'eGFR'),
-            validateInput('input-wbc', 'WBC')
-        ];
-        return validations.some(function (v) { return v.blockCalculation; });
-    }
-
-    // === Hemoglobin unit conversion ===
-
-    function toggleHbUnit() {
-        var input = document.getElementById('input-hb');
-        var currentValue = parseFloat(input.value);
-        var newUnit = hbUnit === 'g/dL' ? 'mmol/L' : 'g/dL';
-
-        if (!isNaN(currentValue)) {
-            if (hbUnit === 'g/dL' && newUnit === 'mmol/L') {
-                input.value = (currentValue * HB_CONVERSION_FACTOR).toFixed(2);
-            } else {
-                input.value = (currentValue / HB_CONVERSION_FACTOR).toFixed(2);
-            }
+        if (validation.level === 'error') {
+            inputElement.classList.add('value-error');
+        } else if (validation.level === 'warning') {
+            inputElement.classList.add('value-warning');
+        } else {
+            inputElement.classList.add('value-normal');
         }
 
-        hbUnit = newUnit;
-        document.getElementById('hb-unit-display').textContent = newUnit;
-        document.getElementById('hb-unit-label').textContent = '(' + newUnit + ')';
+        const inputGroup = inputElement.closest('.input-group') || inputElement.parentElement;
+        const container = inputGroup.parentElement;
 
-        calculateScore();
+        const existingMessages = container.querySelectorAll('.validation-message');
+        existingMessages.forEach(msg => msg.remove());
+
+        if (validation.message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'validation-message';
+            messageDiv.textContent = validation.message;
+            if (validation.level === 'error') messageDiv.classList.add('text-danger');
+            if (validation.level === 'warning') messageDiv.classList.add('text-warning');
+            container.appendChild(messageDiv);
+        }
     }
 
-    // === Score calculation ===
+    // ======================================================================
+    // Hemoglobin unit conversion — IDENTICAL to main.js
+    // ======================================================================
+    function convertHemoglobin(value, fromUnit, toUnit) {
+        if (fromUnit === toUnit) return value;
+        if (fromUnit === 'g/dL' && toUnit === 'mmol/L') return value * 0.6206;
+        if (fromUnit === 'mmol/L' && toUnit === 'g/dL') return value / 0.6206;
+        return value;
+    }
 
-    function calculateScore() {
-        var cfg = scoringConfig;
+    function toggleHemoglobinUnit() {
+        const input = document.getElementById('input-hb');
+        const currentValue = parseFloat(input.value);
+        const currentUnit = unitSettings.hemoglobin;
+        const newUnit = currentUnit === 'g/dL' ? 'mmol/L' : 'g/dL';
+
+        if (!isNaN(currentValue)) {
+            const newValue = convertHemoglobin(currentValue, currentUnit, newUnit);
+            input.value = newValue.toFixed(2);
+        }
+
+        unitSettings.hemoglobin = newUnit;
+
+        // Update unit displays
+        const unitSpan = document.getElementById('hb-unit-display');
+        if (unitSpan) unitSpan.textContent = newUnit;
+        const unitLabel = document.getElementById('hb-unit-label');
+        if (unitLabel) unitLabel.textContent = '(' + newUnit + ')';
+
+        recalculate();
+    }
+
+    // ======================================================================
+    // Tooltip rendering
+    // ======================================================================
+    function renderTooltip(key) {
+        const tip = clinicalTooltips[key];
+        if (!tip) return '';
+        return ` <span class="text-muted" tabindex="0" role="button"
+            data-bs-toggle="popover" data-bs-trigger="hover focus"
+            data-bs-html="true" data-bs-placement="right"
+            title="${escapeHtml(tip.title)}"
+            data-bs-content="<p>${escapeHtml(tip.content)}</p><p><strong>Normal:</strong> ${escapeHtml(tip.normalRange)}</p><p><strong>Risk:</strong> ${escapeHtml(tip.riskFactors)}</p>">
+            <i class="fas fa-info-circle"></i></span>`;
+    }
+
+    function initPopovers() {
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+        popoverTriggerList.forEach(el => {
+            new bootstrap.Popover(el, { sanitize: false });
+        });
+    }
+
+    // ======================================================================
+    // Score calculation — uses scoringConfig from /api/config/scoring
+    // ======================================================================
+    function recalculate() {
+        const cfg = scoringConfig;
         if (!cfg) return;
 
-        // Run validation
-        var blocked = hasValidationErrors();
+        const c = cfg.coefficients;
+        const b = cfg.binary_scores;
 
-        var c = cfg.coefficients;
-        var b = cfg.binary_scores;
-        var total = cfg.base_score;
+        // Validate all inputs first
+        let blocked = false;
+        const inputs = [
+            { id: 'input-age', param: 'Age' },
+            { id: 'input-hb', param: 'Hemoglobin' },
+            { id: 'input-egfr', param: 'eGFR' },
+            { id: 'input-wbc', param: 'White Blood Cell Count' }
+        ];
+
+        inputs.forEach(function (item) {
+            const el = document.getElementById(item.id);
+            if (el && el.value) {
+                const v = validateValue(item.param, el.value);
+                applyValidationStyling(el, v);
+                if (v.blockCalculation) blocked = true;
+            } else if (el) {
+                // Clear validation when empty
+                applyValidationStyling(el, { level: 'normal', message: '' });
+            }
+        });
+
+        let total = cfg.base_score;
 
         // Age
-        var ageRaw = parseFloat(document.getElementById('input-age').value);
-        var ageScore = 0;
+        const ageRaw = parseFloat(document.getElementById('input-age').value);
+        let ageScore = 0;
         if (!isNaN(ageRaw)) {
-            var eff = Math.max(c.age.truncation_min, Math.min(c.age.truncation_max, ageRaw));
-            if (eff > c.age.threshold) {
-                ageScore = (eff - c.age.threshold) * c.age.coefficient;
+            const ageCfg = c.age;
+            const eff = Math.max(ageCfg.truncation_min, Math.min(ageCfg.truncation_max, ageRaw));
+            if (eff > ageCfg.threshold) {
+                ageScore = (eff - ageCfg.threshold) * ageCfg.coefficient;
             }
         }
         total += ageScore;
         document.getElementById('score-age').textContent = ageScore.toFixed(1);
 
         // Hemoglobin (convert to g/dL if in mmol/L)
-        var hbRaw = parseFloat(document.getElementById('input-hb').value);
-        var hbScore = 0;
+        const hbRaw = parseFloat(document.getElementById('input-hb').value);
+        let hbScore = 0;
         if (!isNaN(hbRaw)) {
-            var hbGdl = hbUnit === 'mmol/L' ? hbRaw / HB_CONVERSION_FACTOR : hbRaw;
-            var eff = Math.max(c.hemoglobin.truncation_min, Math.min(c.hemoglobin.truncation_max, hbGdl));
-            if (eff < c.hemoglobin.threshold) {
-                hbScore = (c.hemoglobin.threshold - eff) * c.hemoglobin.coefficient;
+            let hbGdl = hbRaw;
+            if (unitSettings.hemoglobin === 'mmol/L') {
+                hbGdl = convertHemoglobin(hbRaw, 'mmol/L', 'g/dL');
+            }
+            const hbCfg = c.hemoglobin;
+            const eff = Math.max(hbCfg.truncation_min, Math.min(hbCfg.truncation_max, hbGdl));
+            if (eff < hbCfg.threshold) {
+                hbScore = (hbCfg.threshold - eff) * hbCfg.coefficient;
             }
         }
         total += hbScore;
         document.getElementById('score-hb').textContent = hbScore.toFixed(1);
 
         // eGFR
-        var egfrRaw = parseFloat(document.getElementById('input-egfr').value);
-        var egfrScore = 0;
+        const egfrRaw = parseFloat(document.getElementById('input-egfr').value);
+        let egfrScore = 0;
         if (!isNaN(egfrRaw)) {
-            var eff = Math.max(c.egfr.truncation_min, Math.min(c.egfr.truncation_max, egfrRaw));
-            if (eff < c.egfr.threshold) {
-                egfrScore = (c.egfr.threshold - eff) * c.egfr.coefficient;
+            const egfrCfg = c.egfr;
+            const eff = Math.max(egfrCfg.truncation_min, Math.min(egfrCfg.truncation_max, egfrRaw));
+            if (eff < egfrCfg.threshold) {
+                egfrScore = (egfrCfg.threshold - eff) * egfrCfg.coefficient;
             }
         }
         total += egfrScore;
         document.getElementById('score-egfr').textContent = egfrScore.toFixed(1);
 
         // WBC
-        var wbcRaw = parseFloat(document.getElementById('input-wbc').value);
-        var wbcScore = 0;
+        const wbcRaw = parseFloat(document.getElementById('input-wbc').value);
+        let wbcScore = 0;
         if (!isNaN(wbcRaw)) {
-            var eff = Math.max(c.wbc.truncation_min, Math.min(c.wbc.truncation_max, wbcRaw));
-            if (eff > c.wbc.threshold) {
-                wbcScore = (eff - c.wbc.threshold) * c.wbc.coefficient;
+            const wbcCfg = c.wbc;
+            const eff = Math.max(wbcCfg.truncation_min, Math.min(wbcCfg.truncation_max, wbcRaw));
+            if (eff > wbcCfg.threshold) {
+                wbcScore = (eff - wbcCfg.threshold) * wbcCfg.coefficient;
             }
         }
         total += wbcScore;
         document.getElementById('score-wbc').textContent = wbcScore.toFixed(1);
 
         // Binary factors
-        var bleedingScore = document.getElementById('input-bleeding').checked ? b.prior_bleeding : 0;
-        var oacScore = document.getElementById('input-oac').checked ? b.oral_anticoagulation : 0;
-        var arcScore = document.getElementById('input-arc').checked ? b.arc_hbr : 0;
+        const bleedingScore = document.getElementById('input-bleeding').checked ? b.prior_bleeding : 0;
+        const oacScore = document.getElementById('input-oac').checked ? b.oral_anticoagulation : 0;
+        const arcScore = document.getElementById('input-arc').checked ? b.arc_hbr : 0;
 
         total += bleedingScore + oacScore + arcScore;
 
@@ -265,52 +418,63 @@
         document.getElementById('score-oac').textContent = oacScore;
         document.getElementById('score-arc').textContent = arcScore;
 
-        // Round total
-        var roundedTotal = Math.floor(total + 0.5);
+        // Round (same as main.js: Math.round)
+        const finalScore = Math.round(total);
 
         if (blocked) {
             document.getElementById('total-score').textContent = '--';
             document.getElementById('total-score').className = 'display-3 fw-bold text-muted';
-            document.getElementById('risk-level').innerHTML = '<span class="badge bg-secondary">Invalid input</span>';
+            document.getElementById('risk-level').innerHTML =
+                '<span class="badge bg-secondary">Invalid input</span>';
             document.getElementById('risk-percent').textContent = '';
-            document.getElementById('recommendation').textContent = 'Please correct the highlighted values above.';
+            document.getElementById('recommendation').textContent =
+                'Please correct the highlighted values above.';
             document.getElementById('hbr-recommendations-section').classList.add('d-none');
             return;
         }
 
-        updateScoreDisplay(roundedTotal);
+        updateScoreDisplay(finalScore);
     }
 
+    // ======================================================================
+    // Risk % — cloglog from risk_classifier.py
+    // ======================================================================
     function calculateRiskPercent(score) {
-        var lp = CLOGLOG_A + CLOGLOG_B * score;
-        var risk = 1.0 - Math.exp(-Math.exp(lp));
+        const lp = CLOGLOG_A + CLOGLOG_B * score;
+        const risk = 1.0 - Math.exp(-Math.exp(lp));
         return (risk * 100).toFixed(2);
     }
 
+    // ======================================================================
+    // UI update — mirrors updateTotalScoreUI from main.js
+    // ======================================================================
     function updateScoreDisplay(score) {
-        var totalEl = document.getElementById('total-score');
-        var riskEl = document.getElementById('risk-level');
-        var riskPctEl = document.getElementById('risk-percent');
-        var recommendEl = document.getElementById('recommendation');
-        var hbrSection = document.getElementById('hbr-recommendations-section');
+        const totalEl = document.getElementById('total-score');
+        const riskEl = document.getElementById('risk-level');
+        const riskPctEl = document.getElementById('risk-percent');
+        const recommendEl = document.getElementById('recommendation');
+        const hbrSection = document.getElementById('hbr-recommendations-section');
 
         totalEl.textContent = score;
 
-        var riskPct = calculateRiskPercent(score);
+        const riskPct = calculateRiskPercent(score);
 
-        var category, colorClass, scoreRange;
-        if (score <= THRESHOLD_NON_HBR) {
+        let category, colorClass, scoreRange, scoreColor;
+        if (score <= RISK_THRESHOLDS.NOT_HIGH) {
             category = 'Not high bleeding risk';
             colorClass = 'bg-success';
-            scoreRange = '(score \u226422)';
-        } else if (score <= THRESHOLD_HBR) {
+            scoreRange = `(score \u2264${RISK_THRESHOLDS.NOT_HIGH})`;
+            scoreColor = 'text-success';
+        } else if (score < RISK_THRESHOLDS.VERY_HBR) {
             category = 'High bleeding risk (HBR)';
             colorClass = 'bg-warning text-dark';
-            scoreRange = '(score 23\u201326)';
+            scoreRange = `(score ${RISK_THRESHOLDS.HBR}\u2013${RISK_THRESHOLDS.VERY_HBR - 1})`;
+            scoreColor = 'text-warning';
         } else {
             category = 'Very high bleeding risk';
             colorClass = 'bg-danger';
-            scoreRange = '(score \u226527)';
+            scoreRange = `(score \u2265${RISK_THRESHOLDS.VERY_HBR})`;
+            scoreColor = 'text-danger';
         }
 
         riskEl.innerHTML = '<span class="badge ' + colorClass + '">' +
@@ -319,52 +483,69 @@
 
         riskPctEl.textContent = '1-year risk of major bleeding (BARC 3/5): ' + riskPct + '%';
 
-        recommendEl.textContent = score <= THRESHOLD_NON_HBR
+        recommendEl.textContent = score <= RISK_THRESHOLDS.NOT_HIGH
             ? 'Standard DAPT duration per guidelines.'
             : 'Consider abbreviated DAPT or de-escalation strategy.';
 
         // Show/hide HBR recommendations
-        if (score >= THRESHOLD_NON_HBR + 1) {
+        if (score >= RISK_THRESHOLDS.HBR) {
             hbrSection.classList.remove('d-none');
         } else {
             hbrSection.classList.add('d-none');
         }
 
-        // Color the score number
-        totalEl.className = 'display-3 fw-bold';
-        if (score <= THRESHOLD_NON_HBR) {
-            totalEl.classList.add('text-success');
-        } else if (score <= THRESHOLD_HBR) {
-            totalEl.classList.add('text-warning');
-        } else {
-            totalEl.classList.add('text-danger');
-        }
+        totalEl.className = 'display-3 fw-bold ' + scoreColor;
     }
 
     function escapeHtml(str) {
-        var div = document.createElement('div');
+        const div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
     }
 
+    // ======================================================================
     // Initialisation
+    // ======================================================================
     async function init() {
         await fetchScoringConfig();
 
+        // Add tooltips to parameter labels
+        const tooltipTargets = {
+            'input-age': 'Age',
+            'input-hb': 'Hemoglobin',
+            'input-egfr': 'eGFR',
+            'input-wbc': 'White Blood Cell Count',
+            'input-bleeding': 'Previous bleeding',
+            'input-oac': 'Long-term oral anticoagulation',
+            'input-arc': 'ARC-HBR Factors'
+        };
+
+        Object.entries(tooltipTargets).forEach(([inputId, tooltipKey]) => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                const td = input.closest('tr').querySelector('td:first-child');
+                if (td) {
+                    td.insertAdjacentHTML('beforeend', renderTooltip(tooltipKey));
+                }
+            }
+        });
+
+        initPopovers();
+
         // Bind input listeners
         document.querySelectorAll('#score-components input').forEach(function (input) {
-            input.addEventListener('input', calculateScore);
-            input.addEventListener('change', calculateScore);
+            input.addEventListener('input', recalculate);
+            input.addEventListener('change', recalculate);
         });
 
         // Bind Hb unit toggle
-        var toggleBtn = document.getElementById('hb-unit-toggle');
+        const toggleBtn = document.getElementById('hb-unit-toggle');
         if (toggleBtn) {
-            toggleBtn.addEventListener('click', toggleHbUnit);
+            toggleBtn.addEventListener('click', toggleHemoglobinUnit);
         }
 
         // Initial calculation
-        calculateScore();
+        recalculate();
     }
 
     if (document.readyState === 'loading') {
