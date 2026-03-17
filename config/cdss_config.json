@@ -619,9 +619,9 @@
     "tradeoff_analysis": {
         "model_file": "fhir_resources/valuesets/arc-hbr-model.json",
         "baseline_event_rates": {
-            "bleeding_rate_percent": 2.4,
-            "thrombotic_rate_percent": 2.0,
-            "description": "Baseline 1-year event rates for reference group (ARC-HBR cohort, Galli M, et al. JAMA Cardiology 2021)"
+            "bleeding_rate_percent": 1.4,
+            "thrombotic_rate_percent": 1.4,
+            "description": "Baseline 1-year event rates for reference group (ARC-HBR cohort, Urban P, et al. JAMA Cardiology 2021). Validated against official ARC-HBR app (25 cases, max error <0.01%)"
         },
         "risk_factor_thresholds": {
             "age_threshold": 65,

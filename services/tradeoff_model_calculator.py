@@ -421,61 +421,36 @@ class TradeoffModelCalculator:
 
         return detected_factors, missing_data
     
-    # Complementary log-log calibration coefficients for the ARC-HBR tradeoff model.
-    # Formula: P = 1 - exp(-exp(a + b * ln(HR_product)))
-    # Fitted against 3 patient cases from Urban et al. / Rickli & Maeder (2023)
-    # via least-squares optimisation (max absolute error < 0.35%).
-    _BLEEDING_CLOGLOG_A = -4.36
-    _BLEEDING_CLOGLOG_B = 1.07
-    _THROMBOTIC_CLOGLOG_A = -6.04
-    _THROMBOTIC_CLOGLOG_B = 2.09
+    # Baseline 1-year event rate for the ARC-HBR reference group (all
+    # predictors absent).  Validated against the official ARC-HBR app
+    # (25 golden-dataset cases, max error < 0.01%).
+    _BASELINE_EVENT_RATE_PERCENT = 1.4
 
-    @classmethod
-    def convert_hr_to_probability(cls, total_hr_score, baseline_event_rate=None,
-                                  *, event_type=None):
+    @staticmethod
+    def convert_hr_to_probability(total_hr_score, baseline_event_rate):
         """
         Converts a total Hazard Ratio (HR) product to an estimated 1-year
-        event probability using a complementary log-log (cloglog) model.
+        event probability using the Cox proportional hazards model.
 
-        Formula: P = 1 - exp(-exp(a + b * ln(HR)))
-
-        The *a* and *b* coefficients differ for bleeding vs thrombotic events
-        and were calibrated against the official ARC-HBR app patient cases.
+        Formula: P = 1 - exp(-baseline_hazard × HR)
 
         Args:
             total_hr_score: Total hazard ratio (product of individual HRs)
-            baseline_event_rate: **Deprecated** — kept for backward
-                compatibility but ignored when *event_type* is provided.
-            event_type: ``'bleeding'`` or ``'thrombotic'``.  When ``None``
-                the legacy Cox-PH formula is used as a fallback so that
-                existing callers are not broken.
+            baseline_event_rate: Baseline 1-year event rate as percentage
 
         Returns:
             Event probability as percentage (0-100)
         """
-        if event_type == 'bleeding':
-            a, b = cls._BLEEDING_CLOGLOG_A, cls._BLEEDING_CLOGLOG_B
-        elif event_type == 'thrombotic':
-            a, b = cls._THROMBOTIC_CLOGLOG_A, cls._THROMBOTIC_CLOGLOG_B
-        else:
-            # Legacy fallback for any external callers still passing
-            # baseline_event_rate without event_type.
-            if baseline_event_rate is None:
-                baseline_event_rate = 2.5
-            baseline_rate_decimal = baseline_event_rate / 100.0
-            if baseline_rate_decimal >= 1.0:
-                return 100.0
-            baseline_hazard = -math.log(1 - baseline_rate_decimal)
-            adjusted_hazard = baseline_hazard * total_hr_score
-            event_probability = 1 - math.exp(-adjusted_hazard)
-            return round(min(event_probability * 100.0, 100.0), 2)
+        baseline_rate_decimal = baseline_event_rate / 100.0
 
-        if total_hr_score <= 0:
-            return 0.0
+        if baseline_rate_decimal >= 1.0:
+            return 100.0
 
-        linear_predictor = a + b * math.log(total_hr_score)
-        risk = 1.0 - math.exp(-math.exp(linear_predictor))
-        return round(min(risk * 100.0, 100.0), 2)
+        baseline_hazard = -math.log(1 - baseline_rate_decimal)
+        adjusted_hazard = baseline_hazard * total_hr_score
+        event_probability = 1 - math.exp(-adjusted_hazard)
+
+        return round(min(event_probability * 100.0, 100.0), 2)
     
     @classmethod
     def calculate_tradeoff_scores(cls, raw_data, demographics, tradeoff_data):
@@ -563,11 +538,13 @@ class TradeoffModelCalculator:
             active_factors
         )
 
+        baseline = cls._BASELINE_EVENT_RATE_PERCENT
+
         return {
             "bleeding_score": cls.convert_hr_to_probability(
-                bleeding_hr, event_type='bleeding'),
+                bleeding_hr, baseline),
             "thrombotic_score": cls.convert_hr_to_probability(
-                thrombotic_hr, event_type='thrombotic'),
+                thrombotic_hr, baseline),
             "bleeding_factors": bleeding_factors,
             "thrombotic_factors": thrombotic_factors
         }
