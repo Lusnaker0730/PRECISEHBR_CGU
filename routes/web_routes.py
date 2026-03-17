@@ -15,11 +15,15 @@ web_bp = Blueprint('web', __name__)
 def index():
     if is_session_valid():
         return redirect(url_for('web.main_page'))
-    return redirect(url_for('web.standalone_launch_page'))
+    return render_template('standalone_calculator.html')
 
 @web_bp.route('/standalone')
 def standalone_launch_page():
     return render_template('standalone_launch.html')
+
+@web_bp.route('/standalone/tradeoff')
+def standalone_tradeoff_page():
+    return render_template('standalone_tradeoff.html')
 
 @web_bp.route('/initiate-launch', methods=['POST'])
 def initiate_launch():
