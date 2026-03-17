@@ -124,3 +124,4 @@ def submit_complaint():
         return render_template('report_issue.html', 
                              error="An error occurred while submitting your complaint. Please try again."), 500
 
+
