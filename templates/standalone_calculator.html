@@ -70,11 +70,18 @@
                         <td id="score-age" class="fw-bold">0</td>
                     </tr>
                     <tr>
-                        <td><strong>Hemoglobin</strong> <small class="text-muted">(g/dL)</small></td>
+                        <td><strong>Hemoglobin</strong> <small class="text-muted" id="hb-unit-label">(g/dL)</small></td>
                         <td>
-                            <input type="number" class="form-control form-control-sm" id="input-hb"
-                                   min="3" max="20" step="0.1" placeholder="e.g. 12.0"
-                                   aria-label="Hemoglobin in g/dL">
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="input-hb"
+                                       min="3" max="20" step="0.1" placeholder="e.g. 12.0"
+                                       aria-label="Hemoglobin value">
+                                <span class="input-group-text" id="hb-unit-display">g/dL</span>
+                                <button class="btn btn-outline-secondary" type="button" id="hb-unit-toggle"
+                                        title="Toggle unit between g/dL and mmol/L">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </button>
+                            </div>
                         </td>
                         <td id="score-hb" class="fw-bold">0</td>
                     </tr>
