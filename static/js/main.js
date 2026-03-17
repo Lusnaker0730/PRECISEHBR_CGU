@@ -129,7 +129,7 @@
             coefficients: {
                 age: { threshold: 30, coefficient: 0.25, truncation_min: 30, truncation_max: 80 },
                 hemoglobin: { threshold: 15.0, coefficient: 2.5, truncation_min: 5.0, truncation_max: 15.0 },
-                egfr: { threshold: 100, coefficient: 0.05, truncation_min: 5, truncation_max: 100 },
+                egfr: { threshold: 100, coefficient: 0.055, truncation_min: 5, truncation_max: 100 },
                 wbc: { threshold: 3.0, coefficient: 0.8, truncation_min: 3.0, truncation_max: 15.0 }
             },
             binary_scores: {

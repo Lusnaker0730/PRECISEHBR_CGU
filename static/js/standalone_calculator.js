@@ -314,7 +314,7 @@
     function initPopovers() {
         const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
         popoverTriggerList.forEach(el => {
-            new bootstrap.Popover(el, { sanitize: false });
+            new bootstrap.Popover(el);
         });
     }
 
@@ -532,10 +532,19 @@
 
         initPopovers();
 
-        // Bind input listeners
+        // Update base score display from config
+        const baseScoreEl = document.getElementById('score-base');
+        if (baseScoreEl && scoringConfig) {
+            baseScoreEl.textContent = scoringConfig.base_score;
+        }
+
+        // Bind input listeners — 'input' for number fields, 'change' for checkboxes
         document.querySelectorAll('#score-components input').forEach(function (input) {
-            input.addEventListener('input', recalculate);
-            input.addEventListener('change', recalculate);
+            if (input.type === 'checkbox') {
+                input.addEventListener('change', recalculate);
+            } else {
+                input.addEventListener('input', recalculate);
+            }
         });
 
         // Bind Hb unit toggle
