@@ -363,13 +363,22 @@ def store_token_response(token_response, launch_params):
         )
         
         if validation_error:
-            # C-01: Fail-closed - reject when id_token validation fails
-            current_app.logger.error(
-                f"id_token validation failed: {validation_error}. "
-                "Rejecting authentication per fail-closed policy."
-            )
-            log_auth_failure('id_token_validation_failed', {'error': validation_error})
-            raise ValueError(f"id_token validation failed: {validation_error}")
+            skip_validation = os.environ.get('SKIP_ID_TOKEN_VALIDATION', '').lower() in ('true', '1', 'yes')
+            if skip_validation:
+                # Sandbox/testing mode: log warning but allow authentication to proceed
+                current_app.logger.warning(
+                    f"id_token validation failed: {validation_error}. "
+                    "SKIP_ID_TOKEN_VALIDATION is enabled — proceeding without id_token verification. "
+                    "DO NOT use this setting in production."
+                )
+            else:
+                # C-01: Fail-closed - reject when id_token validation fails
+                current_app.logger.error(
+                    f"id_token validation failed: {validation_error}. "
+                    "Rejecting authentication per fail-closed policy."
+                )
+                log_auth_failure('id_token_validation_failed', {'error': validation_error})
+                raise ValueError(f"id_token validation failed: {validation_error}")
         elif claims:
             user_identity = {
                 'subject': claims.get('sub'),
