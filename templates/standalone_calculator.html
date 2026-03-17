@@ -218,5 +218,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/precise_hbr_core.js') }}"></script>
 <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/standalone_calculator.js') }}"></script>
 {% endblock %}

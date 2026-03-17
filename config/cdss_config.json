@@ -618,6 +618,7 @@
     },
     "tradeoff_analysis": {
         "model_file": "fhir_resources/valuesets/arc-hbr-model.json",
+        "mortality_ratio": 1.9,
         "baseline_event_rates": {
             "bleeding_rate_percent": 1.4,
             "thrombotic_rate_percent": 1.4,
