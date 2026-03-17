@@ -7,8 +7,53 @@
 
 ## [Unreleased]
 
+### 計算校正 (Calculation Calibration) — Class C
+- **PRECISE-HBR eGFR 係數校正**（PR #54）— 從 0.05 調整為 **0.055**，經官方計算器 (precise-hbr.eoc.ch) API 系統性驗證，修正極端 eGFR 值的 1 分偏差
+- **1 年出血風險百分比改用 complementary log-log (cloglog) 校正曲線**（PR #54）：
+  - 公式：`risk = 1 - exp(-exp(-5.3945 + 0.09725 × score))`
+  - 取代原有的 piecewise linear 近似（最大誤差從 15% 降至 < 0.05%）
+  - 公式推導報告：`docs/references/PRECISE-HBR-formula-derivation.md`
+- **Tradeoff model baseline event rate 校正**（PR #55）— bleeding 2.4% / thrombotic 2.0% 修正為 **1.4% / 1.4%**，經 25 組 golden dataset 對照官方 ARC-HBR APP 驗證（最大誤差 < 0.1%）
+- **ICD-10 對照碼更新**（PR #62）：
+  - 過去出血史：新增 G95.11（脊髓出血）、K22.6（Mallory-Weiss）、I85.01（食道靜脈曲張伴出血）等 7 碼；移除非特異性碼
+  - 易出血體質：從粗略 prefix（D65-D69）改為 15 個精確碼（含 D68.8/D68.9）
+  - 門脈高壓肝硬化：portal_hypertension_criteria 從 5 碼擴充至 12 碼
+  - 活動性癌症：新增 C97 + C44 排除邏輯（非黑色素瘤皮膚癌）
+  - `condition_checker.py` 實作 `icd10cm_exclude_codes` 排除機制
+
+### 功能改進 (Features)
+- **首頁改為獨立 PRECISE-HBR 計算器**（PR #56）— 無需登入即可使用，含即時計分、Hb 單位換算（g/dL ↔ mmol/L）、臨床驗證警示
+- **新增獨立 Tradeoff 計算頁面** (`/standalone/tradeoff`)（PR #56）— 出血 vs 血栓權衡分析，無需 FHIR session
+- **計算器改為按鈕觸發**（PR #58）— 必填欄位全填完後才啟用 Calculate 按鈕，新增 Reset 功能
+- **新增 SKIP_ID_TOKEN_VALIDATION 環境變數**（PR #59）— 支援 SMART Health IT Launcher sandbox 測試
+- **SMART scopes 優化** — 改用 `.rs`（read+search）取代 `.read`，與 FHIR search 操作一致
+- **新增 Tradeoff Config API**（PR #57）— `GET /api/config/tradeoff-model` 提供 HR predictor 資料 + baseline rate + mortality ratio
+- **新增 TW Core IG 範例病人 Bundle** — `fhir_resources/sample-patient-bundle.json`（含中文姓名、台灣身分證、NHI 藥碼）
+
+### 重構 (Refactoring)
+- **提取共用 JS 模組 `precise_hbr_core.js`**（PR #57）— 統一驗證、換算、tooltips、config 載入邏輯，消除 standalone_calculator.js 與 main.js 之間 ~250 行重複
+- **main.js eGFR fallback 修正** — getDefaultScoringConfig() 的 eGFR coefficient 從 0.05 同步為 0.055
+- **cdss_config.json 新增 `mortality_ratio: 1.9`** — 從 3 處硬編碼改為單一設定來源
+
+### 安全性 (Security)
+- **callback.html SRI hash 更新**（PR #59）— fhir-client.min.js 和 babel-polyfill CDN 更新後修正 integrity hash
+- **callback.html CSP inline style 修正**（PR #59）— `step2.style.background` 改用 CSS class
+- **tradeoff_analysis.html SRI hash 更新 + CSP 修正**（PR #60）— 3 個 CDN SRI hash 更新，16 個 inline style 全部改為 CSS class，6 個 JS `.style` 操作改用 classList
+- **Bootstrap Popover 移除 `sanitize: false`**（PR #57）— 消除 XSS 攻擊面
+- **驗證訊息統一顯示位置**（PR #58）— `applyValidationStyling` 改用 `closest('td')` 定位
+- **動態輸出區域新增 `aria-live` 屬性**（PR #58）— WCAG 2.1 AA 合規
+
+### 測試 (Testing)
+- **新增 PRECISE-HBR Golden Dataset 測試**（PR #54）— `tests/test_golden_dataset_csv.py`（42 項），所有案例對照官方 API 驗證
+- **新增 Tradeoff Golden Dataset 測試**（PR #57）— `tests/test_tradeoff_golden_dataset.py`（52 項），對照官方 ARC-HBR APP 驗證
+- **Golden Dataset CSV**：`precisehbr-golden.csv`（10 有效 + 8 邊界案例）、`tradeoff-golden.csv`（25 案例）
+
+### 圖表 (Charts)
+- **Tradeoff 圖表刻度對齊論文**（PR #63）— X/Y 軸從 0.1-50% 改為 1.25-80%（與 JAMA Cardiol 論文一致），刻度 1.25/2.5/5/10/20/50/80
+
 ### 部署 (Deployment)
 - **預設 port 從 8080 改為 9000** — 避免 VM 部署時與既有服務的端口衝突。影響 `APP.py`、`Dockerfile`、`docker-compose.yml`、`docker-compose.prod.yml`。可透過 `PORT` 環境變數覆蓋
+- **VM 部署至 hbr.alumicoin.cloud** — Nginx 反向代理 + Let's Encrypt HTTPS
 
 ### 安全性 (Security)
 - **修復 X-Frame-Options: DENY 阻擋 SMART on FHIR iframe 嵌入** — EHR（Epic/Cerner）透過 iframe 載入 SMART App，`DENY` 導致瀏覽器拒絕渲染：
