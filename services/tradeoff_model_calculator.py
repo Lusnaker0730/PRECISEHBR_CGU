@@ -421,33 +421,61 @@ class TradeoffModelCalculator:
 
         return detected_factors, missing_data
     
-    @staticmethod
-    def convert_hr_to_probability(total_hr_score, baseline_event_rate):
+    # Complementary log-log calibration coefficients for the ARC-HBR tradeoff model.
+    # Formula: P = 1 - exp(-exp(a + b * ln(HR_product)))
+    # Fitted against 3 patient cases from Urban et al. / Rickli & Maeder (2023)
+    # via least-squares optimisation (max absolute error < 0.35%).
+    _BLEEDING_CLOGLOG_A = -4.36
+    _BLEEDING_CLOGLOG_B = 1.07
+    _THROMBOTIC_CLOGLOG_A = -6.04
+    _THROMBOTIC_CLOGLOG_B = 2.09
+
+    @classmethod
+    def convert_hr_to_probability(cls, total_hr_score, baseline_event_rate=None,
+                                  *, event_type=None):
         """
-        Converts a total Hazard Ratio (HR) score to an estimated 1-year event probability.
-        
-        Uses the Cox proportional hazards model:
-        P(event) = 1 - exp(-baseline_hazard × HR)
-        
+        Converts a total Hazard Ratio (HR) product to an estimated 1-year
+        event probability using a complementary log-log (cloglog) model.
+
+        Formula: P = 1 - exp(-exp(a + b * ln(HR)))
+
+        The *a* and *b* coefficients differ for bleeding vs thrombotic events
+        and were calibrated against the official ARC-HBR app patient cases.
+
         Args:
             total_hr_score: Total hazard ratio (product of individual HRs)
-            baseline_event_rate: Baseline event rate as percentage
-        
+            baseline_event_rate: **Deprecated** — kept for backward
+                compatibility but ignored when *event_type* is provided.
+            event_type: ``'bleeding'`` or ``'thrombotic'``.  When ``None``
+                the legacy Cox-PH formula is used as a fallback so that
+                existing callers are not broken.
+
         Returns:
             Event probability as percentage (0-100)
         """
-        baseline_rate_decimal = baseline_event_rate / 100.0
-        
-        if baseline_rate_decimal >= 1.0:
-            return 100.0
-        
-        baseline_hazard = -math.log(1 - baseline_rate_decimal)
-        adjusted_hazard = baseline_hazard * total_hr_score
-        survival_probability = math.exp(-adjusted_hazard)
-        event_probability = 1 - survival_probability
-        event_probability_percent = event_probability * 100.0
-        
-        return round(min(event_probability_percent, 100.0), 2)
+        if event_type == 'bleeding':
+            a, b = cls._BLEEDING_CLOGLOG_A, cls._BLEEDING_CLOGLOG_B
+        elif event_type == 'thrombotic':
+            a, b = cls._THROMBOTIC_CLOGLOG_A, cls._THROMBOTIC_CLOGLOG_B
+        else:
+            # Legacy fallback for any external callers still passing
+            # baseline_event_rate without event_type.
+            if baseline_event_rate is None:
+                baseline_event_rate = 2.5
+            baseline_rate_decimal = baseline_event_rate / 100.0
+            if baseline_rate_decimal >= 1.0:
+                return 100.0
+            baseline_hazard = -math.log(1 - baseline_rate_decimal)
+            adjusted_hazard = baseline_hazard * total_hr_score
+            event_probability = 1 - math.exp(-adjusted_hazard)
+            return round(min(event_probability * 100.0, 100.0), 2)
+
+        if total_hr_score <= 0:
+            return 0.0
+
+        linear_predictor = a + b * math.log(total_hr_score)
+        risk = 1.0 - math.exp(-math.exp(linear_predictor))
+        return round(min(risk * 100.0, 100.0), 2)
     
     @classmethod
     def calculate_tradeoff_scores(cls, raw_data, demographics, tradeoff_data):
@@ -526,11 +554,6 @@ class TradeoffModelCalculator:
         Returns:
             Dictionary with scores and factor details
         """
-        tradeoff_config = config_loader.get_tradeoff_config()
-        baseline_rates = tradeoff_config.get('baseline_event_rates', {})
-        baseline_bleeding_rate = baseline_rates.get('bleeding_rate_percent', 2.5)
-        baseline_thrombotic_rate = baseline_rates.get('thrombotic_rate_percent', 2.5)
-
         bleeding_hr, bleeding_factors = cls._calculate_event_score(
             model_predictors['bleedingEvents']['predictors'],
             active_factors
@@ -541,8 +564,10 @@ class TradeoffModelCalculator:
         )
 
         return {
-            "bleeding_score": cls.convert_hr_to_probability(bleeding_hr, baseline_bleeding_rate),
-            "thrombotic_score": cls.convert_hr_to_probability(thrombotic_hr, baseline_thrombotic_rate),
+            "bleeding_score": cls.convert_hr_to_probability(
+                bleeding_hr, event_type='bleeding'),
+            "thrombotic_score": cls.convert_hr_to_probability(
+                thrombotic_hr, event_type='thrombotic'),
             "bleeding_factors": bleeding_factors,
             "thrombotic_factors": thrombotic_factors
         }
