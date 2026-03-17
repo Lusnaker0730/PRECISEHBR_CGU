@@ -338,8 +338,9 @@ class ConditionCheckerService:
         """
         snomed_config = config_loader.get_snomed_codes('active_cancer')
         malignancy_codes = set(snomed_config.get('snomed_codes', ['363346000']))
-        excluded_codes = set(snomed_config.get('snomed_exclude_codes', ['254637007', '254632001']))
+        excluded_codes = set(snomed_config.get('snomed_codes', ['254637007', '254632001']))
         icd10_codes = snomed_config.get('icd10cm_codes', [])
+        icd10_exclude_codes = snomed_config.get('icd10cm_exclude_codes', [])
         cancer_keywords = snomed_config.get('text_keywords', [])
         exclusion_keywords = snomed_config.get('exclusion_keywords', [])
 
@@ -362,10 +363,13 @@ class ConditionCheckerService:
                 if code in malignancy_codes:
                     return True, coding.get('display', 'Active malignancy')
 
-            # Check ICD-10 codes
+            # Check ICD-10 codes (with exclusion support)
             diagnosis_info = twcore_adapter.extract_icd10_diagnosis(condition)
             if diagnosis_info['has_icd10']:
                 code = diagnosis_info['icd10_code']
+                # Check exclusion first (e.g., C44 non-melanoma skin cancer)
+                if any(code.startswith(ex) or code.startswith(ex + '.') for ex in icd10_exclude_codes):
+                    continue
                 if any(code.startswith(target) for target in icd10_codes):
                     display = diagnosis_info['icd10_display'] or f"Active cancer (ICD-10: {code})"
                     return True, display
@@ -694,6 +698,7 @@ class ConditionCheckerService:
         malignancy_codes = set(snomed_config.get('snomed_codes', ['363346000']))
         excluded_codes = set(snomed_config.get('snomed_exclude_codes', ['254637007', '254632001']))
         icd10_codes = snomed_config.get('icd10cm_codes', [])
+        icd10_exclude_codes = snomed_config.get('icd10cm_exclude_codes', [])
         cancer_keywords = snomed_config.get('text_keywords', [])
         exclusion_keywords = snomed_config.get('exclusion_keywords', [])
         snomed_system = cls._get_snomed_system()
@@ -711,8 +716,12 @@ class ConditionCheckerService:
                 if code_entry.code in malignancy_codes:
                     return True, code_entry.display or 'Active malignancy'
 
-            if cond.icd10_code and any(cond.icd10_code.startswith(t) for t in icd10_codes):
-                return True, cond.icd10_display or f"Active cancer (ICD-10: {cond.icd10_code})"
+            if cond.icd10_code:
+                # Check exclusion first (e.g., C44 non-melanoma skin cancer)
+                if any(cond.icd10_code.startswith(ex) or cond.icd10_code.startswith(ex + '.') for ex in icd10_exclude_codes):
+                    continue
+                if any(cond.icd10_code.startswith(t) for t in icd10_codes):
+                    return True, cond.icd10_display or f"Active cancer (ICD-10: {cond.icd10_code})"
 
             if any(ex in cond.text for ex in exclusion_keywords):
                 continue
