@@ -1,0 +1,185 @@
+{% extends "layout.html" %}
+
+{% block title %}ARC-HBR Bleeding vs. Thrombosis Tradeoff Calculator{% endblock %}
+
+{% block content %}
+<div class="container mt-4" id="tradeoff-container">
+    <!-- Back link -->
+    <div class="mb-3">
+        <a href="/" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to PRECISE-HBR Calculator
+        </a>
+    </div>
+
+    <h2 class="mb-4"><i class="fas fa-balance-scale"></i> ARC-HBR Bleeding vs. Thrombosis Tradeoff</h2>
+
+    <div class="row">
+        <!-- Risk Factor Selection -->
+        <div class="col-md-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Risk Factors</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Continuous factors mapped to categories -->
+                    <h6 class="text-muted mb-2">Demographics & Lab Values</h6>
+
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-age_ge_65">
+                        <label class="form-check-label" for="tf-age_ge_65">Age &ge; 65 years</label>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label mb-1"><small class="text-muted">Hemoglobin category:</small></label>
+                        <select class="form-select form-select-sm tradeoff-factor" id="tf-hb-select">
+                            <option value="normal" selected>Hb &ge; 13 g/dL (normal)</option>
+                            <option value="hemoglobin_11_12.9">Hb 11 &ndash; 12.9 g/dL</option>
+                            <option value="hemoglobin_lt_11">Hb &lt; 11 g/dL</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label mb-1"><small class="text-muted">eGFR category:</small></label>
+                        <select class="form-select form-select-sm tradeoff-factor" id="tf-egfr-select">
+                            <option value="normal" selected>eGFR &ge; 60 mL/min (normal)</option>
+                            <option value="egfr_30_59">eGFR 30 &ndash; 59 mL/min</option>
+                            <option value="egfr_lt_30">eGFR &lt; 30 mL/min</option>
+                        </select>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-2">Clinical Factors</h6>
+
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-diabetes">
+                        <label class="form-check-label" for="tf-diabetes">Diabetes mellitus</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-prior_mi">
+                        <label class="form-check-label" for="tf-prior_mi">Prior myocardial infarction</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-smoker">
+                        <label class="form-check-label" for="tf-smoker">Current smoker</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-nstemi_stemi">
+                        <label class="form-check-label" for="tf-nstemi_stemi">NSTEMI / STEMI presentation</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-copd">
+                        <label class="form-check-label" for="tf-copd">COPD</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-liver_cancer_surgery">
+                        <label class="form-check-label" for="tf-liver_cancer_surgery">Liver disease, cancer, or planned surgery</label>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-2">Procedure & Medication</h6>
+
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-complex_pci">
+                        <label class="form-check-label" for="tf-complex_pci">Complex PCI procedure</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-bms">
+                        <label class="form-check-label" for="tf-bms">Bare metal stent (BMS)</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input tradeoff-factor" type="checkbox" id="tf-oac_discharge">
+                        <label class="form-check-label" for="tf-oac_discharge">OAC at discharge</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-md-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">1-Year Predicted Risk</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-4">
+                        <div class="col-6">
+                            <div class="card border-danger">
+                                <div class="card-body">
+                                    <h6 class="text-muted">BARC 3-5 Bleeding</h6>
+                                    <h2 id="result-bleeding" class="text-danger fw-bold" aria-live="polite">1.40%</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h6 class="text-muted">MI / Stent Thrombosis</h6>
+                                    <h2 id="result-thrombotic" class="text-primary fw-bold" aria-live="polite">1.40%</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk comparison bar -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-danger fw-bold">Bleeding dominates</small>
+                            <small class="text-muted">Equal</small>
+                            <small class="text-primary fw-bold">Ischemia dominates</small>
+                        </div>
+                        <div class="progress" style="height: 24px;">
+                            <div id="risk-bar-bleeding" class="progress-bar bg-danger" style="width:50%"></div>
+                            <div id="risk-bar-thrombotic" class="progress-bar bg-primary" style="width:50%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Interpretation -->
+                    <div id="interpretation" class="alert alert-info" aria-live="assertive">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="interpretation-text">Enter risk factors to see the tradeoff analysis.</span>
+                    </div>
+
+                    <!-- Active factors summary -->
+                    <div class="mt-3">
+                        <h6>Active Bleeding Factors:</h6>
+                        <ul id="active-bleeding-factors" class="mb-2"><li class="text-muted">None</li></ul>
+                        <h6>Active Thrombotic Factors:</h6>
+                        <ul id="active-thrombotic-factors" class="mb-2"><li class="text-muted">None</li></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clinical guidance -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-stethoscope"></i> Clinical Interpretation</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Ischemia &gt; Bleeding:</strong> Consider extending/intensifying antithrombotic therapy</li>
+                        <li><strong>Bleeding &gt; Ischemia:</strong> Consider shortening/simplifying antithrombotic therapy</li>
+                        <li><strong>Balanced:</strong> Standard guideline-based DAPT duration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Citation -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-book"></i> Citation</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-1"><strong>Title:</strong> Assessing the Risks of Bleeding vs Thrombotic Events in Patients
+                at High Bleeding Risk After Coronary Stent Implantation: The ARC-High Bleeding Risk Trade-off Model</p>
+            <p class="mb-1"><strong>Authors:</strong> Urban P, Gregson J, Owen R, Mehran R, et al.</p>
+            <p class="mb-1"><strong>Journal:</strong> JAMA Cardiology, 2021;6(4):410-419</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/standalone_tradeoff.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends "layout.html" %}
+
+{% block title %}PRECISE-HBR Bleeding Risk Calculator{% endblock %}
+
+{% block content %}
+<div class="container mt-4" id="calculator-container">
+    <!-- Information Banner -->
+    <div class="alert alert-info mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
+            <div class="flex-grow-1">
+                <strong>Disclaimer</strong> — This risk scoring tool is intended for use by clinicians, in conjunction
+                with individual patient assessment.
+                We assume no responsibility for how you use or interpret the PRECISE-HBR Score.
+            </div>
+            <div>
+                <a href="/docs" class="btn btn-sm btn-outline-secondary"
+                    aria-label="View documentation">
+                    <i class="fas fa-book" aria-hidden="true"></i> Documentation
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Score Display -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-calculator"></i> PRECISE-HBR Bleeding Risk Score</h5>
+            <div>
+                <a href="/standalone" class="btn btn-sm btn-outline-primary me-2"
+                    aria-label="SMART on FHIR launch">
+                    <i class="fas fa-rocket" aria-hidden="true"></i> SMART Launch
+                </a>
+            </div>
+        </div>
+        <div class="card-body text-center">
+            <h1 id="total-score" class="display-3 fw-bold" aria-live="polite">2</h1>
+            <p id="risk-level" class="h4" aria-live="polite">
+                <span class="badge bg-success">Not high bleeding risk</span>
+                <small class="text-muted">(score &le;22)</small>
+            </p>
+            <p id="risk-percent" class="lead"></p>
+            <p id="recommendation" class="text-muted"></p>
+        </div>
+    </div>
+
+    <!-- Score Components -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list-ul" aria-hidden="true"></i> Score Components</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover align-middle" role="table" aria-label="Risk score components">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="width:35%">Risk Factor</th>
+                        <th scope="col" style="width:40%">Value</th>
+                        <th scope="col" style="width:10%">Score</th>
+                    </tr>
+                </thead>
+                <tbody id="score-components">
+                    <!-- Continuous factors -->
+                    <tr>
+                        <td><strong>Age</strong> <small class="text-muted">(years)</small></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" id="input-age"
+                                   min="20" max="120" step="1" placeholder="e.g. 65"
+                                   aria-label="Age in years">
+                        </td>
+                        <td id="score-age" class="fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Hemoglobin</strong> <small class="text-muted" id="hb-unit-label">(g/dL)</small></td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="input-hb"
+                                       min="3" max="20" step="0.1" placeholder="e.g. 12.0"
+                                       aria-label="Hemoglobin value">
+                                <span class="input-group-text" id="hb-unit-display">g/dL</span>
+                                <button class="btn btn-outline-secondary" type="button" id="hb-unit-toggle"
+                                        title="Toggle unit between g/dL and mmol/L">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td id="score-hb" class="fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>eGFR</strong> <small class="text-muted">(mL/min/1.73m&sup2;)</small></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" id="input-egfr"
+                                   min="1" max="200" step="1" placeholder="e.g. 60"
+                                   aria-label="eGFR in mL/min/1.73m2">
+                        </td>
+                        <td id="score-egfr" class="fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>White Blood Cell Count</strong> <small class="text-muted">(&times;10&sup3;/&micro;L)</small></td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" id="input-wbc"
+                                   min="1" max="30" step="0.1" placeholder="e.g. 7.0"
+                                   aria-label="WBC in x10^3/uL">
+                        </td>
+                        <td id="score-wbc" class="fw-bold">0</td>
+                    </tr>
+                    <!-- Binary factors -->
+                    <tr>
+                        <td><strong>Previous Spontaneous Bleeding</strong></td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="input-bleeding"
+                                       aria-label="Previous spontaneous bleeding">
+                                <label class="form-check-label" for="input-bleeding">Yes</label>
+                            </div>
+                        </td>
+                        <td id="score-bleeding" class="fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Long-term Oral Anticoagulation</strong></td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="input-oac"
+                                       aria-label="Oral anticoagulation">
+                                <label class="form-check-label" for="input-oac">Yes</label>
+                            </div>
+                        </td>
+                        <td id="score-oac" class="fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>ARC-HBR Factors &ge;1</strong>
+                            <br><small class="text-muted">Thrombocytopenia, bleeding diathesis, active malignancy,
+                                liver cirrhosis, recent major surgery/trauma, chronic NSAIDs/corticosteroids</small>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="input-arc"
+                                       aria-label="ARC-HBR factors present">
+                                <label class="form-check-label" for="input-arc">Yes</label>
+                            </div>
+                        </td>
+                        <td id="score-arc" class="fw-bold">0</td>
+                    </tr>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td><strong>Base Score</strong></td>
+                        <td></td>
+                        <td id="score-base" class="fw-bold">2</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="form-text mt-2" role="note">
+                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                Enter values to calculate the PRECISE-HBR bleeding risk score. The total score updates automatically.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tradeoff Analysis Link -->
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="mb-1"><i class="fas fa-balance-scale text-primary"></i> Bleeding vs. Thrombosis Tradeoff Analysis</h5>
+                    <p class="text-muted mb-0">
+                        Assess the individualized risk of BARC 3-5 bleeding vs. MI/stent thrombosis
+                        using the ARC-HBR tradeoff model.
+                    </p>
+                </div>
+                <a href="/standalone/tradeoff" class="btn btn-primary btn-lg">
+                    <i class="fas fa-arrow-right"></i> Tradeoff Calculator
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- HBR Clinical Recommendations (shown when score >= 23) -->
+    <div class="d-none" id="hbr-recommendations-section">
+        <div class="alert alert-warning border-warning">
+            <h4 class="mb-3">
+                <i class="fas fa-exclamation-triangle text-warning"></i>
+                <strong>High Bleeding Risk (HBR) Detected</strong>
+            </h4>
+            <p class="mb-2">
+                Based on the PRECISE-HBR score (&ge;23), consider abbreviated DAPT or de-escalation strategies.
+                <strong>Always consult with the treating physician</strong> before making changes to antiplatelet therapy.
+            </p>
+        </div>
+    </div>
+
+    <!-- ARC-HBR Guideline Image -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-image"></i> ARC-HBR Guideline Reference</h5>
+        </div>
+        <div class="card-body text-center">
+            <img src="{{ url_for('static', filename='images/ARCHBR.png') }}" alt="ARC-HBR Guideline"
+                class="img-fluid" style="max-width:800px">
+        </div>
+    </div>
+
+    <!-- Citation -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-book"></i> Citation</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-1"><strong>Title:</strong> Derivation and Validation of the PRECISE-HBR Score to
+                Predict Bleeding After Percutaneous Coronary Intervention</p>
+            <p class="mb-1"><strong>Authors:</strong> Gragnano, Felice; van Klaveren, David; Heg, Dik; et al.</p>
+            <p class="mb-1"><strong>Journal:</strong> Circulation</p>
+            <p class="mb-1"><strong>DOI:</strong> <a href="https://doi.org/10.1161/CIRCULATIONAHA.124.072009"
+                    target="_blank" rel="noopener noreferrer">10.1161/CIRCULATIONAHA.124.072009</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/standalone_calculator.js') }}"></script>
+{% endblock %}
