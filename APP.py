@@ -166,7 +166,11 @@ if __name__ == '__main__':
             raise ValueError("Debug mode is not allowed in production environments.")
         
         if not app.config.get('SESSION_COOKIE_SECURE'):
-            app.logger.warning("SESSION_COOKIE_SECURE should be True in production with HTTPS")
+            app.logger.error(
+                "SESSION_COOKIE_SECURE is not set in production. "
+                "Forcing SESSION_COOKIE_SECURE=True to prevent cookie theft over HTTP."
+            )
+            app.config['SESSION_COOKIE_SECURE'] = True
         
         app.logger.info("Starting application in PRODUCTION mode with enhanced security")
         debug_mode = False

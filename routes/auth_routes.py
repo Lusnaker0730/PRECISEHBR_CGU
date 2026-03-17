@@ -205,7 +205,12 @@ def launch():
     code_verifier, code_challenge = generate_pkce_parameters()
     oauth_state = generate_oauth_state()
 
-    # H-02: Validate token_url BEFORE storing in session
+    # H-02: Validate both auth_url and token_url BEFORE use/storage (SSRF prevention)
+    is_valid_auth, auth_url_err = validate_url(auth_url, allow_localhost=current_app.config.get('TESTING', False))
+    if not is_valid_auth:
+        current_app.logger.error(f"Invalid auth_url discovered: {auth_url_err}")
+        return render_error_page("FHIR Config Error", "Invalid authorization endpoint URL discovered.")
+
     is_valid_token, url_err = validate_url(token_url, allow_localhost=current_app.config.get('TESTING', False))
     if not is_valid_token:
         current_app.logger.error(f"Invalid token_url discovered: {url_err}")
@@ -364,6 +369,18 @@ def store_token_response(token_response, launch_params):
         
         if validation_error:
             skip_validation = os.environ.get('SKIP_ID_TOKEN_VALIDATION', '').lower() in ('true', '1', 'yes')
+            is_production = (
+                os.environ.get('FLASK_ENV') == 'production'
+                or os.environ.get('PRODUCTION') == 'true'
+                or os.environ.get('GAE_ENV') == 'standard'
+            )
+            if skip_validation and is_production:
+                # SECURITY: Block skip in production — fail-closed
+                current_app.logger.error(
+                    "SKIP_ID_TOKEN_VALIDATION is set in a PRODUCTION environment. "
+                    "This is a security violation — ignoring the skip flag."
+                )
+                skip_validation = False
             if skip_validation:
                 # Sandbox/testing mode: log warning but allow authentication to proceed
                 current_app.logger.warning(

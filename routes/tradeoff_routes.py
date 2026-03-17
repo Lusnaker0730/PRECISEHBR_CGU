@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, render_template, request, session, jso
 from services import fhir_data_service
 from fhirclient import client
 import logging
+from extensions import limiter
 from utils.web_utils import login_required
 from utils.patient_context import validate_patient_context
 import utils.input_validator as input_validator
@@ -23,6 +24,7 @@ def tradeoff_analysis_page():
 
 @tradeoff_bp.route('/api/calculate_tradeoff', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def calculate_tradeoff_api():
     """
     API endpoint for the bleeding vs. thrombosis tradeoff analysis.
