@@ -23,6 +23,11 @@ class RiskClassifierService:
     _CLOGLOG_A = -5.3945
     _CLOGLOG_B = 0.09725
 
+    # Valid score range for the cloglog calibration curve (validation study).
+    # Scores outside this range are clamped to prevent math overflow.
+    _SCORE_MIN = 2
+    _SCORE_MAX = 54
+
     @classmethod
     def calculate_bleeding_risk_percentage(cls, precise_hbr_score):
         """
@@ -33,7 +38,19 @@ class RiskClassifierService:
 
         Returns the estimated 1-year risk of BARC 3 or 5 bleeding events.
         """
-        linear_predictor = cls._CLOGLOG_A + cls._CLOGLOG_B * precise_hbr_score
+        if not isinstance(precise_hbr_score, (int, float)) or math.isnan(precise_hbr_score):
+            logger.warning(f"Invalid score type for bleeding risk: {precise_hbr_score}")
+            return 0.0
+
+        # Clamp to validated range to prevent math.exp overflow/domain errors
+        clamped = max(cls._SCORE_MIN, min(cls._SCORE_MAX, precise_hbr_score))
+        if clamped != precise_hbr_score:
+            logger.warning(
+                f"PRECISE-HBR score {precise_hbr_score} outside validated range "
+                f"[{cls._SCORE_MIN}, {cls._SCORE_MAX}], clamped to {clamped}"
+            )
+
+        linear_predictor = cls._CLOGLOG_A + cls._CLOGLOG_B * clamped
         risk = 1.0 - math.exp(-math.exp(linear_predictor))
         return round(risk * 100, 2)
     

@@ -97,12 +97,20 @@ class ConditionCheckerService:
     def _matches_icd10_code(code: str, target_codes: list) -> bool:
         """
         Check if an ICD-10 code matches any target code.
-        Supports exact match or prefix match (e.g., "I21" matches "I21.0").
+        Supports exact match, dot-separated prefix (e.g., "I21" matches "I21.0"),
+        and same-length-category prefix (e.g., "I21" matches "I219").
+        Requires that the target is at least 3 characters (standard ICD-10 category)
+        to prevent over-inclusive matching (e.g., "D6" should not match "D60").
         """
-        return any(
-            code == target or code.startswith(target + ".")
-            for target in target_codes
-        )
+        for target in target_codes:
+            if code == target:
+                return True
+            if code.startswith(target + "."):
+                return True
+            # Allow subcategory expansion only for full category codes (3+ chars)
+            if len(target) >= 3 and code.startswith(target) and len(code) > len(target):
+                return True
+        return False
 
     @classmethod
     def _find_snomed_code(cls, condition: dict, target_codes: list) -> str | None:
@@ -209,10 +217,11 @@ class ConditionCheckerService:
                     display = diagnosis_info['icd10_display'] or f"Prior bleeding (ICD-10: {code})"
                     found_bleeding.add(display)
 
-            # Check text for bleeding terms
+            # Check text for bleeding terms (word-boundary matching for consistency)
             condition_text = cls.get_condition_text(condition).lower()
             for keyword in bleeding_keywords:
-                if keyword.lower() in condition_text:
+                pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                if re.search(pattern, condition_text):
                     found_bleeding.add(condition_text)
                     break
 

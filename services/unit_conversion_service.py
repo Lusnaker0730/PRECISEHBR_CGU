@@ -62,8 +62,8 @@ class UnitConversionService:
                 'ml/min/1.73 m2': 1.0,      # With space
                 'ml/min/1.73 m^2': 1.0,     # Space and caret
                 'ml/min per 1.73m2': 1.0,   # With 'per'
-                'ml/min/bsa': 1.0,          # Body surface area
-                'ml/min': 1.0,              # Without BSA normalization
+                'ml/min/bsa': 1.0,          # Body surface area (assumes 1.73m²)
+                'ml/min': 1.0,              # Without BSA normalization (CAUTION: may differ ±20%)
                 # Additional UCUM variants
                 'ml/min/1.73m**2': 1.0,     # Python-style exponent
                 'ml/min/1.73m²': 1.0,       # Unicode superscript
@@ -161,6 +161,15 @@ class UnitConversionService:
         if source_unit in conversion_factors:
             conversion_factor = conversion_factors[source_unit]
             converted_value = value * conversion_factor
+
+            # Warn for eGFR units that assume BSA normalization
+            _IMPRECISE_EGFR_UNITS = {'ml/min', 'ml/min/bsa'}
+            if source_unit in _IMPRECISE_EGFR_UNITS and target_unit == 'ml/min/1.73m2':
+                logging.warning(
+                    f"eGFR unit '{raw_unit}' is not explicitly BSA-normalized to 1.73m². "
+                    f"Treating {value} as ml/min/1.73m² — actual value may differ."
+                )
+
             logging.info(f"Converted {value} {source_unit} to {converted_value:.2f} {target_unit}")
             return {'value': converted_value, 'status': cls.STATUS_OK,
                     'source_unit': raw_unit, 'target_unit': target_unit,

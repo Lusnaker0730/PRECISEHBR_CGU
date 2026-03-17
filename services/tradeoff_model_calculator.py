@@ -367,7 +367,7 @@ class TradeoffModelCalculator:
                 moderate = hb_ranges.get('moderate', {'min': 11, 'max': 13})
                 severe = hb_ranges.get('severe', {'max': 11})
                 
-                if moderate['min'] <= hb_val < moderate['max']:
+                if moderate['min'] <= hb_val <= moderate['max']:
                     detected_factors['hemoglobin_11_12.9'] = True
                 elif hb_val < severe['max']:
                     detected_factors['hemoglobin_lt_11'] = True
@@ -405,7 +405,7 @@ class TradeoffModelCalculator:
             moderate = egfr_ranges.get('moderate', {'min': 30, 'max': 60})
             severe = egfr_ranges.get('severe', {'max': 30})
             
-            if moderate['min'] <= egfr_val < moderate['max']:
+            if moderate['min'] <= egfr_val <= moderate['max']:
                 detected_factors['egfr_30_59'] = True
             elif egfr_val < severe['max']:
                 detected_factors['egfr_lt_30'] = True
@@ -441,14 +441,25 @@ class TradeoffModelCalculator:
         Returns:
             Event probability as percentage (0-100)
         """
-        baseline_rate_decimal = baseline_event_rate / 100.0
-
-        if baseline_rate_decimal >= 1.0:
+        # Validate inputs to prevent math domain errors
+        if baseline_event_rate <= 0:
+            logging.warning(f"baseline_event_rate={baseline_event_rate} is non-positive, returning 0")
+            return 0.0
+        if baseline_event_rate >= 100.0:
             return 100.0
+        if total_hr_score <= 0:
+            logging.warning(f"total_hr_score={total_hr_score} is non-positive, returning 0")
+            return 0.0
 
+        baseline_rate_decimal = baseline_event_rate / 100.0
         baseline_hazard = -math.log(1 - baseline_rate_decimal)
         adjusted_hazard = baseline_hazard * total_hr_score
-        event_probability = 1 - math.exp(-adjusted_hazard)
+
+        # Guard against overflow in exp()
+        try:
+            event_probability = 1 - math.exp(-adjusted_hazard)
+        except OverflowError:
+            return 100.0
 
         return round(min(event_probability * 100.0, 100.0), 2)
     
