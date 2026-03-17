@@ -1,0 +1,27 @@
+case_id,description,age_ge_65,liver_cancer_surgery,copd,smoker,hb_11_12.9,hb_lt_11,egfr_30_59,egfr_lt_30,complex_pci,oac_discharge,diabetes,prior_mi,nstemi_stemi,bms,expected_bleeding_pct,expected_mi_st_pct,note
+T-BASE,All factors off (baseline),0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.4,1.4,baseline
+T-BL-01,Age>=65 only,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2.09,1.4,single bleeding factor
+T-BL-02,Liver/cancer/surgery only,0,1,0,0,0,0,0,0,0,0,0,0,0,0,2.27,1.4,single bleeding factor
+T-BL-03,COPD only,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1.94,1.4,single bleeding factor
+T-BL-04,Smoker only,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2.05,2.07,shared factor
+T-BL-05,Hb 11-12.9 only,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2.35,1.77,shared factor
+T-BL-06,Hb <11 only,0,0,0,0,0,1,0,0,0,0,0,0,0,0,5.47,2.09,shared factor
+T-BL-07,eGFR <30 only,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,2.35,shared factor
+T-BL-08,Complex PCI only,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1.84,2.09,shared factor
+T-BL-09,OAC at discharge only,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2.78,1.4,single bleeding factor
+T-TH-01,Diabetes only,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1.4,2.18,single thrombotic factor
+T-TH-02,Prior MI only,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1.4,2.63,single thrombotic factor
+T-TH-03,NSTEMI/STEMI only,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1.4,2.53,single thrombotic factor
+T-TH-04,eGFR 30-59 only,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1.39,1.82,single thrombotic factor
+T-TH-05,BMS only,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1.4,2.13,single thrombotic factor
+T-COMB-01,Age>=65 + Hb<11 + OAC,1,0,0,0,0,1,0,0,0,1,0,0,0,0,15.53,2.09,high bleeding risk combo
+T-COMB-02,Diabetes + Prior MI + NSTEMI,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1.4,7.29,high thrombotic risk combo
+T-COMB-03,Smoker + Hb 11-12.9 + eGFR<30,0,0,0,1,1,0,0,1,0,0,0,0,0,0,4.89,4.38,mixed risk
+T-COMB-04,All bleeding factors on,1,1,1,1,0,1,0,1,1,1,0,0,0,0,65.39,7.63,max bleeding
+T-COMB-05,All thrombotic factors on,0,0,0,1,0,1,0,1,1,0,1,1,1,1,14.45,47.87,max thrombotic
+T-COMB-06,All factors on,1,1,1,1,0,1,0,1,1,1,1,1,1,1,65.39,47.87,max risk
+T-PAPER-01,Paper Patient 1 (63M NSTEMI complex),0,0,0,0,1,0,0,1,1,1,1,0,1,0,8.6,21.6,paper validation
+T-PAPER-02,Paper Patient 2 (77F stable Hb10.7),1,0,0,0,0,1,1,0,0,0,1,0,0,0,8.6,2.1,paper validation
+T-PAPER-03,Paper Patient 3 (51M NSTEMI liver smoker),0,1,0,1,1,0,0,0,0,0,0,0,1,0,5.5,3.4,paper validation
+T-EDGE-01,Thrombotic factors only (no bleeding),0,0,0,0,0,0,1,0,0,0,1,1,1,1,1.39,13.97,bleeding should be near baseline
+T-EDGE-02,Bleeding factors only (no thrombotic),1,1,1,0,0,1,0,1,0,1,0,0,0,0,42.12,3.5,thrombotic should be near baseline
