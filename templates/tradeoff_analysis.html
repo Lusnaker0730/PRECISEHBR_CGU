@@ -358,7 +358,7 @@
             // Based on JAMA Cardiology paper: mortality ratio is 1.9x higher after MI/ST vs bleeding
             const MORTALITY_RATIO = 1.9; // From paper: MI/ST mortality vs bleeding mortality ratio
             const HBR_THRESHOLD = 4.0;   // High Bleeding Risk threshold (4% per year, ARC-HBR criteria)
-            const MIN_LOG_VALUE = 0.1;   // Minimum value for logarithmic scale
+            const MIN_LOG_VALUE = 1.25;  // Minimum value for logarithmic scale (matches JAMA paper)
 
             // === Security: HTML escape utility to prevent XSS ===
             function escapeHtml(text) {
@@ -720,18 +720,24 @@
                             scales: {
                                 x: {
                                     type: 'logarithmic',
-                                    title: { display: true, text: 'Estimated 1-Year Bleeding Risk (BARC 3-5, %)' },
-                                    min: 0.1, max: 50,
+                                    title: { display: true, text: 'Predicted 1-y risk of BARC types 3 to 5 bleeding, %' },
+                                    min: 1.25, max: 80,
                                     ticks: {
-                                        callback: function (value, index, values) { return Number(value.toString()); }
+                                        callback: function (value) {
+                                            var allowed = [1.25, 2.5, 5, 10, 20, 50, 80];
+                                            return allowed.includes(value) ? value : '';
+                                        }
                                     }
                                 },
                                 y: {
                                     type: 'logarithmic',
-                                    title: { display: true, text: 'Estimated 1-Year Ischemic Risk (MI/ST, %)' },
-                                    min: 0.1, max: 50,
+                                    title: { display: true, text: 'Predicted 1-y risk of MI and/or ST, %' },
+                                    min: 1.25, max: 80,
                                     ticks: {
-                                        callback: function (value, index, values) { return Number(value.toString()); }
+                                        callback: function (value) {
+                                            var allowed = [1.25, 2.5, 5, 10, 20, 50, 80];
+                                            return allowed.includes(value) ? value : '';
+                                        }
                                     }
                                 }
                             },
