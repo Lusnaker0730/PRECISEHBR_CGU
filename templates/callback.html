@@ -23,7 +23,7 @@
 
     <!-- FHIR Client (with SRI) -->
     <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.2/build/fhir-client.min.js"
-            integrity="sha384-jnRt42qMF3DX+5DKhzwQjiPbGPfvOlxUhbOYLOdCBNT8aSxBY0lcJZXpIzKdULph"
+            integrity="sha384-CLEMSkpqHU7d5zMjvwZRCgIZQ/ITc0t0Mv5ImcB5OMzYu2jZZDk38voqpjUnFxTA"
             crossorigin="anonymous"></script>
 
     <style nonce="{{ csp_nonce() }}">
@@ -292,6 +292,10 @@
             background: #10b981;
         }
 
+        .step.error {
+            background: #ef4444;
+        }
+
         .security-badge {
             display: flex;
             align-items: center;
@@ -398,7 +402,7 @@
                 errorText.textContent = message;
                 errorMessage.classList.add('visible');
                 step2.classList.remove('active');
-                step2.style.background = '#ef4444';
+                step2.classList.add('error');
             }
 
             function showSuccess() {
@@ -451,7 +455,7 @@
 
     <!-- Babel Polyfill (with SRI) and Cerner Lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"
-            integrity="sha512-Q8IGgKwDLT+1an+ikzXtPs584hDxyP2X6NFpDyDwrJfpb7UCqRSNv3MAvD5lXk/Y/FxT6dYk+h/sPxWTcPPFwA=="
+            integrity="sha512-vDTLyifjBBdmGeJrJMO7w+qbbk+7uyoKsUxkhgxPtn3YShSVspezU0EXf780txBgNXzfKkEt7a3RhLs7NmInJQ=="
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
     <script src="/static/js/cerner-smart-embeddable-lib-1.7.0.min.js"></script>
