@@ -13,18 +13,36 @@
     <!-- Bootstrap Icons (with SRI) -->
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
-          integrity="sha384-b6lVK+yci+bfDmaY1u0zE8YYJt0TZxLEAFyYSLHId4xoVvsrQu3INevFKo+Xir8e"
+          integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD"
           crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <!-- Chart.js (with SRI) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-            integrity="sha384-K2gBuGwHHLPdGI3GCXFyHbfHLoganXvNjSZ3nyxVLwGNtdN5pTl/Xbix7R2lH7iZ"
+            integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
             crossorigin="anonymous"></script>
     <!-- Chart.js Annotation Plugin (with SRI) -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"
-            integrity="sha384-aDRB2rbtLOWfGwdZzc5A1qnHfLEURPW0Sg7nLfvBGwHrHHV5J0MZP0WS6HxKjUe2"
+            integrity="sha384-cu6A/ZMsqLbWFlYSPeNOQ7QqrB6w0y2aspFO9/KW8SQDoXiM043mLkXYKaRpiAQl"
             crossorigin="anonymous"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style nonce="{{ csp_nonce() }}">
+        .legend-teal { color: #87CEEB; }
+        .legend-gray { color: #C8C8C8; }
+        .legend-orange { color: #FFC896; }
+        .legend-line-teal { color: #006464; }
+        .legend-line-orange { color: #FF8C00; }
+        .risk-factors-header {
+            background: linear-gradient(90deg, #dc3545 0%, #0d6efd 100%);
+            color: white;
+        }
+        .factor-list-scroll { max-height: 500px; }
+        .recommendations-hidden { display: none; }
+        .hbr-alert-left-border { border-left: 5px solid #ffc107; }
+        .tradeoff-img { max-height: 400px; object-fit: contain; cursor: pointer; }
+        .hbr-guideline-clickable { max-width: 100%; height: auto; cursor: pointer; }
+        .citation-icon { font-size: 2rem; color: #198754; margin-right: 1rem; }
+        .citation-primary { color: #dc3545; }
+    </style>
 </head>
 
 <body class="tradeoff-page">
@@ -43,38 +61,38 @@
         <h3 class="text-center">Risk Trade-off Analysis (Bleeding vs. Ischemic Risk)</h3>
         <p class="text-center text-muted">Patient ID: {{ patient_id }}</p>
 
-        <div class="row justify-content-center" id="content-row" style="visibility: visible;">
+        <div class="row justify-content-center" id="content-row">
             <div class="col-md-4" id="chart-column">
                 <div class="chart-container">
                     <canvas id="tradeoffChart"></canvas>
                 </div>
                 <div id="chart-legend" class="mt-3">
-                    <p><span style="color: #87CEEB;">■</span> <strong>Teal Area:</strong> Above equal trade-off line
+                    <p><span class="legend-teal">■</span> <strong>Teal Area:</strong> Above equal trade-off line
                         (y=x).
                         Ischemic risk is higher than bleeding risk.</p>
-                    <p><span style="color: #C8C8C8;">■</span> <strong>Gray Area:</strong> Between equal (1:1) and
+                    <p><span class="legend-gray">■</span> <strong>Gray Area:</strong> Between equal (1:1) and
                         mortality-weighted lines.
                         Considering that MI/ST has 1.9× higher associated mortality, risks can be considered equivalent.
                     </p>
-                    <p><span style="color: #FFC896;">■</span> <strong>Orange Area:</strong> Below mortality-weighted
+                    <p><span class="legend-orange">■</span> <strong>Orange Area:</strong> Below mortality-weighted
                         line (y=x/1.9).
                         Bleeding risk dominates when considering associated mortality.</p>
                     <hr>
                     <small class="text-muted">
                         <strong>Lines:</strong><br>
-                        <span style="color: #006464;">---</span> Equal trade-off (1:1)<br>
-                        <span style="color: #FF8C00;">---</span> Mortality-weighted trade-off (1:1.9)
+                        <span class="legend-line-teal">---</span> Equal trade-off (1:1)<br>
+                        <span class="legend-line-orange">---</span> Mortality-weighted trade-off (1:1.9)
                     </small>
                 </div>
             </div>
             <div class="col-md-5" id="risk-factors-column">
                 <div class="card">
                     <div class="card-header bg-gradient"
-                        style="background: linear-gradient(90deg, #dc3545 0%, #0d6efd 100%); color: white;">
+                        class="risk-factors-header">
                         <h5 class="mb-0">Risk Factors</h5>
                         <small>Select applicable factors - they will be applied to relevant risk calculations</small>
                     </div>
-                    <ul class="list-group list-group-flush factor-list" id="all-factors" style="max-height: 500px;">
+                    <ul class="list-group list-group-flush factor-list factor-list-scroll" id="all-factors">
                     </ul>
                 </div>
                 <div class="mt-3">
@@ -98,10 +116,10 @@
         </div>
 
         <!-- Clinical Recommendations Section -->
-        <div class="row mt-5" id="recommendations-section" style="display: none;">
+        <div class="row mt-5 recommendations-hidden" id="recommendations-section">
             <div class="col-12">
                 <hr class="my-4">
-                <div class="alert alert-warning border-warning" style="border-left: 5px solid #ffc107;">
+                <div class="alert alert-warning border-warning hbr-alert-left-border">
                     <h4 class="mb-3">
                         <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                         <strong>High Bleeding Risk (HBR) Detected</strong>
@@ -167,7 +185,7 @@
                             <div class="text-center mt-3">
                                 <img src="{{ url_for('static', filename='images/HBR_guideline.jpg') }}"
                                     alt="HBR Antiplatelet Strategy Guideline" class="img-fluid rounded shadow"
-                                    id="hbr-guideline-image" style="max-width: 100%; height: auto; cursor: pointer;">
+                                    id="hbr-guideline-image" class="hbr-guideline-clickable">
                                 <p class="text-muted mt-2">
                                     <small>Click image to view full size | Source: ESC Guidelines</small>
                                 </p>
@@ -207,7 +225,7 @@
                     <div class="card-body text-center">
                         <img src="{{ url_for('static', filename='images/jama_tradeoff_scatter.png') }}"
                             alt="JAMA Trade-off Scatter Plot" class="img-fluid rounded shadow research-image"
-                            style="max-height: 400px; object-fit: contain; cursor: pointer;">
+                            class="tradeoff-img">
                     </div>
                     <div class="card-footer text-muted">
                         <small><strong>Figure 3:</strong> Trade-off model showing equal (1:1) and mortality-weighted
@@ -224,7 +242,7 @@
                     <div class="card-body text-center">
                         <img src="{{ url_for('static', filename='images/jama_mortality_curve.png') }}"
                             alt="JAMA Mortality Curves" class="img-fluid rounded shadow research-image"
-                            style="max-height: 400px; object-fit: contain; cursor: pointer;">
+                            class="tradeoff-img">
                     </div>
                     <div class="card-footer text-muted">
                         <small><strong>Figure 2:</strong> Mortality after MI/ST (~29%) vs BARC 3-5 bleeding (~26%).
@@ -241,7 +259,7 @@
                     <div class="card-body text-center">
                         <img src="{{ url_for('static', filename='images/jama_calibration.png') }}"
                             alt="JAMA Model Calibration" class="img-fluid rounded shadow research-image"
-                            style="max-height: 400px; object-fit: contain; cursor: pointer;">
+                            class="tradeoff-img">
                     </div>
                     <div class="card-footer text-muted">
                         <small><strong>Figure S1:</strong> Observed vs predicted risk by quintiles. Model shows good
@@ -264,7 +282,7 @@
                         </p>
                         <div class="d-flex align-items-center">
                             <i class="bi bi-file-earmark-text"
-                                style="font-size: 2rem; color: #198754; margin-right: 1rem;"></i>
+                                class="citation-icon"></i>
                             <div>
                                 <a href="{{ url_for('static', filename='images/citations-20251018T005817.ris') }}"
                                     class="btn btn-success btn-lg" download="ARC-HBR-Citations.ris">
@@ -304,7 +322,7 @@
                     <p class="mb-0">
                         <strong>Key References:</strong>
                     <ul class="mt-2 mb-0">
-                        <li><strong style="color: #dc3545;">PRIMARY SOURCE:</strong> Costa F, Valgimigli M, et al.
+                        <li><strong class="citation-primary">PRIMARY SOURCE:</strong> Costa F, Valgimigli M, et al.
                             Assessing the Risks of Bleeding vs Thrombotic Events in Patients at High Bleeding Risk
                             After Coronary Stent Implantation: The ARC-High Bleeding Risk Trade-off Model.
                             <em>JAMA Cardiology.</em> 2021;6(4):410-419.
@@ -424,7 +442,7 @@
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
                     // Show loading overlay
-                    document.getElementById('loading-overlay').style.display = 'flex';
+                    document.getElementById('loading-overlay').classList.remove('d-none');
                     document.getElementById('main-content').classList.add('content-hidden');
 
                     const patientId = "{{ patient_id }}";
@@ -453,7 +471,7 @@
                         } catch (e) { /* not JSON */ }
 
                         if (response.status === 401 || requiresReauth) {
-                            document.getElementById('loading-overlay').style.display = 'none';
+                            document.getElementById('loading-overlay').classList.add('d-none');
                             document.getElementById('main-content').classList.remove('content-hidden');
                             document.getElementById('main-content').innerHTML = `
                                 <div class="container mt-5">
@@ -484,9 +502,9 @@
 
                     // Hide loading overlay after a short delay to ensure smooth transition
                     setTimeout(() => {
-                        document.getElementById('loading-overlay').style.display = 'none';
+                        document.getElementById('loading-overlay').classList.add('d-none');
                         document.getElementById('main-content').classList.remove('content-hidden');
-                        document.getElementById('content-row').style.visibility = 'visible';
+                        document.getElementById('content-row').classList.remove('d-none');
                     }, 300);
 
                     // Event delegation for factor checkboxes
@@ -510,7 +528,7 @@
                 } catch (error) {
                     console.error('Error loading tradeoff analysis:', error);
                     alert('Error loading tradeoff analysis. Please try again.');
-                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('loading-overlay').classList.add('d-none');
                 }
             });
 
@@ -664,7 +682,11 @@
                 // Check for High Bleeding Risk (HBR) using configured threshold
                 const isHBR = scores.bleeding_score >= HBR_THRESHOLD;
                 const recommendationsSection = document.getElementById('recommendations-section');
-                recommendationsSection.style.display = isHBR ? 'block' : 'none';
+                if (isHBR) {
+                    recommendationsSection.classList.remove('recommendations-hidden');
+                } else {
+                    recommendationsSection.classList.add('recommendations-hidden');
+                }
 
                 // Handle zero values for logarithmic scale (log(0) is undefined)
                 const bleeding_score = Math.max(scores.bleeding_score, MIN_LOG_VALUE);
