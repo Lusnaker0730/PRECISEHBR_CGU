@@ -216,6 +216,44 @@ def get_scoring_config():
             'error_type': 'config_error'
         }), 500
 
+@api_bp.route('/api/config/tradeoff-model', methods=['GET'])
+@limiter.limit("30 per minute")
+def get_tradeoff_model_config():
+    """
+    API endpoint to expose ARC-HBR tradeoff model data to frontend.
+
+    Serves predictor HR values from arc-hbr-model.json and baseline
+    event rates / mortality ratio from cdss_config.json, ensuring
+    frontend standalone calculators stay in sync with the backend.
+    """
+    try:
+        from services.tradeoff_model_calculator import TradeoffModelCalculator
+
+        model = TradeoffModelCalculator.load_tradeoff_model()
+        if not model:
+            return jsonify({
+                'error': 'Tradeoff model not available',
+                'error_type': 'config_error'
+            }), 500
+
+        tradeoff_config = config_loader.get_tradeoff_config() or {}
+        baseline_rates = tradeoff_config.get('baseline_event_rates', {})
+
+        return jsonify({
+            'bleedingPredictors': model.get('bleedingEvents', {}).get('predictors', []),
+            'thromboticPredictors': model.get('thromboticEvents', {}).get('predictors', []),
+            'baselineRatePercent': baseline_rates.get('bleeding_rate_percent', 1.4),
+            'mortalityRatio': tradeoff_config.get('mortality_ratio', 1.9),
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error loading tradeoff model config: {str(e)}")
+        return jsonify({
+            'error': 'Failed to load tradeoff model',
+            'error_type': 'config_error'
+        }), 500
+
+
 @api_bp.route('/api/feedback', methods=['POST'])
 @login_required
 @limiter.limit("5 per minute")

@@ -20,8 +20,8 @@ T-COMB-03,Smoker + Hb 11-12.9 + eGFR<30,0,0,0,1,1,0,0,1,0,0,0,0,0,0,4.89,4.38,mi
 T-COMB-04,All bleeding factors on,1,1,1,1,0,1,0,1,1,1,0,0,0,0,65.39,7.63,max bleeding
 T-COMB-05,All thrombotic factors on,0,0,0,1,0,1,0,1,1,0,1,1,1,1,14.45,47.87,max thrombotic
 T-COMB-06,All factors on,1,1,1,1,0,1,0,1,1,1,1,1,1,1,65.39,47.87,max risk
-T-PAPER-01,Paper Patient 1 (63M NSTEMI complex),0,0,0,0,1,0,0,1,1,1,1,0,1,0,8.6,21.6,paper validation
-T-PAPER-02,Paper Patient 2 (77F stable Hb10.7),1,0,0,0,0,1,1,0,0,0,1,0,0,0,8.6,2.1,paper validation
-T-PAPER-03,Paper Patient 3 (51M NSTEMI liver smoker),0,1,0,1,1,0,0,0,0,0,0,0,1,0,5.5,3.4,paper validation
+T-PAPER-01,Paper Patient 1 (63M NSTEMI complex),0,0,0,0,1,0,0,1,1,1,1,0,1,0,8.6,12.09,app validation
+T-PAPER-02,Paper Patient 2 (77F stable Hb10.7),1,0,0,0,0,1,1,0,0,0,1,0,0,0,8.01,4.2,app validation
+T-PAPER-03,Paper Patient 3 (51M NSTEMI liver smoker),0,1,0,1,1,0,0,0,0,0,0,0,1,0,5.55,4.71,app validation
 T-EDGE-01,Thrombotic factors only (no bleeding),0,0,0,0,0,0,1,0,0,0,1,1,1,1,1.39,13.97,bleeding should be near baseline
 T-EDGE-02,Bleeding factors only (no thrombotic),1,1,1,0,0,1,0,1,0,1,0,0,0,0,42.12,3.5,thrombotic should be near baseline
