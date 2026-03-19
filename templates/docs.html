@@ -11,7 +11,7 @@
     }
     .docs-nav {
         position: sticky;
-        top: 6rem; /* Adjust based on navbar height */
+        top: 6rem;
         align-self: flex-start;
         width: 220px;
         flex-shrink: 0;
@@ -32,13 +32,13 @@
     }
     .docs-content {
         flex-grow: 1;
-        min-width: 0; /* Prevents flexbox overflow */
+        min-width: 0;
     }
     .docs-content h4 {
         color: #0d6efd;
         margin-top: 2rem;
         margin-bottom: 1rem;
-        scroll-margin-top: 6rem; /* Offset for sticky nav */
+        scroll-margin-top: 6rem;
     }
     .docs-content h4 i {
         margin-right: 0.75rem;
@@ -55,6 +55,27 @@
         border-radius: 0.5rem;
         margin-bottom: 2rem;
     }
+    .formula-box {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0.375rem;
+        padding: 1.25rem 1.5rem;
+        margin: 1rem 0;
+        font-size: 1.05rem;
+    }
+    .formula-box code {
+        font-size: 1rem;
+        color: #0d6efd;
+    }
+    .param-table th {
+        background-color: #f0f4ff;
+    }
+    .risk-level-card {
+        border-radius: 0.375rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+    }
 </style>
 
 <div class="container-fluid mt-5">
@@ -62,9 +83,14 @@
         <!-- Sticky Navigation Sidebar -->
         <nav class="docs-nav d-none d-lg-block">
             <ul class="nav flex-column" id="docs-sidebar">
+                <li class="nav-item"><a class="nav-link" href="#indication">Clinical Indication</a></li>
                 <li class="nav-item"><a class="nav-link" href="#introduction">Introduction</a></li>
+                <li class="nav-item"><a class="nav-link" href="#formula">Scoring Formula</a></li>
+                <li class="nav-item"><a class="nav-link" href="#risk-classification">Risk Classification</a></li>
+                <li class="nav-item"><a class="nav-link" href="#arc-hbr">ARC-HBR Factors</a></li>
                 <li class="nav-item"><a class="nav-link" href="#core-features">Core Features</a></li>
                 <li class="nav-item"><a class="nav-link" href="#how-to-use">How to Use</a></li>
+                <li class="nav-item"><a class="nav-link" href="#references">References</a></li>
                 <li class="nav-item"><a class="nav-link" href="#tech-stack">Technical Stack</a></li>
             </ul>
         </nav>
@@ -73,54 +99,298 @@
         <div class="docs-content">
             <div class="hero-banner">
                 <h1 class="display-5">PRECISE-HBR Score Calculator</h1>
-                <p class="lead">A SMART on FHIR application for clinical decision support in assessing patient bleeding risk.</p>
+                <p class="lead">A SMART on FHIR clinical decision support tool for assessing bleeding risk after percutaneous coronary intervention (PCI).</p>
             </div>
 
+            <!-- Clinical Indication -->
+            <section id="indication">
+                <h4><i class="fas fa-heartbeat"></i>Clinical Indication</h4>
+                <div class="alert alert-info">
+                    <strong>Intended Use:</strong> Post-percutaneous coronary intervention (PCI) bleeding risk assessment to guide dual antiplatelet therapy (DAPT) duration decisions.
+                </div>
+                <p>This tool is designed for use in patients who have undergone or are planned to undergo <strong>percutaneous coronary intervention (PCI) with stent implantation</strong>. The PRECISE-HBR score helps clinicians:</p>
+                <ul>
+                    <li>Quantify the individualized 1-year risk of major bleeding (BARC type 3 or 5) after PCI</li>
+                    <li>Identify patients at high bleeding risk (HBR) who may benefit from <strong>shortened DAPT duration</strong> (1-3 months instead of standard 6-12 months)</li>
+                    <li>Balance bleeding risk against ischemic/thrombotic risk to optimize antiplatelet therapy</li>
+                    <li>Support shared decision-making between clinicians and patients regarding post-PCI antithrombotic strategy</li>
+                </ul>
+                <p><strong>Target Population:</strong> Adult patients (age &ge;18) undergoing PCI with coronary stent implantation, including both elective and acute coronary syndrome (ACS) presentations.</p>
+            </section>
+
+            <!-- Introduction -->
             <section id="introduction">
                 <h4><i class="fas fa-rocket"></i>Introduction</h4>
-                <p>The PRECISE-HBR Score Calculator is a web-based clinical decision support tool designed for healthcare professionals. It implements the <strong>PRECISE-HBR (Predicting Bleeding Complications in Patients Undergoing Stent Implantation and Subsequent Dual Antiplatelet Therapy)</strong> scoring model.</p>
-                <p>This application connects to FHIR-compliant electronic health record (EHR) systems using the SMART on FHIR standard to automatically retrieve patient data and calculate the risk score, helping clinicians assess bleeding risk for patients after percutaneous coronary intervention (PCI).</p>
+                <p>The PRECISE-HBR Score Calculator is a web-based clinical decision support tool designed for cardiologists and interventional medicine clinicians. It implements the <strong>PRECISE-HBR (PREdicting bleeding Complications In patients undergoing Stent implantation and subsEquent dual antiplatelet therapy &mdash; High Bleeding Risk)</strong> scoring model.</p>
+                <p>This application connects to FHIR-compliant electronic health record (EHR) systems using the SMART on FHIR standard to automatically retrieve patient data and calculate the risk score. Clinicians can also manually adjust input values to perform "what-if" analysis.</p>
             </section>
 
+            <!-- Scoring Formula -->
+            <section id="formula">
+                <h4><i class="fas fa-calculator"></i>Scoring Formula</h4>
+                <p>The PRECISE-HBR total score is computed as the sum of a base score, four continuous variable components, and three binary factors:</p>
+
+                <div class="formula-box">
+                    <strong>Total Score</strong> = Base Score + Age Score + Hemoglobin Score + eGFR Score + WBC Score + Bleeding Score + Anticoagulation Score + ARC-HBR Score
+                </div>
+
+                <h5 class="mt-4">Base Score</h5>
+                <div class="formula-box">
+                    <code>Base Score = 2</code> (constant, applied to all patients)
+                </div>
+
+                <h5 class="mt-4">Continuous Variables</h5>
+                <p>Each continuous variable is first <strong>truncated</strong> (clamped) to a clinically valid range, then a linear formula is applied:</p>
+
+                <table class="table table-bordered param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Truncation Range</th>
+                            <th>Formula</th>
+                            <th>Direction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Age</strong></td>
+                            <td>30 &ndash; 80 years</td>
+                            <td><code>(Effective Age &minus; 30) &times; 0.25</code></td>
+                            <td>Older &rarr; higher score</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hemoglobin</strong></td>
+                            <td>5 &ndash; 15 g/dL</td>
+                            <td><code>(15 &minus; Effective Hb) &times; 2.5</code></td>
+                            <td>Lower Hb &rarr; higher score</td>
+                        </tr>
+                        <tr>
+                            <td><strong>eGFR</strong></td>
+                            <td>5 &ndash; 100 mL/min/1.73m&sup2;</td>
+                            <td><code>(100 &minus; Effective eGFR) &times; 0.055</code></td>
+                            <td>Lower eGFR &rarr; higher score</td>
+                        </tr>
+                        <tr>
+                            <td><strong>WBC</strong></td>
+                            <td>3 &ndash; 15 &times;10&sup3;/&micro;L</td>
+                            <td><code>(Effective WBC &minus; 3.0) &times; 0.8</code></td>
+                            <td>Higher WBC &rarr; higher score</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p><em>"Effective" value means the raw value clamped to the truncation range. For example, if a patient's age is 85, the effective age used in calculation is 80.</em></p>
+
+                <h5 class="mt-4">Calculation Examples</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Raw Value</th>
+                            <th>Effective Value</th>
+                            <th>Calculation</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Age</td>
+                            <td>65 years</td>
+                            <td>65</td>
+                            <td>(65 &minus; 30) &times; 0.25</td>
+                            <td>8.75</td>
+                        </tr>
+                        <tr>
+                            <td>Hemoglobin</td>
+                            <td>12 g/dL</td>
+                            <td>12</td>
+                            <td>(15 &minus; 12) &times; 2.5</td>
+                            <td>7.5</td>
+                        </tr>
+                        <tr>
+                            <td>eGFR</td>
+                            <td>45 mL/min/1.73m&sup2;</td>
+                            <td>45</td>
+                            <td>(100 &minus; 45) &times; 0.055</td>
+                            <td>3.025</td>
+                        </tr>
+                        <tr>
+                            <td>WBC</td>
+                            <td>10 &times;10&sup3;/&micro;L</td>
+                            <td>10</td>
+                            <td>(10 &minus; 3.0) &times; 0.8</td>
+                            <td>5.6</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="mt-4">Binary Factors</h5>
+                <table class="table table-bordered param-table">
+                    <thead>
+                        <tr>
+                            <th>Factor</th>
+                            <th>Points if Present</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Previous Bleeding</strong></td>
+                            <td class="text-center"><span class="badge bg-danger">+7</span></td>
+                            <td>History of spontaneous bleeding (GI bleeding, intracranial hemorrhage, or bleeding requiring transfusion)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Long-term Oral Anticoagulation</strong></td>
+                            <td class="text-center"><span class="badge bg-danger">+5</span></td>
+                            <td>Chronic use of oral anticoagulants (Warfarin, DOACs such as Apixaban, Rivaroxaban, Dabigatran, Edoxaban)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ARC-HBR Factors (&ge;1)</strong></td>
+                            <td class="text-center"><span class="badge bg-warning text-dark">+3</span></td>
+                            <td>Presence of one or more ARC-HBR criteria (see ARC-HBR Factors section below)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="formula-box">
+                    <strong>Full Example:</strong> A 65-year-old patient with Hb 12 g/dL, eGFR 45, WBC 10, prior bleeding, on OAC, no ARC-HBR factors:<br>
+                    <code>Score = 2 + 8.75 + 7.5 + 3.025 + 5.6 + 7 + 5 + 0 = 38.875 &rarr; rounded to 39</code><br>
+                    <em>Risk Level: Very High Bleeding Risk (&ge;27)</em>
+                </div>
+            </section>
+
+            <!-- Risk Classification -->
+            <section id="risk-classification">
+                <h4><i class="fas fa-layer-group"></i>Risk Classification</h4>
+                <p>The total PRECISE-HBR score is classified into three risk categories:</p>
+
+                <div class="risk-level-card border-start border-5 border-success bg-light">
+                    <strong class="text-success">Non-High Bleeding Risk (Score &le; 22)</strong>
+                    <p class="mb-0">Estimated 1-year BARC 3/5 bleeding risk: <strong>&lt; 4%</strong><br>
+                    Standard DAPT duration (6-12 months) is generally appropriate.</p>
+                </div>
+                <div class="risk-level-card border-start border-5 border-warning bg-light">
+                    <strong class="text-warning">High Bleeding Risk (Score 23 &ndash; 26)</strong>
+                    <p class="mb-0">Estimated 1-year BARC 3/5 bleeding risk: <strong>4% &ndash; 6%</strong><br>
+                    Consider shortened DAPT (1-3 months) followed by P2Y12 inhibitor monotherapy.</p>
+                </div>
+                <div class="risk-level-card border-start border-5 border-danger bg-light">
+                    <strong class="text-danger">Very High Bleeding Risk (Score &ge; 27)</strong>
+                    <p class="mb-0">Estimated 1-year BARC 3/5 bleeding risk: <strong>&ge; 6%</strong><br>
+                    Strongly consider abbreviated DAPT (&le;1 month) or alternative antithrombotic strategies.</p>
+                </div>
+
+                <p class="mt-3"><em>BARC = Bleeding Academic Research Consortium. Type 3 = clinical bleeding requiring intervention; Type 5 = fatal bleeding.</em></p>
+            </section>
+
+            <!-- ARC-HBR Factors -->
+            <section id="arc-hbr">
+                <h4><i class="fas fa-exclamation-triangle"></i>ARC-HBR Factors</h4>
+                <p>The PRECISE-HBR model incorporates ARC-HBR (Academic Research Consortium &mdash; High Bleeding Risk) criteria as a composite binary factor (+3 points if &ge;1 factor present). The following conditions are assessed:</p>
+
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ARC-HBR Factor</th>
+                            <th>Criterion</th>
+                            <th>Classification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Thrombocytopenia</td>
+                            <td>Platelet count &lt; 100 &times;10&sup9;/L</td>
+                            <td><span class="badge bg-danger">Major</span></td>
+                        </tr>
+                        <tr>
+                            <td>Chronic Bleeding Diathesis</td>
+                            <td>Hemophilia, von Willebrand disease, or other coagulation factor deficiency</td>
+                            <td><span class="badge bg-danger">Major</span></td>
+                        </tr>
+                        <tr>
+                            <td>Liver Cirrhosis</td>
+                            <td>Liver cirrhosis with portal hypertension</td>
+                            <td><span class="badge bg-danger">Major</span></td>
+                        </tr>
+                        <tr>
+                            <td>Active Malignancy</td>
+                            <td>Active cancer diagnosed or treated within past 12 months (excluding non-melanoma skin cancer)</td>
+                            <td><span class="badge bg-danger">Major</span></td>
+                        </tr>
+                        <tr>
+                            <td>Chronic NSAID/Corticosteroid Use</td>
+                            <td>Chronic use of NSAIDs or corticosteroids (e.g. &ge;4 days/week)</td>
+                            <td><span class="badge bg-warning text-dark">Minor</span></td>
+                        </tr>
+                        <tr>
+                            <td>Recent Major Surgery or Trauma</td>
+                            <td>Major surgery or trauma within 30 days before PCI</td>
+                            <td><span class="badge bg-warning text-dark">Minor</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p><em>Note: Condition and medication detection is automated via FHIR data (ICD-10, SNOMED CT, medication codes) but should be secondary confirmed by clinicians.</em></p>
+            </section>
+
+            <!-- Core Features -->
             <section id="core-features">
                 <h4><i class="fas fa-star"></i>Core Features</h4>
-                <h5>PRECISE-HBR Score Calculation</h5>
-                <p>The main feature of the application is the automated calculation of the PRECISE-HBR score. The tool fetches the following data points from the patient's record:</p>
+
+                <h5>Automated FHIR Data Retrieval</h5>
+                <p>The application automatically retrieves the following data from the patient's EHR via FHIR R4 API:</p>
                 <ul>
-                    <li><strong>Demographics:</strong> Age</li>
-                    <li><strong>Lab Results:</strong> Hemoglobin, White Blood Cell (WBC) count, eGFR (or Creatinine for calculation)</li>
-                    <li><strong>Medical History:</strong> Prior bleeding events, oral anticoagulation use, and other ARC-HBR factors.</li>
+                    <li><strong>Demographics:</strong> Age, gender, name</li>
+                    <li><strong>Lab Results:</strong> Hemoglobin (LOINC: 718-7), WBC count (LOINC: 6690-2), eGFR (LOINC: 33914-3) or Creatinine (LOINC: 2160-0) for calculation</li>
+                    <li><strong>Conditions:</strong> ICD-10/SNOMED coded diagnoses for bleeding history, liver cirrhosis, malignancy, bleeding diathesis</li>
+                    <li><strong>Medications:</strong> Oral anticoagulants, NSAIDs, corticosteroids detected by medication code and keyword matching</li>
+                    <li><strong>Procedures:</strong> Recent surgical procedures within 30 days</li>
                 </ul>
-                <p>The application presents the total score, the corresponding risk level (e.g., Not High Bleeding Risk, HBR, Very HBR), and a component-by-component breakdown of the score. Users can also interactively modify values to see how they affect the final risk score.</p>
-                
+
+                <h5 class="mt-4">Interactive What-If Analysis</h5>
+                <p>All score components are editable. Clinicians can manually adjust lab values or toggle condition flags to observe the real-time impact on the total score and risk classification.</p>
+
                 <h5 class="mt-4">Bleeding vs. Ischemic Risk Trade-off Analysis</h5>
-                <p>For patients identified with a high bleeding risk (PRECISE-HBR score ≥ 23), the application provides a link to an interactive trade-off analysis tool. This feature visualizes the balance between the patient's estimated 1-year bleeding risk and their ischemic/thrombotic risk based on a model of various clinical factors.</p>
-                 <p>Clinicians can select or deselect risk factors to dynamically observe the impact on the patient's risk profile, aiding in shared decision-making regarding treatment strategies.</p>
+                <p>For patients identified with high bleeding risk (score &ge; 23), the application provides an interactive trade-off analysis tool based on the ARC-HBR model. This visualizes the balance between estimated 1-year bleeding risk and ischemic/thrombotic risk across different DAPT durations.</p>
             </section>
 
+            <!-- How to Use -->
             <section id="how-to-use">
                 <h4><i class="fas fa-directions"></i>How to Use the Application</h4>
                 <h6>Standalone Launch (for testing or direct use):</h6>
                 <ol>
                     <li>Navigate to the application's home page.</li>
                     <li>You will be presented with a "Standalone Launch" screen.</li>
-                    <li>Enter the FHIR Server URL (the <code>iss</code> parameter) for the EHR system you wish to connect to. For example, for Cerner Sandbox, this would be <code>https://fhir-myrecord.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d</code>.</li>
+                    <li>Enter the FHIR Server URL (the <code>iss</code> parameter) for the EHR system you wish to connect to.</li>
                     <li>Click "Launch".</li>
                     <li>You will be redirected to the EHR's login and authorization page.</li>
                     <li>After successfully authorizing the application, you will be redirected to the main risk calculation page, pre-filled with the selected patient's data.</li>
                 </ol>
                 <hr>
                 <h6>EHR Launch (integrated use):</h6>
-                <p>When the application is registered within an EHR system, clinicians can launch it directly from a patient's chart. The launch process is seamless, and the application will open directly to the risk calculation page for that patient.</p>
+                <p>When the application is registered within an EHR system (e.g., Epic, Cerner), clinicians can launch it directly from a patient's chart. The launch process is seamless, and the application will open directly to the risk calculation page for that patient.</p>
             </section>
 
+            <!-- References -->
+            <section id="references">
+                <h4><i class="fas fa-book"></i>References</h4>
+                <ol>
+                    <li>Gragnano F, van Klaveren D, Heg D, et al. <strong>PRECISE-HBR Score for High Bleeding Risk Assessment in Patients Undergoing Percutaneous Coronary Intervention.</strong> <em>Circulation.</em> 2025;151:693-706. doi: <a href="https://doi.org/10.1161/CIRCULATIONAHA.124.072009" target="_blank" rel="noopener noreferrer">10.1161/CIRCULATIONAHA.124.072009</a></li>
+                    <li>Urban P, Mehran R, Colleran R, et al. <strong>Defining High Bleeding Risk in Patients Undergoing Percutaneous Coronary Intervention: A Consensus Document from the Academic Research Consortium for High Bleeding Risk (ARC-HBR).</strong> <em>Circulation.</em> 2019;140:240-261.</li>
+                    <li>Valgimigli M, Bueno H, Byrne RA, et al. <strong>2017 ESC Focused Update on Dual Antiplatelet Therapy in Coronary Artery Disease.</strong> <em>Eur Heart J.</em> 2018;39:213-260.</li>
+                </ol>
+            </section>
+
+            <!-- Technical Stack -->
             <section id="tech-stack">
                 <h4><i class="fas fa-cogs"></i>Technical Stack</h4>
                 <ul>
-                    <li><strong>Backend:</strong> Python with Flask web framework.</li>
-                    <li><strong>FHIR Integration:</strong> <code>fhirclient</code> library for Python, compliant with SMART on FHIR v2.</li>
-                    <li><strong>Frontend:</strong> HTML, Bootstrap 5 for styling, and JavaScript with Chart.js for visualizations.</li>
-                    <li><strong>Deployment:</strong> Configured for deployment on Google App Engine (Standard Environment for Python).</li>
+                    <li><strong>Backend:</strong> Python 3.11 with Flask web framework, Gunicorn WSGI server</li>
+                    <li><strong>FHIR Integration:</strong> <code>fhirclient</code> library for Python, FHIR R4 / DSTU2 compatible, SMART on FHIR v2</li>
+                    <li><strong>Authentication:</strong> SMART on FHIR OAuth2 with PKCE, OpenID Connect id_token validation</li>
+                    <li><strong>Security:</strong> Flask-Talisman (CSP/HSTS), Flask-Limiter (rate limiting), CSRF protection, SSRF prevention, BOLA protection</li>
+                    <li><strong>Frontend:</strong> HTML5, Bootstrap 5, JavaScript with Chart.js for visualizations</li>
+                    <li><strong>Deployment:</strong> Google App Engine (Standard Environment), Docker support</li>
+                    <li><strong>Regulatory:</strong> IEC 62304 / ISO 14971 compliant development process for TFDA SaMD certification</li>
                 </ul>
             </section>
         </div>
@@ -137,14 +407,14 @@
 
         function onScroll() {
             let current = '';
-            sections.forEach(section => {
+            sections.forEach(function(section) {
                 const sectionTop = section.offsetTop;
-                if (pageYOffset >= sectionTop - 120) { // Adjust offset
+                if (pageYOffset >= sectionTop - 120) {
                     current = section.getAttribute('id');
                 }
             });
 
-            navLinks.forEach(link => {
+            navLinks.forEach(function(link) {
                 link.classList.remove('active');
                 if (link.getAttribute('href').substring(1) === current) {
                     link.classList.add('active');
@@ -153,7 +423,7 @@
         }
 
         window.addEventListener('scroll', onScroll);
-        onScroll(); // Initial check
+        onScroll();
     });
 </script>
 {% endblock %}
