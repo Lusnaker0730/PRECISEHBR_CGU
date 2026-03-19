@@ -11,6 +11,7 @@ on:
       - '.github/workflows/test.yml'
       - 'templates/**'
       - 'static/**'
+      - 'regulatory-output/**'
   pull_request:
     branches: [ main, PRECISE-HBR ]
     paths:
@@ -20,6 +21,7 @@ on:
       - 'requirements.txt'
       - 'templates/**'
       - 'static/**'
+      - 'regulatory-output/**'
 
 env:
   PYTHON_VERSION: '3.11'
