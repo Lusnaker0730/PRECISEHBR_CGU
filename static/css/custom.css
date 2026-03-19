@@ -321,6 +321,34 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
+.modal-backdrop-dim {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.expired-banner {
+    z-index: 9999;
+    border-radius: 0;
+    margin: 0;
+}
+
+.font-size-1-5rem {
+    font-size: 1.5rem;
+}
+
+/* Condition/medication separator bar */
+.condition-separator {
+    background-color: #343a40 !important;
+    color: #ffffff !important;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+/* Clinician confirmation hint on N/A dates */
+.na-clinician-hint {
+    cursor: help;
+    text-decoration: underline dotted;
+}
+
 /* Feedback Section Styling */
 .card-header.bg-light {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
