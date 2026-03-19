@@ -169,8 +169,8 @@
         }
         if (clinicalTooltips['White Blood Cell Count']) {
             clinicalTooltips['White Blood Cell Count'].riskFactors =
-                `Score Weight: +${c.wbc.coefficient} points per 1 10?/L increase<br>` +
-                `Example: 10 10?/L = (10-${c.wbc.threshold})  ${c.wbc.coefficient} = ${((10 - c.wbc.threshold) * c.wbc.coefficient).toFixed(1)} points`;
+                `Score Weight: +${c.wbc.coefficient} points per 1 \u00d710\u00b3/\u00b5L increase<br>` +
+                `Example: 10 \u00d710\u00b3/\u00b5L = (10-${c.wbc.threshold}) \u00d7 ${c.wbc.coefficient} = ${((10 - c.wbc.threshold) * c.wbc.coefficient).toFixed(1)} points`;
         }
     }
 
@@ -296,9 +296,9 @@
         },
         'White Blood Cell Count': {
             title: 'White Blood Cell Count',
-            content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to a maximum of 15 10?/L; higher WBC increases the score.',
-            normalRange: 'Calculation Range: 3-15 10?/L',
-            riskFactors: 'Score Weight: +0.8 points per 1 10?/L increase<br>Example: 10 10?/L = (10-3)  0.8 = 5.6 points'
+            content: 'WBC count is a continuous variable in the PRECISE-HBR model. It is truncated to the 3-15 \u00d710\u00b3/\u00b5L range; higher WBC increases the score.',
+            normalRange: 'Calculation Range: 3-15 \u00d710\u00b3/\u00b5L',
+            riskFactors: 'Score Weight: +0.8 points per 1 \u00d710\u00b3/\u00b5L increase<br>Example: 10 \u00d710\u00b3/\u00b5L = (10-3) \u00d7 0.8 = 5.6 points'
         },
         'Previous bleeding': {
             title: 'Previous Bleeding',
@@ -314,9 +314,9 @@
         },
         'Platelet count': {
             title: 'Platelet Count',
-            content: 'Platelets are key for coagulation. Low platelet count (<10010?/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding. Can be caused by marrow disease, hypersplenism, or medications.',
-            normalRange: '150-400 10?/L',
-            riskFactors: '<100 10?/L is an ARC-HBR Major Criterion<br><50 10?/L is severe thrombocytopenia'
+            content: 'Platelets are key for coagulation. Low platelet count (<100 \u00d710\u2079/L) impairs clotting ability, increasing risk of spontaneous and post-traumatic bleeding. Can be caused by marrow disease, hypersplenism, or medications.',
+            normalRange: '150-400 \u00d710\u2079/L',
+            riskFactors: '<100 \u00d710\u2079/L is an ARC-HBR Major Criterion<br><50 \u00d710\u2079/L is severe thrombocytopenia'
         },
 
         'Chronic bleeding diathesis': {
@@ -339,11 +339,16 @@
         },
         'Chronic use of nsaids': {
             title: 'Chronic Use of NSAIDs or Corticosteroids',
-            content: 'NSAIDs inhibit platelet function and damage gastric mucosa, increasing GI bleeding risk. Long-term steroids weaken vessel walls. Risk is additive when combined with antiplatelet drugs.',
-            normalRange: 'No chronic use',
+            content: 'NSAIDs inhibit platelet function and damage gastric mucosa, increasing GI bleeding risk. Long-term steroids weaken vessel walls. Risk is additive when combined with antiplatelet drugs. Chronic use is defined as e.g. \u22654 days/week.',
+            normalRange: 'No chronic use (\u22654 days/week is considered chronic)',
             riskFactors: 'ARC-HBR Minor Criterion<br>Includes: ibuprofen, naproxen, steroids, etc.'
         },
-
+        'Recent Major Surgery or Trauma': {
+            title: 'Recent Major Surgery or Trauma',
+            content: 'Recent major surgery or trauma within 30 days before PCI. Surgical wounds and tissue trauma activate coagulation pathways, and combining antiplatelet therapy increases perioperative bleeding risk.',
+            normalRange: 'No major surgery or trauma within 30 days before PCI',
+            riskFactors: 'ARC-HBR Minor Criterion<br>Defined as major surgery or trauma \u226430 days before PCI'
+        },
 
     };
 
@@ -567,7 +572,7 @@
             return unitSettings.hemoglobin || "g/dL";
         }
         if (parameterName.includes("eGFR")) return "mL/min/1.73m2";
-        if (parameterName.includes("White Blood Cell")) return "10?/L";
+        if (parameterName.includes("White Blood Cell")) return "10³/µL";
         return "";
     }
 
@@ -779,7 +784,7 @@
             if (unit === "years") return Math.round(value);
             if (unit === "g/dL" || unit === "mmol/L") return value.toFixed(2);
             if (unit === "mL/min/1.73m2") return Math.round(value);
-            if (unit === "10?/L") return value.toFixed(2);
+            if (unit === "10³/µL") return value.toFixed(2);
             return value.toFixed(2);
         }
         return value;
@@ -809,10 +814,24 @@
         }
 
         if (scoreComponentData && scoreComponentData.length > 0) {
+            let conditionSeparatorAdded = false;
             scoreComponentData.forEach(item => {
                 // Skip Base Score - don't display it
                 if (item.parameter && item.parameter.includes("Base Score")) {
                     return;
+                }
+
+                // Add separator bar before the first condition/medication boolean item
+                if (!conditionSeparatorAdded && item.is_present !== null && typeof item.is_present === 'boolean') {
+                    conditionSeparatorAdded = true;
+                    const sepTr = document.createElement('tr');
+                    sepTr.className = 'table-active';
+                    const sepTd = document.createElement('td');
+                    sepTd.colSpan = 4;
+                    sepTd.className = 'text-center fw-bold py-2 condition-separator';
+                    sepTd.textContent = 'Below condition and medication checker should be secondary confirmed by clinician';
+                    sepTr.appendChild(sepTd);
+                    componentsBody.appendChild(sepTr);
                 }
 
                 const cleanParameterName = translateParameterName(item.parameter || 'Unnamed Criterion');
@@ -871,7 +890,11 @@
                 if (item.is_outdated) {
                     tdDate.classList.add('text-danger');
                 }
-                tdDate.textContent = item.date || 'N/A';
+                if (item.date && item.date !== 'N/A') {
+                    tdDate.textContent = item.date;
+                } else {
+                    tdDate.textContent = 'N/A';
+                }
                 if (item.is_outdated) {
                     const br = document.createElement('br');
                     const small = document.createElement('small');
@@ -1537,8 +1560,7 @@
 
         // Apply color and bold to total score
         totalScoreEl.textContent = score;
-        totalScoreEl.style.color = scoreColor; // Color is dynamic, hard to move to class without many classes
-        totalScoreEl.className = 'display-3 font-weight-900';
+        totalScoreEl.className = `display-3 font-weight-900 ${colorClass}`;
 
         riskLevelEl.textContent = riskCategory;
         riskLevelEl.className = `h4 ${colorClass}`;
@@ -1679,15 +1701,16 @@
             'PRECISE-HBR - Base Score': 'Base Score (fixed)',
             'PRECISE-HBR - Age': 'Age (truncated 30-80 years)',
             'PRECISE-HBR - Hemoglobin': 'Hemoglobin (truncated 5-15 g/dL)',
-            'PRECISE-HBR - eGFR': 'eGFR (truncated above 100)',
-            'PRECISE-HBR - White Blood Cell Count': 'White Blood Cell Count (truncated above 15103)',
+            'PRECISE-HBR - eGFR': 'eGFR (truncated 5-100)',
+            'PRECISE-HBR - White Blood Cell Count': 'White Blood Cell Count (truncated 3-15)',
             'PRECISE-HBR - Prior Bleeding': 'Previous bleeding',
             'PRECISE-HBR - Oral Anticoagulation': 'Long-term oral anticoagulation',
-            'PRECISE-HBR - Platelet Count': 'Platelet count (<100 10?/L)',
+            'PRECISE-HBR - Platelet Count': 'Platelet count (<100 \u00d710\u2079/L)',
             'PRECISE-HBR - Chronic Bleeding Diathesis': 'Chronic bleeding diathesis',
             'PRECISE-HBR - Liver Cirrhosis': 'Liver cirrhosis (with portal hypertension)',
             'PRECISE-HBR - Active Malignancy': 'Active malignancy',
             'PRECISE-HBR - NSAIDs/Corticosteroids': 'Chronic use of nsaids (or corticosteroids)',
+            'PRECISE-HBR - Recent Major Surgery or Trauma': 'Recent Major Surgery or Trauma',
             'PRECISE-HBR - ARC-HBR Summary': 'ARC-HBR Elements ?1'
         };
 
@@ -1962,9 +1985,7 @@
         // Create modal if it doesn't exist
         if (!warningModal) {
             warningModal = document.createElement('div');
-            warningModal.className = 'modal fade show';
-            warningModal.style.display = 'block';
-            warningModal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            warningModal.className = 'modal fade show d-block modal-backdrop-dim';
             warningModal.innerHTML = `
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
@@ -2193,8 +2214,7 @@
         if (document.querySelector('.token-expired-banner')) return;
 
         const banner = document.createElement('div');
-        banner.className = 'token-expired-banner alert alert-warning alert-dismissible position-fixed w-100';
-        banner.style.cssText = 'top:0;left:0;z-index:9999;border-radius:0;margin:0;';
+        banner.className = 'token-expired-banner alert alert-warning alert-dismissible position-fixed w-100 top-0 start-0 expired-banner';
         banner.setAttribute('role', 'alert');
         banner.innerHTML =
             '<strong><i class="fas fa-lock"></i> Session Expired</strong> ' +
