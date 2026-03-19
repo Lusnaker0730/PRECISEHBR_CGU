@@ -263,11 +263,12 @@ class TestRISK009_BOLA_Expanded:
         """SC-009-06: FHIR resources must be validated for patient ownership."""
         from services.fhir_client_service import FHIRClientService
 
-        service = FHIRClientService(
-            fhir_server_url='https://fhir.example.com/r4',
-            access_token='test-token',
-            client_id='test-client'
-        )
+        with patch('fhirclient.client.FHIRClient'):
+            service = FHIRClientService(
+                fhir_server_url='https://fhir.example.com/r4',
+                access_token='test-token',
+                client_id='test-client'
+            )
 
         # Resource belonging to correct patient
         valid_resource = {
@@ -378,11 +379,12 @@ class TestRISK017_DataMinimization:
         from services.fhir_client_service import FHIRClientService
         import inspect
 
-        service = FHIRClientService(
-            fhir_server_url='https://fhir.example.com/r4',
-            access_token='test-token',
-            client_id='test-client'
-        )
+        with patch('fhirclient.client.FHIRClient'):
+            service = FHIRClientService(
+                fhir_server_url='https://fhir.example.com/r4',
+                access_token='test-token',
+                client_id='test-client'
+            )
 
         # Method signature must accept loinc_codes parameter
         sig = inspect.signature(service.get_observations_by_loinc)
@@ -410,11 +412,12 @@ class TestRISK017_DataMinimization:
         from services.fhir_client_service import FHIRClientService
         import inspect
 
-        service = FHIRClientService(
-            fhir_server_url='https://fhir.example.com/r4',
-            access_token='test-token',
-            client_id='test-client'
-        )
+        with patch('fhirclient.client.FHIRClient'):
+            service = FHIRClientService(
+                fhir_server_url='https://fhir.example.com/r4',
+                access_token='test-token',
+                client_id='test-client'
+            )
 
         sig = inspect.signature(service.get_conditions)
         assert 'count' in sig.parameters
@@ -424,11 +427,12 @@ class TestRISK017_DataMinimization:
         """SC-017-04: FHIR queries must use _count to limit results."""
         from services.fhir_client_service import FHIRClientService
 
-        service = FHIRClientService(
-            fhir_server_url='https://fhir.example.com/r4',
-            access_token='test-token',
-            client_id='test-client'
-        )
+        with patch('fhirclient.client.FHIRClient'):
+            service = FHIRClientService(
+                fhir_server_url='https://fhir.example.com/r4',
+                access_token='test-token',
+                client_id='test-client'
+            )
 
         # Check that default count params exist in method signatures
         import inspect
@@ -444,11 +448,12 @@ class TestRISK017_DataMinimization:
         """SC-017-05: _filter_owned_resources removes mismatched resources."""
         from services.fhir_client_service import FHIRClientService
 
-        service = FHIRClientService(
-            fhir_server_url='https://fhir.example.com/r4',
-            access_token='test-token',
-            client_id='test-client'
-        )
+        with patch('fhirclient.client.FHIRClient'):
+            service = FHIRClientService(
+                fhir_server_url='https://fhir.example.com/r4',
+                access_token='test-token',
+                client_id='test-client'
+            )
 
         resources = [
             {'resourceType': 'Observation', 'subject': {'reference': 'Patient/patient-123'}},
