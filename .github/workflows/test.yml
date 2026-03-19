@@ -9,6 +9,8 @@ on:
       - 'config/**'
       - 'requirements.txt'
       - '.github/workflows/test.yml'
+      - 'templates/**'
+      - 'static/**'
   pull_request:
     branches: [ main, PRECISE-HBR ]
     paths:
@@ -16,6 +18,8 @@ on:
       - 'tests/**'
       - 'config/**'
       - 'requirements.txt'
+      - 'templates/**'
+      - 'static/**'
 
 env:
   PYTHON_VERSION: '3.11'
