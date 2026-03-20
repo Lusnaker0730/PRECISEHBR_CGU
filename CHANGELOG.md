@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 修復 (Bug Fixes)
+- **修復首頁 redirect loop** — 當 session 存在但 token 已過期時，`/` 路由的 `is_session_valid()` 僅檢查 key 存在，導致 redirect 到 `/main` → `login_required` 偵測 token 過期 → redirect 回 `/` → 無限循環。修復：`/` 路由新增 `is_token_expired()` + `try_server_side_refresh()` 檢查，token 無法刷新時清除 stale session，直接顯示 standalone calculator
+- **修復 standalone tradeoff CSP `style-src` 違規** — `standalone_tradeoff.html` 進度條使用 inline `style="height: 24px;"` 和 `style="width:50%"`，加上 `standalone_tradeoff.js` 的 `element.style.width = ...` 動態更新，全部被 CSP `style-src` 策略阻擋：
+  - 靜態 inline style 改為 nonce'd `<style>` block 中的 CSS class（`.progress-h24`、`.risk-bar-init`）
+  - JS 動態寬度更新改用 CSP-safe helper（`_cspSetBarWidths`），透過 nonce'd `<style>` 元素更新 CSS rule
+
 ### 計算校正 (Calculation Calibration) — Class C
 - **PRECISE-HBR eGFR 係數校正**（PR #54）— 從 0.05 調整為 **0.055**，經官方計算器 (precise-hbr.eoc.ch) API 系統性驗證，修正極端 eGFR 值的 1 分偏差
 - **1 年出血風險百分比改用 complementary log-log (cloglog) 校正曲線**（PR #54）：
