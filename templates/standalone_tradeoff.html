@@ -3,6 +3,10 @@
 {% block title %}ARC-HBR Bleeding vs. Thrombosis Tradeoff Calculator{% endblock %}
 
 {% block content %}
+<style nonce="{{ csp_nonce() }}">
+.progress-h24 { height: 24px; }
+.risk-bar-init { width: 50%; }
+</style>
 <div class="container mt-4" id="tradeoff-container">
     <!-- Back link -->
     <div class="mb-3">
@@ -127,9 +131,9 @@
                             <small class="text-muted">Equal</small>
                             <small class="text-primary fw-bold">Ischemia dominates</small>
                         </div>
-                        <div class="progress" style="height: 24px;">
-                            <div id="risk-bar-bleeding" class="progress-bar bg-danger" style="width:50%"></div>
-                            <div id="risk-bar-thrombotic" class="progress-bar bg-primary" style="width:50%"></div>
+                        <div class="progress progress-h24">
+                            <div id="risk-bar-bleeding" class="progress-bar bg-danger risk-bar-init"></div>
+                            <div id="risk-bar-thrombotic" class="progress-bar bg-primary risk-bar-init"></div>
                         </div>
                     </div>
 
@@ -183,4 +187,18 @@
 {% block scripts %}
 <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/precise_hbr_core.js') }}"></script>
 <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/standalone_tradeoff.js') }}"></script>
+<script nonce="{{ csp_nonce() }}">
+// CSP-safe dynamic style helper: creates a nonce'd <style> element for JS-driven width updates
+(function() {
+    var sheet = document.createElement('style');
+    sheet.setAttribute('nonce', '{{ csp_nonce() }}');
+    document.head.appendChild(sheet);
+    window._cspSetWidth = function(id, pct) {
+        sheet.textContent = '#' + id + '{width:' + pct + '%}';
+    };
+    window._cspSetBarWidths = function(bleedId, bleedPct, thromId, thromPct) {
+        sheet.textContent = '#' + bleedId + '{width:' + bleedPct + '%} #' + thromId + '{width:' + thromPct + '%}';
+    };
+})();
+</script>
 {% endblock %}

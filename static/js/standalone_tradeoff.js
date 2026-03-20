@@ -126,8 +126,9 @@
         var total = blResult.risk + thResult.risk;
         if (total > 0) {
             var blPct = (blResult.risk / total) * 100;
-            document.getElementById('risk-bar-bleeding').style.width = blPct + '%';
-            document.getElementById('risk-bar-thrombotic').style.width = (100 - blPct) + '%';
+            if (window._cspSetBarWidths) {
+                window._cspSetBarWidths('risk-bar-bleeding', blPct, 'risk-bar-thrombotic', 100 - blPct);
+            }
         }
 
         // Factor lists

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app
 from markupsafe import escape
-from utils.web_utils import is_session_valid, login_required, render_error_page
+from utils.web_utils import is_session_valid, is_token_expired, try_server_side_refresh, login_required, render_error_page
 from services.audit_logger import audit_ephi_access
 from extensions import limiter
 import random
@@ -14,7 +14,10 @@ web_bp = Blueprint('web', __name__)
 @web_bp.route('/')
 def index():
     if is_session_valid():
-        return redirect(url_for('web.main_page'))
+        if not is_token_expired() or try_server_side_refresh():
+            return redirect(url_for('web.main_page'))
+        # Stale session — clear it and show standalone page
+        session.clear()
     return render_template('standalone_calculator.html')
 
 @web_bp.route('/standalone')
