@@ -33,7 +33,9 @@ services:
     
     # 健康檢查
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://localhost:9000/health', timeout=5).read()"
       interval: 30s
       timeout: 10s
       retries: 3

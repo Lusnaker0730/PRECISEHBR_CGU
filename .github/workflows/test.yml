@@ -12,6 +12,8 @@ on:
       - 'templates/**'
       - 'static/**'
       - 'regulatory-output/**'
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
   pull_request:
     branches: [ main, PRECISE-HBR ]
     paths:
@@ -19,9 +21,12 @@ on:
       - 'tests/**'
       - 'config/**'
       - 'requirements.txt'
+      - '.github/workflows/test.yml'  # PR-side trigger so workflow edits self-validate
       - 'templates/**'
       - 'static/**'
       - 'regulatory-output/**'
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
 
 env:
   PYTHON_VERSION: '3.11'
